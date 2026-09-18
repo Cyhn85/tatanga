@@ -23,3 +23,7 @@ Thumbs.db
 !.env.example
 .claude/
 data/social_tokens.json
+shared/config/credentials.py
+videocu_v1/config.py
+videocu_v1/QUICKSTART.md
+videocu_v1/TELEGRAM_BOT_GUIDE.md
