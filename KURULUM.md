@@ -34,7 +34,7 @@ Yayın köprüsü hazır: `.env` içindeki `CSSBERLIN_API_URL` (`https://cssberl
 ve `CSSBERLIN_API_KEY` dolu olduğu sürece arayüzdeki "Yayınla" butonu ürünü doğrudan siteye gönderir.
 Bu satırlara dokunmayın.
 - Site aynı kaynak linkinden gelen ürünü tekrar oluşturmaz, mevcut ilanı günceller.
-- Her bilgisayarın kendi `hub.db`'si vardır; kazınan ürünler PC'ler arasında senkronize olmaz, ama hepsi aynı siteye yayınlanır.
+- Her bilgisayarın kendi `hub.db`'si vardır; ürünler aşağıdaki senkronla ortak havuzda birleşir, hepsi aynı siteye yayınlanır.
 - YouTube/sosyal medya token'ları Ceyhun'un hesabına bağlıdır.
 
 ## Ürün senkronu (iki bilgisayar, tek havuz)
@@ -42,7 +42,8 @@ Her Hub 10 dakikada bir kendi ürünlerini sunucudaki ortak havuza gönderir, di
 - `.env`'e iki satır: `TATANGA_SYNC_URL=https://cssberlin.de/tatanga-sync` ve `TATANGA_SYNC_KEY=<sana özel anahtar>`. Anahtar kişiye özeldir, paylaşılmaz.
 - Senkron **yayın yapmaz**. Karşıdan gelen ürünler `synced` durumuyla görünür; bu makinede otomatik yayın, fiyat indirimi, siteden kaldırma veya sosyal paylaşım tetiklemez.
 - Tekilleştirme kaynak linkine göre: bir linki havuza ilk gönderen o ürünün sahibidir, sadece sahibi güncelleyebilir.
-- Elle hemen çalıştırmak için: `cd C:	atanga\T11_HUB` ve `..env\Scripts\python -m core.product_sync`
+- Elle hemen çalıştırmak için: `cd C:\tatanga\T11_HUB` ve `..\venv\Scripts\python -m core.product_sync`
+- İki bilgisayarda zaten ortak olan eski ürünlerde her makine kendi kopyasını korur; yeni kazınan ürünler iki yönde akar.
 
 ## Proje haritası (T11_HUB)
 - `app.py` — FastAPI uygulaması, tüm API uçları ve arayüz (port 8501)
