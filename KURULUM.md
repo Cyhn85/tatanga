@@ -11,7 +11,7 @@ SEO metni üreten ve uygun ürünleri cssberlin.de'ye yayınlayan bir sistemdir.
 | Kod | Bu repo (`git clone`) | örn. `C:\tatanga` |
 | Veri (veritabanı `hub.db`, görseller, token'lar, ses modelleri) | `TATANGA_data.zip` | `C:\tatanga\T11_HUB\data\` |
 | Video çıktıları (isteğe bağlı, test videoları) | `TATANGA_video_ciktilari.zip` | `C:\tatanga\videocu_v1\output\` |
-| Gizli ayarlar | `.env` dosyası (Ceyhun'dan ayrıca) | `C:\tatanga\T11_HUB\.env` |
+| Gizli ayarlar | `.env` + 4 dosya (Ceyhun'dan Drive ile) | `.env` → `C:\tatanga\T11_HUB\.env`; `credentials.py` → `shared\config\`; `config.py`, `QUICKSTART.md`, `TELEGRAM_BOT_GUIDE.md` → `videocu_v1\` |
 
 ## Kurulum (Windows, PowerShell)
 1. Gerekenler: **Python 3.11**, **Git**, **Google Chrome**, video için **ffmpeg** (`winget install ffmpeg`).
@@ -29,11 +29,13 @@ SEO metni üreten ve uygun ürünleri cssberlin.de'ye yayınlayan bir sistemdir.
    - İlk çalıştırmada rembg ~170 MB model indirir (normal).
    - Çıktılar: `Masaüstü\CSS_Berlin_Output\`
 
-## ÖNEMLİ: Canlı yayın
-`.env` içindeki `CSSBERLIN_API_*` doluysa sistem ürünleri **cssberlin.de'ye canlı yayınlar**.
-Ceyhun'un bilgisayarı da yayınladığı için, sadece inceleme/geliştirme yapılacaksa
-`CSSBERLIN_API_URL` ve `CSSBERLIN_API_KEY` satırlarını boş bırakın. İki ayrı `hub.db` birbiriyle senkronize olmaz.
-YouTube/sosyal medya token'ları Ceyhun'un hesabına bağlıdır.
+## Canlı yayın (cssberlin.de)
+Yayın köprüsü hazır: `.env` içindeki `CSSBERLIN_API_URL` (`https://cssberlin.de/api/products/import`)
+ve `CSSBERLIN_API_KEY` dolu olduğu sürece arayüzdeki "Yayınla" butonu ürünü doğrudan siteye gönderir.
+Bu satırlara dokunmayın.
+- Site aynı kaynak linkinden gelen ürünü tekrar oluşturmaz, mevcut ilanı günceller.
+- Her bilgisayarın kendi `hub.db`'si vardır; kazınan ürünler PC'ler arasında senkronize olmaz, ama hepsi aynı siteye yayınlanır.
+- YouTube/sosyal medya token'ları Ceyhun'un hesabına bağlıdır.
 
 ## Proje haritası (T11_HUB)
 - `app.py` — FastAPI uygulaması, tüm API uçları ve arayüz (port 8501)
