@@ -1,0 +1,27 @@
+[Unit]
+Description=TATANGA urun senkron sunucusu (yalnizca veri, yayin yok)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tatanga-sync
+EnvironmentFile=/opt/tatanga-sync/sync.env
+ExecStart=/usr/bin/python3 /opt/tatanga-sync/sync_server.py
+Restart=always
+RestartSec=10
+
+MemoryMax=150M
+CPUQuota=25%
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/tatanga-sync
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

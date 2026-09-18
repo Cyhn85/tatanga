@@ -4879,6 +4879,8 @@ async def _try_auto_publish(product_id: str):
             cols = [d[0] for d in cursor.description]
             product = dict(zip(cols, row))
 
+        if product.get("sync_origin"):
+            return  # baska Hub'dan senkronla gelen urun: yayini sahibi yonetir
         if product.get("recommendation") != "buy":
             return
         seo_title = product.get("seo_title") or ""

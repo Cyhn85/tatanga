@@ -819,6 +819,10 @@ mgr.register_handler("ad_generate", ad_generate)
 mgr.register_handler("video_generate", video_generate)
 mgr.register_handler("video_qc", video_qc)
 
+from .product_sync import product_sync  # noqa: E402
+
+mgr.register_handler("product_sync", product_sync)
+
 
 async def install_jobs(db_file: str = bus.DEFAULT_DB_FILE) -> None:
     """Tekrarlayan is handler'larini kaydeder (manager run_loop bunu cagirir)."""
@@ -838,3 +842,5 @@ async def install_jobs(db_file: str = bus.DEFAULT_DB_FILE) -> None:
                            interval_seconds=21600, db_file=db_file)   # 6 saatte 1
     await bus.register_job("video_qc", kind="video_qc",
                            interval_seconds=3600, db_file=db_file)    # saatte 1
+    await bus.register_job("product_sync", kind="product_sync",
+                           interval_seconds=600, db_file=db_file)     # 10 dk

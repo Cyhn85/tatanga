@@ -37,6 +37,13 @@ Bu satırlara dokunmayın.
 - Her bilgisayarın kendi `hub.db`'si vardır; kazınan ürünler PC'ler arasında senkronize olmaz, ama hepsi aynı siteye yayınlanır.
 - YouTube/sosyal medya token'ları Ceyhun'un hesabına bağlıdır.
 
+## Ürün senkronu (iki bilgisayar, tek havuz)
+Her Hub 10 dakikada bir kendi ürünlerini sunucudaki ortak havuza gönderir, diğer Hub'ın ürünlerini çeker.
+- `.env`'e iki satır: `TATANGA_SYNC_URL=https://cssberlin.de/tatanga-sync` ve `TATANGA_SYNC_KEY=<sana özel anahtar>`. Anahtar kişiye özeldir, paylaşılmaz.
+- Senkron **yayın yapmaz**. Karşıdan gelen ürünler `synced` durumuyla görünür; bu makinede otomatik yayın, fiyat indirimi, siteden kaldırma veya sosyal paylaşım tetiklemez.
+- Tekilleştirme kaynak linkine göre: bir linki havuza ilk gönderen o ürünün sahibidir, sadece sahibi güncelleyebilir.
+- Elle hemen çalıştırmak için: `cd C:	atanga\T11_HUB` ve `..env\Scripts\python -m core.product_sync`
+
 ## Proje haritası (T11_HUB)
 - `app.py` — FastAPI uygulaması, tüm API uçları ve arayüz (port 8501)
 - `core/` — state machine, event bus, manager (deterministik orkestrasyon)
