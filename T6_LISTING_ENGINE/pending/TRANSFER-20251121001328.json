@@ -1,0 +1,37 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/cesare-paciotti-4us-damenjacke-gr-s-36-creme-beige/3242961792-154-3435",
+    "scraped_at": "2025-11-21T00:13:13.419488",
+    "title": "Cesare Paciotti - 4US Damenjacke | Gr. S (36) | Creme Beige",
+    "price": 25,
+    "description": "Hallo,\n\nich verkaufe diese stylische Damenjacke / Blouson der italienischen Marke Cesare Paciotti 4US.\n\n* **Größe:** S (passend für 36)\n* **Farbe:** Creme / Beige\n* **Stil:** Eleganter Blouson / Bomberjacke\n* **Zustand:** Sehr gut, kaum getragen (siehe Fotos).\n* **Details:** Gesteppte Schulterpartie und Innenfutter, 4US Logo am Ärmel, hochwertige Reißverschlüsse.\n\nDie Jacke stammt aus einem gepflegten, tierfreien Nichtraucherhaushalt.\n\n---\n**Abholung & Versand:**\n\n* **Abholung:** Gerne in Berlin Spandau.\n* **Versand:** Versicherter Versand ist möglich (z.B. 4,95 € mit Hermes oder 5,49 € mit DHL).\n\n---\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* Die \"Sicher Bezahlen\" Funktion von Kleinanzeigen\n* PayPal\n* Banküberweisung\n\n---\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/dd/dde8f001-19ac-4f20-ad7a-9bdc2f6a5a58?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/95/95142f03-1751-47f3-873c-d8217c7cac80?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/03/03ce1eed-bf9a-43bd-bf31-b8c1d50872b0?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Cesare Paciotti Damenjacke S 36 Creme",
+    "description": "Elegante Damenjacke von Cesare Paciotti, Größe S (36), Farbe Creme/Beige, sehr guter Zustand, kaum getragen. Gesteppte Schulterpartie, Innenfutter, 4US Logo am Ärmel, hochwertige Reißverschlüsse. Aus einem gepflegten, tierfreien Nichtraucherhaushalt.",
+    "suggested_price": 28.75,
+    "hashtags": [
+      "CesarePaciotti",
+      "Damenjacke",
+      "CremeBeige",
+      "GrößeS",
+      "4US"
+    ],
+    "category_suggestion": "Damen > Jacken & Mäntel"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD9_1_0dc9c9a7.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD9_2_bea6d69b.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD9_3_16946ff5.jpg"
+  ],
+  "id": "TRANSFER-20251121001328",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

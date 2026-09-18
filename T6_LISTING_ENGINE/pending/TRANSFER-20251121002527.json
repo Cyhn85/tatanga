@@ -1,0 +1,37 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/g-star-raw-denim-jeans-w34-l34-modell-501320152-dunkelblau/3242811340-160-3435",
+    "scraped_at": "2025-11-21T00:25:12.991186",
+    "title": "G-Star Raw Denim Jeans W34 L34 | Modell 501320152 | Dunkelblau",
+    "price": 25,
+    "description": "Hallo,\n\nich verkaufe diese G-Star Raw Denim Jeans im klassischen Dunkelblau.\nDie Größe ist W34 L34 (Weite 34 / Länge 34).\n\nModellnummer: 501320152\nDie Jeans hat eine Knopfleiste (Button Fly).\n\nDie Hose wurde getragen und ist in einem guten Zustand mit den G-Star-typischen Waschungen (siehe Fotos). Sie stammt aus einem gepflegten, tierfreien Nichtraucherhaushalt.\n\n**Abholung & Versand:**\n\n**Abholung:** Gerne in Berlin Spandau.\n**Versand:** Versicherter Versand ist möglich (z.B. 4,95 € mit Hermes oder 5,49 € mit DHL).\n\n\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* Die \"Sicher Bezahlen\" Funktion von Kleinanzeigen\n* PayPal\n* Banküberweisung\n\n\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/87/8794adc4-f6f8-4b56-8a18-0d2e711e497e?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/c2/c2904cf1-d68e-4915-bece-5fcd150524ba?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/e8/e8166656-1626-427f-9a36-6ee75ed9f778?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "G-Star Raw Jeans W34 L34 Dunkelblau",
+    "description": "G-Star Raw Denim Jeans im klassischen Dunkelblau, Größe W34 L34, Knopfleiste, guter Zustand, aus tierfreiem Nichtraucherhaushalt. Versand möglich.",
+    "suggested_price": 28.75,
+    "hashtags": [
+      "GStarRaw",
+      "Jeans",
+      "Dunkelblau",
+      "W34L34",
+      "SecondHand"
+    ],
+    "category_suggestion": "Herren/Hosen/Jeans"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD12_1_5d688106.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD12_2_2dabf04b.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD12_3_6676d6f8.jpg"
+  ],
+  "id": "TRANSFER-20251121002527",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

@@ -1,0 +1,25 @@
+# Machine-specific: recreate with `python -m venv venv`
+venv/
+__pycache__/
+*.pyc
+
+# Large runtime data — shipped separately as TATANGA_data.zip
+T11_HUB/data/
+videocu_v1/output/
+
+# Logs (regenerated at runtime)
+logs/
+T11_HUB/logs/
+*.log
+*.log.err
+
+# Windows artefacts
+nul
+NUL
+Thumbs.db
+
+# Secrets: shared separately, never committed
+.env
+!.env.example
+.claude/
+data/social_tokens.json

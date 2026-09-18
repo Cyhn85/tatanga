@@ -1,0 +1,39 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/paciotti-4us-sweatjacke-gr-s-36-queen-stickere-hoher-kragen/3243010788-154-3435",
+    "scraped_at": "2025-11-20T23:43:25.062518",
+    "title": "Paciotti 4US Sweatjacke Gr. S-36-Queen Stickere- Hoher Kragen",
+    "price": 25,
+    "description": "Hallo,\n\nich verkaufe diese außergewöhnliche Damen-Sweatjacke (Blouson) der italienischen Marke Cesare Paciotti 4US.\n\n* **Marke:** Paciotti 4US\n* **Größe:** S (passend für 36)\n* **Farbe:** Schwarz\n* **Material:** Baumwolle (laut Etikett)\n* **Zustand:** Gut, getragen, aber gepflegt (siehe Fotos).\n\n**Besondere Highlights:**\n* Riesige \"Queen\" Stickerei mit goldener Krone auf dem Rücken.\n* Extrem hoher, gerippter Kragen (Stehkragen), der fast wie ein Rollkragen wirkt.\n* Cooler Doppelreißverschluss mit dem typischen Paciotti \"Dolch\" (Hançer) Anhänger.\n* Lässige Blouson-Form mit aufgesetzten Taschen.\n\nDie Jacke stammt aus einem gepflegten, tierfreien Nichtraucherhaushalt.\n\n---\n**Abholung & Versand:**\n\n* **Abholung:** Gerne in Berlin Spandau.\n* **Versand:** Versicherter Versand ist möglich (z.B. 4,95 € mit Hermes oder 5,49 € mit DHL).\n\n---\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* Die \"Sicher Bezahlen\" Funktion von Kleinanzeigen\n* PayPal\n* Banküberweisung\n\n---\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/75/75aa106c-1f4d-4aa7-a064-0c48a73f84fa?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/dc/dcd1a274-cff2-4c41-9978-31836765f0e0?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/5f/5faffb8c-9046-4502-8837-98fa88c87798?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/85/852194fd-0cda-4cb5-b63d-ca504715961d?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Paciotti 4US Sweatjacke S-36 Queen",
+    "description": "Gebrauchte Damen-Sweatjacke von Paciotti 4US, Größe S (36), schwarz, aus Baumwolle. Guter Zustand, getragen aber gepflegt. Besondere Highlights: Riesige 'Queen' Stickerei, hoher Kragen, Doppelreißverschluss mit Paciotti-Anhänger.",
+    "suggested_price": 28.75,
+    "hashtags": [
+      "Paciotti4US",
+      "Sweatjacke",
+      "Damenmode",
+      "SecondHand",
+      "Vinted"
+    ],
+    "category_suggestion": "Damen > Oberbekleidung > Jacken und Mäntel"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD2_1_fb4919fc.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD2_2_779e54aa.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD2_3_4ff485be.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD2_4_02834cbc.jpg"
+  ],
+  "id": "TRANSFER-20251120234340",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

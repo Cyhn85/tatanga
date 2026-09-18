@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+{% set active_page = "settings" %}
+{% block title %}Ayarlar{% endblock %}
+{% block page_title %}<i class="fas fa-cog me-2"></i>Sistem Ayarlari{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- TELEGRAM BOT -->
+    <div class="col-lg-6">
+        <div class="card" style="border:2px solid rgba(0,136,204,0.3);">
+            <div class="card-header" style="background:rgba(0,136,204,0.1);">
+                <h6 class="mb-0"><i class="fab fa-telegram me-2" style="color:#0088cc;"></i>Telegram Bot</h6>
+            </div>
+            <div class="card-body">
+                <div id="tg-status" class="mb-3">
+                    <div class="text-muted"><i class="fas fa-spinner fa-spin"></i> Durum kontrol ediliyor...</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small">Bot Token <small class="text-muted">(@BotFather'dan alin)</small></label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="tg-token" placeholder="123456:ABC-DEF...">
+                        <button class="btn btn-outline-secondary" onclick="document.getElementById('tg-token').type = document.getElementById('tg-token').type === 'password' ? 'text' : 'password'">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-primary" onclick="saveTelegramConfig()">
+                        <i class="fas fa-save me-1"></i> Kaydet
+                    </button>
+                    <button class="btn btn-outline-info" onclick="testTelegram('all')">
+                        <i class="fas fa-paper-plane me-1"></i> Tum Kanallari Test Et
+                    </button>
+                </div>
+
+                <div class="p-2 rounded" style="background:rgba(0,136,204,0.05);font-size:0.75rem;">
+                    <strong>Bot: @cssberlin_notify_bot (CSS Berlin)</strong>
+                    <div class="text-muted mt-1">
+                        credentials.py'den otomatik yuklenir. Degistirmek icin token girin.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TELEGRAM KANALLARI -->
+    <div class="col-lg-6">
+        <div class="card" style="border:2px solid rgba(0,136,204,0.3);">
+            <div class="card-header" style="background:rgba(0,136,204,0.1);">
+                <h6 class="mb-0"><i class="fas fa-broadcast-tower me-2" style="color:#0088cc;"></i>Telegram Kanallari</h6>
+            </div>
+            <div class="card-body p-0">
+                <div id="tg-channels" class="p-3">
+                    <div class="text-muted"><i class="fas fa-spinner fa-spin"></i> Kanallar yukleniyor...</div>
+                </div>
+
+                <!-- Aktif Kanallar -->
+                <table class="table table-sm mb-0" style="font-size:0.8rem;">
+                    <thead>
+                        <tr>
+                            <th>Kanal</th>
+                            <th>Gorev</th>
+                            <th>Chat ID</th>
+                            <th>Test</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tg-channels-table">
+                        <tr>
+                            <td><span class="badge bg-success">Bildirimler</span></td>
+                            <td class="text-muted">Urun, kazima, yayin, satis</td>
+                            <td><code id="ch-bildirimler">-</code></td>
+                            <td><button class="btn btn-sm btn-outline-info" onclick="testTelegram('bildirimler')"><i class="fas fa-paper-plane"></i></button></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-danger">Sistem Hata</span></td>
+                            <td class="text-muted">Hatalar, loglar, uyarilar</td>
+                            <td><code id="ch-sistem_hata">-</code></td>
+                            <td><button class="btn btn-sm btn-outline-info" onclick="testTelegram('sistem_hata')"><i class="fas fa-paper-plane"></i></button></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-warning text-dark">CAPTCHA</span></td>
+                            <td class="text-muted">Manuel islemler, SMS</td>
+                            <td><code id="ch-captcha">-</code></td>
+                            <td><button class="btn btn-sm btn-outline-info" onclick="testTelegram('captcha')"><i class="fas fa-paper-plane"></i></button></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-primary">Admin DM</span></td>
+                            <td class="text-muted">Komutlar, URL ekleme</td>
+                            <td><code id="ch-admin">-</code></td>
+                            <td><button class="btn btn-sm btn-outline-info" onclick="testTelegram('admin')"><i class="fas fa-paper-plane"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Devre disi kanallar -->
+                <div class="p-2 border-top" style="font-size:0.7rem;">
+                    <span class="text-muted">Devre disi kanallar (eski): Mesajlar, Satislar, Kargo, Urun Kazima, Urun Buldum, Magazalar Arasi</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCHEDULED SCRAPER -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0"><i class="fas fa-clock me-2"></i>Zamanli Kazima (7/24 Otonom)</h6></div>
+            <div class="card-body">
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="sched-enabled">
+                    <label class="form-check-label" for="sched-enabled">Otomatik Kazima Aktif</label>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small">Anahtar Kelimeler (satirlari ayirin)</label>
+                    <textarea class="form-control" id="sched-keywords" rows="3" placeholder="nike air max&#10;prada tasche&#10;polo ralph lauren"></textarea>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small">Platformlar</label>
+                        <select class="form-select" id="sched-platforms" multiple size="4">
+                            <option value="vinted" selected>Vinted</option>
+                            <option value="ebay" selected>eBay</option>
+                            <option value="kleinanzeigen">Kleinanzeigen</option>
+                            <option value="sellpy">Sellpy</option>
+                            <option value="willhaben">Willhaben</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Kazima Araligi (dakika)</label>
+                        <select class="form-select" id="sched-interval">
+                            <option value="30">30 dk</option>
+                            <option value="60" selected>1 saat</option>
+                            <option value="120">2 saat</option>
+                            <option value="360">6 saat</option>
+                            <option value="720">12 saat</option>
+                            <option value="1440">24 saat</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-success" onclick="saveScheduler()">
+                    <i class="fas fa-save me-1"></i> Zamanlayici Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Platform Settings -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0"><i class="fas fa-sitemap me-2"></i>Platform Ayarlari</h6></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Platform</th><th>Rate Limit</th><th>Komisyon</th><th>Risk</th><th>Durum</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="platform-badge vinted">Vinted</span></td>
+                                <td>2s</td>
+                                <td>5%</td>
+                                <td><span class="badge bg-danger">Yuksek</span></td>
+                                <td><span class="badge bg-success">Aktif</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="platform-badge kleinanzeigen">Kleinanzeigen</span></td>
+                                <td>3s</td>
+                                <td>0%</td>
+                                <td><span class="badge bg-warning text-dark">Orta</span></td>
+                                <td><span class="badge bg-success">Aktif</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="platform-badge ebay">eBay</span></td>
+                                <td>2s</td>
+                                <td>12.5%</td>
+                                <td><span class="badge bg-success">Dusuk</span></td>
+                                <td><span class="badge bg-success">Aktif</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="platform-badge sellpy">Sellpy</span></td>
+                                <td>3s</td>
+                                <td>40%</td>
+                                <td><span class="badge bg-success">Dusuk</span></td>
+                                <td><span class="badge bg-success">Aktif</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="platform-badge willhaben">Willhaben</span></td>
+                                <td>3s</td>
+                                <td>5%</td>
+                                <td><span class="badge bg-warning text-dark">Orta</span></td>
+                                <td><span class="badge bg-success">Aktif</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="platform-badge tradera">Tradera</span></td>
+                                <td>3s</td>
+                                <td>8%</td>
+                                <td><span class="badge bg-success">Dusuk</span></td>
+                                <td><span class="badge bg-success">Aktif</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="platform-badge leboncoin">Leboncoin</span></td>
+                                <td>4s</td>
+                                <td>4%</td>
+                                <td><span class="badge bg-warning text-dark">Orta</span></td>
+                                <td><span class="badge bg-success">Aktif</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="platform-badge cssberlin">CSSberlin</span></td>
+                                <td>-</td>
+                                <td>0%</td>
+                                <td><span class="badge bg-success">Yok</span></td>
+                                <td><span class="badge bg-primary">Kendi Sitemiz</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Arbitrage + Shipping -->
+    <div class="col-lg-6">
+        <div class="card mb-3">
+            <div class="card-header"><h6 class="mb-0"><i class="fas fa-coins me-2"></i>Arbitraj Ayarlari</h6></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label small">Min Kar Marji (%)</label>
+                        <input type="number" class="form-control" value="25" id="min-margin">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Min Kar (EUR)</label>
+                        <input type="number" class="form-control" value="5" id="min-profit">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Maks Alis (EUR)</label>
+                        <input type="number" class="form-control" value="100" id="max-price">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0"><i class="fas fa-truck me-2"></i>Kargo Maliyetleri</h6></div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Guzergah</th><th>Kucuk</th><th>Orta</th><th>Buyuk</th></tr></thead>
+                    <tbody>
+                        <tr><td>DE ic</td><td>2.75</td><td>5.99</td><td>10.99</td></tr>
+                        <tr><td>AT &#x2194; DE</td><td>6.99</td><td>8.99</td><td>14.99</td></tr>
+                        <tr><td>FR &#x2194; DE</td><td>7.99</td><td>12.99</td><td>17.99</td></tr>
+                        <tr><td>SE &#x2194; DE</td><td>9.99</td><td>14.99</td><td>19.99</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Telegram Komut Listesi -->
+    <div class="col-lg-6">
+        <div class="card" style="border:1px solid rgba(0,136,204,0.2);">
+            <div class="card-header" style="background:rgba(0,136,204,0.05);">
+                <h6 class="mb-0"><i class="fab fa-telegram me-2"></i>Bot Komutlari</h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0" style="font-size:0.78rem;">
+                    <thead><tr><th>Komut</th><th>Aciklama</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>/stats</code></td><td>Sistem istatistikleri</td></tr>
+                        <tr><td><code>/son [N]</code></td><td>Son N urun (varsayilan 5)</td></tr>
+                        <tr><td><code>/karli [N]</code></td><td>En karli urunler</td></tr>
+                        <tr><td><code>/scrape keyword</code></td><td>Kazima baslat (3 platform)</td></tr>
+                        <tr><td><code>/publish ID</code></td><td>cssberlin.de'ye yayinla</td></tr>
+                        <tr><td><code>/watchlist</code></td><td>Takip listesi</td></tr>
+                        <tr><td><code>/check ID</code></td><td>Kaynak durumu kontrol</td></tr>
+                        <tr><td><code>/seo ID</code></td><td>SEO icerik olustur</td></tr>
+                        <tr><td><code>/bgremove ID</code></td><td>Arkaplan kaldir</td></tr>
+                        <tr><td><code>/kanallar</code></td><td>Kanal durumu</td></tr>
+                        <tr><td><code>URL gonder</code></td><td>Otomatik urun ekle</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Info -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Sistem Bilgileri</h6></div>
+            <div class="card-body">
+                <div class="row g-3" style="font-size:0.8rem;">
+                    <div class="col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Web Site</small>
+                            <strong>cssberlin.de</strong>
+                            <small class="d-block text-muted">Next.js 16 + Prisma + Neon</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Lokal Veritabani</small>
+                            <strong>SQLite</strong>
+                            <small class="d-block text-muted">hub.db (T11_HUB)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Gorsel Isleme</small>
+                            <strong>rembg + Pillow</strong>
+                            <small class="d-block text-muted">CPU (onnxruntime)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">AI SEO</small>
+                            <strong>Groq</strong>
+                            <small class="d-block text-muted">llama-3.3-70b-versatile</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Muhasebe</small>
+                            <strong>Kleinunternehmer</strong>
+                            <small class="d-block text-muted">EUeR + ELSTER</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">USt-IdNr</small>
+                            <strong>DE459278750</strong>
+                            <small class="d-block text-muted">Steuernr: 19/538/01452</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Telegram</small>
+                            <strong id="tg-info-bot">@cssberlin_notify_bot</strong>
+                            <small class="d-block text-muted">4 kanal (Unified v2)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Isletme</small>
+                            <strong>CSS Berlin</strong>
+                            <small class="d-block text-muted">Onlinehandel m. gebr. Bekleidung</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load Telegram status + channels
+async function loadTelegramStatus() {
+    try {
+        const resp = await fetch('/api/telegram/status');
+        const data = await resp.json();
+        const el = document.getElementById('tg-status');
+
+        if (data.status === 'active' && data.bot_info) {
+            el.innerHTML = `
+                <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:rgba(40,167,69,0.1);">
+                    <span class="dot online"></span>
+                    <div>
+                        <strong class="text-success">@${data.bot_info.username}</strong>
+                        <small class="d-block text-muted">${data.bot_info.first_name} - Aktif (Unified v2)</small>
+                    </div>
+                </div>
+            `;
+            document.getElementById('tg-info-bot').textContent = '@' + data.bot_info.username;
+        } else if (data.bot_token_set) {
+            el.innerHTML = '<div class="text-warning"><i class="fas fa-exclamation-triangle"></i> Token ayarli ama bot baglanamiyor</div>';
+        } else {
+            el.innerHTML = '<div class="text-muted"><i class="fas fa-info-circle"></i> Bot token henuz ayarlanmadi (credentials.py kontrol edin)</div>';
+        }
+
+        // Token varligini belirt
+        if (data.bot_token_set) {
+            document.getElementById('tg-token').placeholder = '************ (credentials.py)';
+        }
+
+        // Kanal ID'lerini goster
+        if (data.channels) {
+            const channels = data.channels;
+            if (channels.bildirimler) document.getElementById('ch-bildirimler').textContent = channels.bildirimler;
+            if (channels.sistem_hata) document.getElementById('ch-sistem_hata').textContent = channels.sistem_hata;
+            if (channels.captcha) document.getElementById('ch-captcha').textContent = channels.captcha;
+            if (channels.admin) document.getElementById('ch-admin').textContent = channels.admin;
+        }
+    } catch(e) {
+        document.getElementById('tg-status').innerHTML = '<div class="text-danger">Durum alinamadi</div>';
+    }
+}
+
+async function saveTelegramConfig() {
+    const token = document.getElementById('tg-token').value.trim();
+    const body = {};
+    if (token) body.bot_token = token;
+
+    try {
+        const resp = await fetch('/api/telegram/config', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const data = await resp.json();
+        if (data.status === 'saved') {
+            showToast('Telegram ayarlari kaydedildi!', 'success');
+            setTimeout(loadTelegramStatus, 3000);
+        } else {
+            showToast('Hata: ' + (data.error || ''), 'danger');
+        }
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+
+async function testTelegram(channel) {
+    const channelLabels = {
+        'all': 'Tum Kanallar',
+        'bildirimler': 'Bildirimler',
+        'sistem_hata': 'Sistem Hata',
+        'captcha': 'CAPTCHA',
+        'admin': 'Admin DM'
+    };
+
+    try {
+        const resp = await fetch('/api/telegram/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                message: `TATANGA Hub test mesaji! (${channelLabels[channel] || channel})`,
+                channel: channel
+            })
+        });
+        const data = await resp.json();
+        if (data.status === 'sent') {
+            const successCount = data.results.filter(r => r.ok).length;
+            const totalCount = data.results.length;
+            showToast(`Test mesaji gonderildi! (${successCount}/${totalCount} basarili)`, 'success');
+        } else {
+            showToast('Hata: ' + (data.error || 'Gonderilemedi'), 'danger');
+        }
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+
+// Load Scheduler settings
+async function loadScheduler() {
+    try {
+        const resp = await fetch('/api/scheduler');
+        const data = await resp.json();
+        document.getElementById('sched-enabled').checked = data.enabled || false;
+        if (data.keywords && data.keywords.length > 0) {
+            document.getElementById('sched-keywords').value = data.keywords.join('\n');
+        }
+        if (data.interval_minutes) {
+            document.getElementById('sched-interval').value = data.interval_minutes;
+        }
+    } catch(e) {}
+}
+
+async function saveScheduler() {
+    const enabled = document.getElementById('sched-enabled').checked;
+    const keywords = document.getElementById('sched-keywords').value.trim().split('\n').filter(k => k.trim());
+    const platforms = Array.from(document.getElementById('sched-platforms').selectedOptions).map(o => o.value);
+    const interval = parseInt(document.getElementById('sched-interval').value);
+
+    try {
+        const resp = await fetch('/api/scheduler', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ enabled, keywords, platforms, interval_minutes: interval })
+        });
+        showToast('Zamanlayici kaydedildi!', 'success');
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    loadTelegramStatus();
+    loadScheduler();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+# TATANGA T11_HUB - Requirements
+# Python 3.10+
+
+# Web Framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+jinja2==3.1.4
+python-multipart==0.0.18
+
+# Database
+aiosqlite==0.20.0
+
+# Web Scraping
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+selenium==4.38.0
+undetected-chromedriver==3.5.5
+
+# Image Processing - Background Removal
+rembg==2.0.57
+Pillow==10.2.0
+
+# Desktop Launcher (System Tray)
+pystray==0.19.5
+
+# Utilities
+python-dotenv==1.0.1

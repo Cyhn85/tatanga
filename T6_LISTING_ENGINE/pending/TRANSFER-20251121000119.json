@@ -1,0 +1,37 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/paul-shark-poloshirt-langarm-gr-xl-marineblau-rot/3242999219-160-3435",
+    "scraped_at": "2025-11-21T00:01:05.359394",
+    "title": "Paul & Shark Poloshirt Langarm Gr. XL | Marineblau / Rot",
+    "price": 25,
+    "description": "Hallo,\n\nich verkaufe dieses hochwertige Langarm-Poloshirt der Premium-Marke Paul & Shark.\n\n* **Marke:** Paul & Shark\n* **Größe:** XL\n* **Farbe:** Marineblau (Dunkelblau) mit roten Akzenten\n* **Typ:** Langarm-Polo / Langarmshirt\n* **Zustand:** Sehr gut, kaum getragen (siehe Vinted-Screenshot).\n\nDas Polo ist sehr angenehm zu tragen und hochwertig verarbeitet. Es stammt aus einem gepflegten, tierfreien Nichtraucherhaushalt.\n\n---\n**Abholung & Versand:**\n\n* **Abholung:** Gerne in Berlin Spandau.\n* **Versand:** Versicherter Versand ist möglich (z.B. 4,95 € mit Hermes oder 5,49 € mit DHL).\n\n---\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* Die \"Sicher Bezahlen\" Funktion von Kleinanzeigen\n* PayPal (Waren & Dienstleistungen)\n* Banküberweisung\n\n---\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/5f/5f9645f6-2de0-495d-a52b-6a918084c534?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/5a/5a79c7b6-b6ae-4907-b29d-b017e7f8eea5?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/17/17b870fa-b104-40be-a3b2-b63e9cb57605?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Paul & Shark Poloshirt XL Marineblau",
+    "description": "Hochwertiges Langarm-Poloshirt von Paul & Shark, Größe XL, Marineblau mit roten Akzenten. Sehr guter Zustand, kaum getragen. Aus einem gepflegten, tierfreien Nichtraucherhaushalt. Versicherter Versand möglich.",
+    "suggested_price": 29.75,
+    "hashtags": [
+      "PaulShark",
+      "Poloshirt",
+      "Herrenmode",
+      "XL",
+      "Marineblau"
+    ],
+    "category_suggestion": "Herren > Oberbekleidung > Poloshirts"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD6_1_f21aaa48.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD6_2_44eea586.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD6_3_8e68e053.jpg"
+  ],
+  "id": "TRANSFER-20251121000119",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% set active_page = "yayin" %}
+{% block title %}Yayin{% endblock %}
+{% block page_title %}<i class="fas fa-tags me-2"></i>Yayin - Fiyatla ve Yayina Al{% endblock %}
+
+{% block content %}
+<div class="alert" style="background:rgba(232,101,26,0.1);border:1px solid #E8651A;color:var(--text-primary);">
+    <div class="d-flex align-items-center gap-2">
+        <i class="fas fa-euro-sign text-warning fa-lg"></i>
+        <div>
+            <strong>Kurasyonda aday isaretledigin urunler.</strong> Yanlarinda alis fiyati ve
+            bize maliyeti yaziyor (gelen kargo + paketleme + giden kargo + odeme komisyonu dahil).
+            Kari sen koyarsin. Girdigin fiyat otomatik <u>,90</u> ile biter.
+            <strong>Yayinla</strong> demeden hicbir sey siteye gitmez.
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
+        <span class="badge bg-warning text-dark fs-6">Aday: {{ urunler|length }}</span>
+        <div class="ms-auto">
+            <a href="/kurasyon" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Kurasyona don
+            </a>
+        </div>
+    </div>
+</div>
+
+{% for p in urunler %}
+{% set proc = (p.processed_images_json | default('[]') | fromjson) %}
+{% set m = p._maliyet %}
+<div class="card mb-3" id="satir-{{ p.id }}">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+
+            <!-- GORSEL -->
+            <div class="col-auto">
+                {% if proc %}
+                <img src="{{ proc[0] }}" style="width:110px;height:110px;object-fit:contain;background:#fff;border-radius:8px;border:1px solid var(--border)">
+                {% endif %}
+            </div>
+
+            <!-- BASLIK -->
+            <div class="col-12 col-md">
+                <a href="/product/{{ p.id }}" target="_blank" class="product-title-link">{{ p.title[:70] }}</a>
+                <div class="small text-muted mt-1">
+                    {{ p.source_platform }}
+                    {% if p.brand %}&middot; {{ p.brand }}{% endif %}
+                    {% if p.size %}&middot; Beden {{ p.size }}{% endif %}
+                    &middot; {{ proc|length }} gorsel
+                </div>
+                {% if not p._seo_tamam %}
+                <div class="small text-warning mt-1">
+                    <i class="fas fa-exclamation-triangle"></i> SEO eksik - yayinlanamaz
+                    <button class="btn btn-sm btn-outline-warning ms-2 py-0" onclick="seoUret('{{ p.id }}')">SEO uret</button>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- MALIYET DOKUMU -->
+            <div class="col-12 col-md-auto">
+                <table class="table table-sm mb-0 small" style="width:auto">
+                    <tr><td class="text-muted pe-3">Alis</td>
+                        <td class="text-end">{{ '%.2f'|format(m.alis) }} &euro;</td></tr>
+                    <tr><td class="text-muted pe-3">Gelen kargo</td>
+                        <td class="text-end">{{ '%.2f'|format(m.gelen_kargo) }} &euro;</td></tr>
+                    <tr><td class="text-muted pe-3">Paket + brosur</td>
+                        <td class="text-end">{{ '%.2f'|format(m.paketleme) }} &euro;</td></tr>
+                    <tr><td class="text-muted pe-3">Giden kargo</td>
+                        <td class="text-end" id="giden-{{ p.id }}">{{ '%.2f'|format(m.giden_kargo_net) }} &euro;</td></tr>
+                    <tr><td class="text-muted pe-3">Odeme kom.</td>
+                        <td class="text-end" id="odeme-{{ p.id }}">{{ '%.2f'|format(m.odeme_komisyonu) }} &euro;</td></tr>
+                    <tr style="border-top:2px solid var(--border)">
+                        <td class="fw-bold pe-3">MALIYET</td>
+                        <td class="text-end fw-bold" id="maliyet-{{ p.id }}">{{ '%.2f'|format(m.toplam_maliyet) }} &euro;</td></tr>
+                </table>
+            </div>
+
+            <!-- FIYAT GIRISI -->
+            <div class="col-12 col-md-auto" style="min-width:210px">
+                <label class="form-label small text-muted mb-1">Vitrin fiyati (EUR)</label>
+                <div class="input-group input-group-sm">
+                    <input type="number" step="0.01" min="0" class="form-control"
+                           id="fiyat-{{ p.id }}"
+                           value="{{ '%.2f'|format(p.manual_price or m.onerilen) }}"
+                           onchange="fiyatKaydet('{{ p.id }}')">
+                    <span class="input-group-text">&euro;</span>
+                </div>
+                <div class="small mt-1">
+                    Kar:
+                    <span id="kar-{{ p.id }}" class="fw-bold {% if m.kar > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ '%.2f'|format(m.kar) }} &euro;
+                    </span>
+                    <span class="text-muted">(%<span id="marj-{{ p.id }}">{{ '%.1f'|format(m.marj_yuzde) }}</span>)</span>
+                </div>
+                <div class="small text-muted">Oneri: {{ '%.2f'|format(m.onerilen) }} &euro;</div>
+            </div>
+
+            <!-- AKSIYON -->
+            <div class="col-12 col-md-auto">
+                <button class="btn btn-success w-100" onclick="yayinla('{{ p.id }}')"
+                        {% if not p._seo_tamam %}disabled title="Once SEO uret"{% endif %}>
+                    <i class="fas fa-rocket me-1"></i> Yayinla
+                </button>
+                <button class="btn btn-sm btn-outline-secondary w-100 mt-1" onclick="adayliktanCikar('{{ p.id }}')">
+                    Adayliktan cikar
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card"><div class="card-body text-center text-muted py-5">
+    <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+    Aday urun yok. <a href="/kurasyon">Kurasyon</a> sayfasindan gorselleri begendigin
+    urunleri onayla, buraya dusseler.
+</div></div>
+{% endfor %}
+
+<script>
+async function fiyatKaydet(id) {
+    const input = document.getElementById('fiyat-' + id);
+    const price = parseFloat(input.value);
+    if (!price || price <= 0) { alert('Gecerli bir fiyat gir'); return; }
+
+    const r = await fetch(`/api/yayin/${id}/fiyat`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({price})
+    });
+    if (!r.ok) { alert('Fiyat kaydedilemedi'); return; }
+    const d = await r.json();
+    const m = d.maliyet;
+
+    input.value = d.price.toFixed(2);          // ,90'a yuvarlanmis hali
+    document.getElementById('giden-' + id).textContent   = m.giden_kargo_net.toFixed(2) + ' €';
+    document.getElementById('odeme-' + id).textContent   = m.odeme_komisyonu.toFixed(2) + ' €';
+    document.getElementById('maliyet-' + id).textContent = m.toplam_maliyet.toFixed(2) + ' €';
+
+    const kar = document.getElementById('kar-' + id);
+    kar.textContent = m.kar.toFixed(2) + ' €';
+    kar.className = 'fw-bold ' + (m.kar > 0 ? 'text-success' : 'text-danger');
+    document.getElementById('marj-' + id).textContent = m.marj_yuzde.toFixed(1);
+}
+
+async function seoUret(id) {
+    const r = await fetch(`/api/product/${id}/generate-seo`, {method: 'POST'});
+    if (r.ok) { alert('SEO uretildi, sayfa yenileniyor'); location.reload(); }
+    else { alert('SEO uretilemedi'); }
+}
+
+async function yayinla(id) {
+    const price = parseFloat(document.getElementById('fiyat-' + id).value);
+    if (!confirm(`${price.toFixed(2)} EUR fiyatiyla cssberlin'e yayinlansin mi?`)) return;
+
+    const r = await fetch(`/api/product/${id}/publish`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({target: 'cssberlin', image_type: 'processed', sell_price: price})
+    });
+    const d = await r.json();
+    if (r.ok && d.status === 'published') {
+        const satir = document.getElementById('satir-' + id);
+        satir.style.transition = 'opacity .2s'; satir.style.opacity = '0';
+        setTimeout(() => satir.remove(), 200);
+    } else {
+        alert('Yayinlanamadi: ' + (d.error || 'bilinmeyen hata'));
+    }
+}
+
+async function adayliktanCikar(id) {
+    await fetch(`/api/curation/${id}/decide`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({decision: null})
+    });
+    document.getElementById('satir-' + id).remove();
+}
+</script>
+{% endblock %}

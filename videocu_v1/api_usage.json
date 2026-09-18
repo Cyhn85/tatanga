@@ -1,0 +1,27 @@
+{
+  "daily_usage": {
+    "2025-11-25": 520
+  },
+  "total_usage": 520,
+  "last_reset": "2025-11-25",
+  "operations": [
+    {
+      "timestamp": "2025-11-25T20:55:43.727769",
+      "operation": "videos.list",
+      "count": 10,
+      "cost": 10
+    },
+    {
+      "timestamp": "2025-11-25T20:56:08.925812",
+      "operation": "videos.list",
+      "count": 10,
+      "cost": 10
+    },
+    {
+      "timestamp": "2025-11-25T20:56:08.932342",
+      "operation": "search.list",
+      "count": 5,
+      "cost": 500
+    }
+  ]
+}

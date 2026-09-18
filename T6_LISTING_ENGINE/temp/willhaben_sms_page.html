@@ -1,0 +1,479 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de" class="login-pf" data-wh-theme="dark"><head>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="robots" content="noindex, nofollow">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>Schnell und einfach auf willhaben registrieren</title>
+        <link rel="icon" href="/auth/resources/jhneb/login/willhaben/img/favicon.ico">
+                <link href="/auth/resources/jhneb/login/willhaben/node_modules/patternfly/dist/css/patternfly.css" rel="stylesheet">
+                <link href="/auth/resources/jhneb/login/willhaben/node_modules/patternfly/dist/css/patternfly-additions.css" rel="stylesheet">
+                <link href="/auth/resources/jhneb/login/willhaben/css/main.css" rel="stylesheet">
+    <script> if (typeof history.replaceState === 'function') {  history.replaceState({}, "some title", "https://sso.willhaben.at/auth/realms/willhaben/login-actions/authenticate?execution=01556703-ea2b-4b2f-9620-284ed578fe97&client_id=bbx-bff&tab_id=b72bebcd-b1c2-4041-a519-386a28d3e052&client_data=eyJydSI6Imh0dHBzOi8vd3d3LndpbGxoYWJlbi5hdC93ZWJhcGkvb2F1dGgyL2NvZGUvc3NvIiwicnQiOiJjb2RlIiwic3QiOiJ4SVdubUxSLU1yV3hsSW5xSmdlNXJLRTVjdHN4OWloLU1YVElIZnZEdXBNPSJ9"); }</script></head>
+
+    <body class="">
+    <div class="login-pf-page">
+        <header class="kc-header">
+            <div class="kc-header-wrapper">
+                <div class="kc-header-image">
+                    <a href="https://www.willhaben.at" id="wh-home-link">
+                        <img class="wh-logo" src="/auth/resources/jhneb/login/willhaben/img/logo.svg" alt="willhaben logo">
+                    </a>
+                </div>
+
+                <div class="kc-header-image-mobile">
+                    <a href="https://mobile.willhaben.at/" id="wh-home-link">
+                        <img class="wh-logo" src="/auth/resources/jhneb/login/willhaben/img/logo.svg" alt="willhaben logo">
+                    </a>
+                </div>
+
+                <div class="kc-header-text-wrapper">
+                    <div class="theme-switcher">
+                        <button id="theme-toggle" aria-label="Farbmodus Auswahl Schaltfläche" onclick="toggleThemeMenu(event)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="none" viewBox="0 0 24 24" class="contrast-switch-icon" role="img" aria-label="Farbmodus Icon">
+                                <path fill="currentColor" d="M12 3.6a8.4 8.4 0 0 0 0 16.8V3.6ZM12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10Z"></path>
+                            </svg>
+                        </button>
+                        <div id="theme-menu" class="theme-menu" aria-hidden="true">
+                            <div class="theme-menu-header"><span>Farbmodus wählen</span></div>
+                            <ul>
+                                <li>
+                                    <button class="theme-option" data-theme="light" id="theme-light" onclick="setTheme('light', this)">
+                                            <div class="theme-option-content">
+                                                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" class="theme-symbol" role="img" aria-label="Heller Farbmodus">
+                                                <path d="M11 5V1H13V5H11ZM17.65 7.75L16.275 6.375L19.075 3.5L20.475 4.925L17.65 7.75ZM19 13V11H23V13H19ZM11 23V19H13V23H11ZM6.35 7.7L3.5 4.925L4.925 3.525L7.75 6.35L6.35 7.7ZM19.05 20.5L16.275 17.625L17.625 16.275L20.475 19.025L19.05 20.5ZM1 13V11H5V13H1ZM4.925 20.5L3.525 19.075L6.325 16.275L7.05 16.95L7.775 17.65L4.925 20.5ZM12 18C10.3333 18 8.91667 17.4167 7.75 16.25C6.58333 15.0833 6 13.6667 6 12C6 10.3333 6.58333 8.91667 7.75 7.75C8.91667 6.58333 10.3333 6 12 6C13.6667 6 15.0833 6.58333 16.25 7.75C17.4167 8.91667 18 10.3333 18 12C18 13.6667 17.4167 15.0833 16.25 16.25C15.0833 17.4167 13.6667 18 12 18Z" fill="#FBE540"></path>
+                                            </svg>
+                                                Hell
+                                            </div>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="theme-option" data-theme="light-contrast" id="theme-light-contrast" onclick="setTheme('light-contrast', this)">
+                                        <div class="theme-option-content">
+                                        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" class="theme-symbol" role="img" aria-label="Heller Farbmodus mit hohem Kontrast">
+                                            <path d="M11 5V1H13V5H11ZM17.65 7.75L16.275 6.375L19.075 3.5L20.475 4.925L17.65 7.75ZM19 13V11H23V13H19ZM11 23V19H13V23H11ZM6.35 7.7L3.5 4.925L4.925 3.525L7.75 6.35L6.35 7.7ZM19.05 20.5L16.275 17.625L17.625 16.275L20.475 19.025L19.05 20.5ZM1 13V11H5V13H1ZM4.925 20.5L3.525 19.075L6.325 16.275L7.05 16.95L7.775 17.65L4.925 20.5ZM12 18C10.3333 18 8.91667 17.4167 7.75 16.25C6.58333 15.0833 6 13.6667 6 12C6 10.3333 6.58333 8.91667 7.75 7.75C8.91667 6.58333 10.3333 6 12 6C13.6667 6 15.0833 6.58333 16.25 7.75C17.4167 8.91667 18 10.3333 18 12C18 13.6667 17.4167 15.0833 16.25 16.25C15.0833 17.4167 13.6667 18 12 18Z" fill="#D7BE02"></path>
+                                        </svg>
+                                        Hoher Kontrast hell
+                                        </div>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="theme-option active" data-theme="dark" id="theme-dark" onclick="setTheme('dark', this)">
+                                        <div class="theme-option-content">
+                                        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" class="theme-symbol" role="img" aria-label="Dunkler Farbmodus">
+                                            <path d="M12.1 22C10.7 22 9.3875 21.7333 8.1625 21.2C6.9375 20.6667 5.87083 19.9458 4.9625 19.0375C4.05417 18.1292 3.33333 17.0625 2.8 15.8375C2.26667 14.6125 2 13.3 2 11.9C2 9.46667 2.775 7.32083 4.325 5.4625C5.875 3.60417 7.85 2.45 10.25 2C9.95 3.65 10.0417 5.2625 10.525 6.8375C11.0083 8.4125 11.8417 9.79167 13.025 10.975C14.2083 12.1583 15.5875 12.9917 17.1625 13.475C18.7375 13.9583 20.35 14.05 22 13.75C21.5667 16.15 20.4167 18.125 18.55 19.675C16.6833 21.225 14.5333 22 12.1 22Z" fill="var(--wh-color-typo-alternate-foreground)"></path>
+                                        </svg>
+                                        Dunkel
+                                        </div>
+                                    </button>
+                                </li>
+                            </ul>
+                            <div class="theme-menu-footer">
+                                <div>Fragen oder Probleme?</div>
+                                <div>Kontaktiere bitte den
+                                    <a href="https://hilfe.willhaben.at/hc/de/requests/new" target="_blank">Support</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="kc-header-text">
+                        <span class="kc-header-register-login-text">
+
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <div class="card-pf ">
+            <div id="kc-content">
+                <div class="login-pf-header">
+
+        <h1 id="kc-page-title">Verifizierung erforderlich</h1>
+                </div>
+                <div id="kc-content-wrapper">
+
+
+
+
+
+        <div id="wh-verify-content">
+            <p class="wh-text">
+                Aus Sicherheitsgründen ist eine Bestätigung, dass du wirklich du bist, notwendig.
+                    Hierfür haben wir dir eine SMS an folgende Nummer gesendet:
+            </p>
+
+            <p class="wh-text" style="margin-top: 5px; margin-bottom: 10px;">
+                <span class="wh-phone-number">
+                    <strong>
+                            *********2485
+                    </strong></span>
+            </p>
+
+            <p class="wh-text  wh-text-otp-introduction">
+                    Bitte gib den 4-stelligen Code aus der SMS hier ein, um Dich anzumelden.
+            </p>
+
+            <!-- form -->
+            <form id="kc-mobile-update-form" class="form-horizontal" action="https://sso.willhaben.at/auth/realms/willhaben/login-actions/authenticate?session_code=9ZtFxpc_isft-Ky_3x5bg9OGNPAtFtTEjIDNjU-Hptg&amp;execution=01556703-ea2b-4b2f-9620-284ed578fe97&amp;client_id=bbx-bff&amp;tab_id=b72bebcd-b1c2-4041-a519-386a28d3e052&amp;client_data=eyJydSI6Imh0dHBzOi8vd3d3LndpbGxoYWJlbi5hdC93ZWJhcGkvb2F1dGgyL2NvZGUvc3NvIiwicnQiOiJjb2RlIiwic3QiOiJ4SVdubUxSLU1yV3hsSW5xSmdlNXJLRTVjdHN4OWloLU1YVElIZnZEdXBNPSJ9" method="post" onsubmit="document.getElementById('submitOneTimePassword').disabled = true; return true;">
+                <div class="form-group">
+                    <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12" style="display: flex; justify-content: center;">
+<input type="hidden" id="otp" name="code" value="">
+<!-- otp input -->
+
+<div class="wh-otp-wrapper">
+    <div class="wh-otp-input-wrapper">
+        <label class="wh-otp-input-label visually-hidden" for="otp-input-1">
+            Code Eingabe 1
+        </label>
+        <input id="otp-input-1" class="wh-otp-input" type="text" inputmode="numeric" maxlength="1" data-pos="0">
+    </div>
+
+    <div class="wh-otp-input-wrapper">
+        <label class="wh-otp-input-label visually-hidden" for="otp-input-2">
+            Code Eingabe 2
+        </label>
+        <input id="otp-input-2" class="wh-otp-input" type="text" inputmode="numeric" maxlength="1" data-pos="1">
+    </div>
+
+    <div class="wh-otp-input-wrapper">
+        <label class="wh-otp-input-label visually-hidden" for="otp-input-3">
+            Code Eingabe 3
+        </label>
+        <input id="otp-input-3" class="wh-otp-input" type="text" inputmode="numeric" maxlength="1" data-pos="2">
+    </div>
+    <div class="wh-otp-input-wrapper">
+        <label class="wh-otp-input-label visually-hidden" for="otp-input-4">
+            Code Eingabe 4
+        </label>
+        <input id="otp-input-4" class="wh-otp-input" type="text" inputmode="numeric" maxlength="1" data-pos="3">
+    </div>
+</div>
+<script src="/auth/resources/jhneb/login/willhaben/js/register-with-otp.js" type="text/javascript"></script>
+                    </div>
+                        <input type="hidden" id="referenceID" name="referenceID" value="g5h3b9n6" aria-label="Code Eingabefeld">
+                        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12" style="display: flex; justify-content: center;">
+                            <div class="wh-otp-reference-id-wrapper">
+                                Referenzwert: g5h3b9n6
+                            </div>
+                        </div>
+                </div>
+
+                <!-- submit button -->
+                <div class="submit-button-wrapper submit-button">
+                    <button id="submitOneTimePassword" class="submit-button" name="registration" type="submit" data-testid="registerWithVerification">
+                        <span class="submit-button-text">Weiter</span>
+                    </button>
+                </div>
+
+<div>
+    <div class="wh-otp-retry">
+                    <p class="wh-text">SMS nicht erhalten? <a id="requestNewCodeLink" class="" href="https://sso.willhaben.at/auth/realms/willhaben/login-actions/authenticate?session_code=9ZtFxpc_isft-Ky_3x5bg9OGNPAtFtTEjIDNjU-Hptg&amp;execution=01556703-ea2b-4b2f-9620-284ed578fe97&amp;client_id=bbx-bff&amp;tab_id=b72bebcd-b1c2-4041-a519-386a28d3e052&amp;client_data=eyJydSI6Imh0dHBzOi8vd3d3LndpbGxoYWJlbi5hdC93ZWJhcGkvb2F1dGgyL2NvZGUvc3NvIiwicnQiOiJjb2RlIiwic3QiOiJ4SVdubUxSLU1yV3hsSW5xSmdlNXJLRTVjdHN4OWloLU1YVElIZnZEdXBNPSJ9&amp;resend=true">Code anfordern</a></p>
+        <p id="wh-otp-countdown-text" class="invisible">Du kannst in <strong id="wh-otp-countdown"></strong> Sekunden
+            einen neuen Code anfordern.</p>
+    </div>
+
+    <script src="/auth/resources/jhneb/login/willhaben/js/verify-phone-number-timer.js" type="text/javascript"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function () {
+            storeClientSideOtpRequestedTimeStamp()
+        });
+    </script>
+</div>
+
+            </form>
+
+<style>
+    .wh-modal {
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+    }
+
+    .wh-modalbg {
+        background-color: gray;
+        opacity: 0.3;
+    }
+
+    .wh-hidden {
+        display: none;
+    }
+
+    .wh-modal-dialog {
+        background-color: var(--wh-color-basic-background);
+        margin: 15% auto;
+        border-radius: 5px;
+        width: 60%;
+        max-width: 800px;
+        padding: 10px;
+    }
+
+    .wh-modal-header {
+        color: var(--wh-color-main-primary);
+        font-size: 1.14286rem;
+        font-weight: 700;
+        line-height: 1.5;
+        padding: 0;
+        display: flex;
+        border-bottom: 1px solid var(--wh-color-basic-outline);
+    }
+
+    .wh-modal-header-left {
+        flex-grow: 1;
+        padding: 10px 5px;
+    }
+
+    .close {
+        color: var(--wh-color-inactive-inactive-foreground);
+        float: right;
+        font-size: 28px;
+        font-weight: normal;
+        padding: 3px 5px;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .wh-modal-body {
+        padding: 5px;
+    }
+
+    .wh-modal-footer {
+        display: flex;
+        padding: 5px;
+    }
+
+    @media only screen and (max-width: 500px) {
+        .wh-modal-footer {
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .wh-modal-footer div {
+            width: 100%;
+        }
+
+        .wh-modal-footer div button {
+            width: inherit;
+        }
+    }
+
+    .wh-modal-footer-left {
+        flex-grow: 1;
+    }
+
+    .wh-modal-footer-right {
+
+    }
+
+    .wh-modal-close {
+        font-weight: 700;
+        color: var(--wh-color-typo-white-foreground);
+        padding: 3px 15px;
+        border-color: var(--wh-color-main-primary);
+        background: var(--wh-color-main-primary);
+        border-radius: 4px;
+        border-width: 1px;
+        border-style: solid;
+        transition: border 0.3s ease 0s, background 0.3s ease 0s, color 0.3s ease 0s;
+        margin-top: -3px;
+    }
+
+    .wh-modal-submit {
+        font-weight: 700;
+        color: var(--wh-color-typo-white-foreground);
+        padding: 3px 15px;
+        border-color: var(--wh-color-basic-outline);
+        background: var(--wh-color-basic-outline);
+        border-radius: 4px;
+        border-width: 1px;
+        border-style: solid;
+        transition: border 0.3s ease 0s, background 0.3s ease 0s, color 0.3s ease 0s;
+    }
+
+
+</style>
+<div id="requestCodeModalBg" class="wh-modal wh-modalbg wh-hidden"></div>
+<div id="requestCodeModal" class="wh-modal wh-hidden" data-otp-valid="30">
+    <div class="wh-modal-dialog" aria-modal="true" role="dialog" tabindex="-1">
+        <div class="wh-modal-header">
+            <div class="wh-modal-header-left">Code bereits gesendet</div>
+            <button class="close" id="whModalDialogClose">×</button>
+        </div>
+        <div class="wh-modal-body">
+            <p>Unter Umständen kann es einen Moment dauern, bis die
+                    SMS
+                bei dir ankommt. Der Code ist noch für 30 Minuten gültig. Wenn du einen neuen
+                Code anforderst, wird der aktuelle Code ungültig.</p>
+        </div>
+        <div class="wh-modal-footer">
+            <div class="wh-modal-footer-left">
+                <button class="wh-modal-submit" data-link="https://sso.willhaben.at/auth/realms/willhaben/login-actions/authenticate?session_code=9ZtFxpc_isft-Ky_3x5bg9OGNPAtFtTEjIDNjU-Hptg&amp;execution=01556703-ea2b-4b2f-9620-284ed578fe97&amp;client_id=bbx-bff&amp;tab_id=b72bebcd-b1c2-4041-a519-386a28d3e052&amp;client_data=eyJydSI6Imh0dHBzOi8vd3d3LndpbGxoYWJlbi5hdC93ZWJhcGkvb2F1dGgyL2NvZGUvc3NvIiwicnQiOiJjb2RlIiwic3QiOiJ4SVdubUxSLU1yV3hsSW5xSmdlNXJLRTVjdHN4OWloLU1YVElIZnZEdXBNPSJ9&amp;resend=true" title="Neu anfordern" type="button">Neu anfordern</button>
+            </div>
+            <div class="wh-modal-footer-right">
+                <button class="wh-modal-close" title="Schließen" type="button">Schließen</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    var modal = document.getElementById("requestCodeModal");
+    var modalBg = document.getElementById("requestCodeModalBg");
+    var opener = document.getElementById("requestNewCodeLink");
+    var btnSubmit = document.getElementsByClassName("wh-modal-submit")[0];
+
+    opener.onclick = function () {
+        var v = modal.getAttribute("data-otp-valid")
+        if (v > 0) {
+            toggleModal();
+            return false;
+        }
+        return true;
+    }
+    btnSubmit.onclick = function () {
+        document.location.href = btnSubmit.getAttribute("data-link");
+        return false;
+    }
+    window.onclick = function (event) {
+        if (modal.contains(event.target)) {
+            toggleModal();
+            return false;
+        }
+    }
+
+    function toggleModal() {
+        modalBg.classList.toggle('wh-hidden');
+        modal.classList.toggle('wh-hidden');
+    }
+</script>
+
+        </div>
+
+        <div>
+            <a href="https://hilfe.willhaben.at/hc/de/articles/7441633127826" target="_blank">Hilfe &amp; Kontakt</a>
+        </div>
+
+                </div>
+            </div>
+            <div class="kc-sidebar">
+                <div class="kc-sidebar-text-wrapper">
+                    <h2>Deine Vorteile mit willhaben-Profil</h2>
+                    <ul>
+                        <li>Selbst Verkaufsanzeigen aufgeben</li>
+                        <li>Mit Käufer:innen und Verkäufer:innen chatten</li>
+                        <li>Anzeigen vormerken</li>
+                        <li>Suchagenten aktivieren</li>
+                    </ul>
+                </div>
+                <div class="kc-sidebar-img-wrapper">
+                    <img class="kc-sidebar-img" src="/auth/resources/jhneb/login/willhaben/img/loginregister.svg" alt="">
+                </div>
+            </div>
+        </div>
+
+<div class="securitytips-section">
+    <div class="securitytips-image-wrapper">
+        <img class="login-info-sidebar-img" src="/auth/resources/jhneb/login/willhaben/img/icon_security.svg" alt="">
+    </div>
+    <div>
+        <h2>willhaben-Sicherheitstipps</h2>
+        <div>
+            <p>
+                Um deine Login-Daten zu schützen, achte bei jedem Login auf die Browserzeile. Sollte die Adresse
+                nicht mit https://sso.willhaben.at/ beginnen, logge dich nicht ein!
+            </p>
+        </div>
+        <div class="securitytips-section-tip">
+            <span>
+                <img class="securitytips-icon" src="/auth/resources/jhneb/login/willhaben/img/icon_check_circle.svg" alt="">
+            </span>
+            <span>SICHER: https://sso.willhaben.at/</span>
+        </div>
+        <div class="securitytips-section-tip">
+            <span>
+                <img class="securitytips-icon" src="/auth/resources/jhneb/login/willhaben/img/icon_reset_circle.svg" alt="">
+            </span>
+            <span>NICHT SICHER (Beispiele): http://www.willhaben.at.mn, http://www.willhaben-marktplatz.net</span>
+        </div>
+        <div>
+            <span class="securitytips-section-footer">
+                Weitere Informationen findest du in unseren <a href="https://www.willhaben.at/iad/sicherheitshinweise" target="_blank">Sicherheitshinweisen</a>.
+            </span>
+        </div>
+    </div>
+</div>        <footer>
+<nav class="footer-bottom-nav">
+    <ul class="footer-nav-list">
+        <li class="footer-nav-list-item">
+            <a href="https://hilfe.willhaben.at/" target="_blank" data-testid="footer-help-link" rel="noopener">
+                Hilfe und Kontakt
+            </a>
+        </li>
+        <li class="footer-nav-list-item">
+            <a href="https://www.willhaben.at/iad/agb" data-testid="footer-termsandconditions-link">
+                AGB
+            </a>
+        </li>
+        <li class="footer-nav-list-item">
+            <a href="https://www.willhaben.at/iad/datenschutzerklaerung" data-testid="footer-data-privacy-link">
+                Datenschutzerklärung
+            </a>
+        </li>
+        <li class="footer-nav-list-item">
+            <a href="https://www.willhaben.at/iad/impressum" data-testid="footer-impress-link">
+                Impressum
+            </a>
+        </li>
+        <li class="footer-nav-list-item">
+            © 2025 willhaben. Alle Rechte vorbehalten.
+        </li>
+    </ul>
+    <div class="footer-social-media-list">
+        <a href="https://www.instagram.com/willhaben/" target="_blank" aria-label="Zum willhaben Instagram Profil" data-testid="footer-instagram-link" rel="noopener">
+            <svg width="1em" height="1em" viewBox="0 0 24 24" class="footer-icon-instagram">
+                <path d="M9 12a3 3 0 113 3 3 3 0 01-3-3m-1.62 0A4.62 4.62 0 1012 7.38 4.62 4.62 0 007.38 12m8.34-4.8a1.08 1.08 0 102.16 0 1.08 1.08 0 10-2.16 0M8.36 19.33A5.12 5.12 0 016.69 19a2.77 2.77 0 01-1-.68 2.77 2.77 0 01-.68-1 5.12 5.12 0 01-.31-1.67v-3.64-3.64A5.12 5.12 0 015 6.69a2.77 2.77 0 01.68-1 2.77 2.77 0 011-.68 5.12 5.12 0 011.67-.31h7.28a5.12 5.12 0 011.68.3 2.77 2.77 0 011 .68 2.77 2.77 0 01.68 1 5.12 5.12 0 01.31 1.67c0 1 .05 1.24.05 3.64s0 2.69-.05 3.64a5.12 5.12 0 01-.3 1.68A3.08 3.08 0 0117.31 19a5.12 5.12 0 01-1.67.31c-1 0-1.24.05-3.64.05s-2.69 0-3.64-.05M8.29 3.05a6.9 6.9 0 00-2.19.42A4.64 4.64 0 003.47 6.1a6.9 6.9 0 00-.42 2.19v7.42a6.9 6.9 0 00.42 2.19 4.64 4.64 0 002.63 2.63 6.9 6.9 0 002.19.47c1 0 1.27.05 3.71.05s2.75 0 3.71-.05a6.9 6.9 0 002.19-.42 4.64 4.64 0 002.63-2.63 6.9 6.9 0 00.47-2.24c0-1 .05-1.27.05-3.71S21 9.25 21 8.29a6.9 6.9 0 00-.42-2.19 4.64 4.64 0 00-2.68-2.63 6.9 6.9 0 00-2.19-.42H8.29" fill="currentColor"></path>
+            </svg>
+        </a>
+        <a href="https://www.facebook.com/willhaben.at/" target="_blank" aria-label="Zum willhaben Facebook Profil" data-testid="footer-facebook-link" rel="noopener">
+            <svg width="1em" height="1em" viewBox="0 0 24 24" class="footer-icon-facebook">
+                <path fill="currentColor" d="M22 12.061C22 6.504 17.523 2 12 2S2 6.504 2 12.061c0 5.022 3.657 9.184 8.438 9.939v-7.03h-2.54V12.06h2.54V9.845c0-2.522 1.492-3.915 3.777-3.915 1.094 0 2.238.197 2.238.197v2.476h-1.26c-1.243 0-1.63.775-1.63 1.57v1.888h2.773l-.443 2.908h-2.33V22c4.78-.755 8.437-4.917 8.437-9.939Z"></path>
+            </svg>
+        </a>
+
+        <a href="https://x.com/willhaben/" target="_blank" aria-label="Zum willhaben X Profil" data-testid="footer-x-link" rel="noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" class="footer-icon-x">
+                <path fill="currentColor" d="M13.482 10.622 20.039 3h-1.554l-5.693 6.618L8.245 3H3l6.876 10.007L3 21h1.554l6.012-6.989L15.368 21h5.245l-7.131-10.378Zm-2.128 2.473-.697-.996-5.543-7.93H7.5l4.474 6.4.697.996 5.815 8.318h-2.387l-4.745-6.787Z"></path>
+            </svg>
+        </a>
+
+        <a href="https://www.tiktok.com/@willhaben" target="_blank" rel="noopener" aria-label="Zum willhaben TikTok Profil" data-testid="footer-tiktok-link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="none" viewBox="0 0 24 24" class="footer-icon-tiktok">
+                <path fill="currentColor" d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm5.42 6.63-.3-.07A8.18 8.18 0 0 1 16 8.12a4.22 4.22 0 0 1-1.56-1.72.32.32 0 0 0-.33-.2H12.7c-.47 0-.4 0-.4.38V14.15a1.84 1.84 0 0 1-3.64.13A1.81 1.81 0 0 1 10 12.22c.33-.056.665-.08 1-.07.12 0 .19 0 .19-.17v-1.72s-.09-.15-.14-.15a5.001 5.001 0 0 0-1.85.21A3.87 3.87 0 1 0 14.34 14V9.39a4.6 4.6 0 0 0 2.71 1.25l.37-2.01Z"></path>
+            </svg>
+        </a>
+
+        <a href="https://www.youtube.com/user/willhabenvideo/" target="_blank" aria-label="Zum willhaben YouTube Kanal" data-testid="footer-youtube-link" rel="noopener">
+            <svg width="1em" height="1em" viewBox="0 0 24 24" class="footer-icon-youtube">
+                <path d="M10 15V9l5 3zm11.79-7A4.35 4.35 0 0021 6a2.87 2.87 0 00-2-.84C16.2 5 12 5 12 5s-4.2 0-7 .2A2.92 2.92 0 003 6a4.42 4.42 0 00-.8 2 30.24 30.24 0 00-.2 3.25v1.5A29.94 29.94 0 002.2 16a4.35 4.35 0 00.8 2 3.39 3.39 0 002.2.85C6.8 19 12 19 12 19s4.2 0 7-.21a2.9 2.9 0 002-.79 4.35 4.35 0 00.8-2 29.94 29.94 0 00.2-3.22v-1.5A31.86 31.86 0 0021.79 8z" fill="currentColor"></path>
+            </svg>
+        </a>
+    </div>
+</nav>
+        </footer>
+
+        <script src="/auth/resources/jhneb/login/willhaben/js/array-from-polyfill.js" type="text/javascript"></script>
+        <script src="/auth/resources/jhneb/login/willhaben/js/theme-setter.js" type="text/javascript"></script>
+        <script src="/auth/resources/jhneb/login/willhaben/js/theme-switcher.js" type="text/javascript"></script>
+        <script src="/auth/resources/jhneb/login/willhaben/js/template.js" type="text/javascript"></script>
+    </div>
+    
+    
+</body></html>

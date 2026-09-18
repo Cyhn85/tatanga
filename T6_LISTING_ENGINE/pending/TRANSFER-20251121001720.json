@@ -1,0 +1,35 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/cesare-paciotti-4us-sweatjacke-gr-xl-52-made-in-italy-weiss/3242912365-160-3435",
+    "scraped_at": "2025-11-21T00:17:07.768610",
+    "title": "Cesare Paciotti 4US Sweatjacke Gr. XL (52) | Made in Italy | Weiß",
+    "price": 30,
+    "description": "Hallo,\n\nich verkaufe diese stylische Sweatjacke der italienischen Edelmarke Cesare Paciotti 4US.\n\n* **Größe:** XL (entspricht ca. der ital. Größe 52)\n* **Farbe:** Weiß / Hellblau\n* **Highlight:** Made in Italy\n* **Material:** 100% Baumwolle (sehr angenehm)\n\nDie Jacke ist gebraucht, aber in einem guten, gepflegten Zustand (siehe Fotos). Sie stammt aus einem tierfreien Nichtraucherhaushalt.\n\n---\n**Abholung & Versand:**\n\n* **Abholung:** Gerne in Berlin Spandau.\n* **Versand:** Versicherter Versand ist möglich (z.B. 4,95 € mit Hermes oder 5,49 € mit DHL).\n\n---\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* Die \"Sicher Bezahlen\" Funktion von Kleinanzeigen\n* PayPal\n* Banküberweisung\n\n---\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/af/af2e5939-e3af-44e7-9b3c-f1034914c2ed?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/3d/3df5b9df-fb17-4a1b-9408-4b8cc17c11f8?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Cesare Paciotti Sweatjacke XL Weiß",
+    "description": "Gebrauchte Cesare Paciotti 4US Sweatjacke in Weiß, Größe XL (52), Made in Italy, 100% Baumwolle. Guter Zustand, aus tierfreiem Nichtraucherhaushalt. Abholung in Berlin Spandau oder versicherter Versand möglich.",
+    "suggested_price": 34.5,
+    "hashtags": [
+      "CesarePaciotti",
+      "Sweatjacke",
+      "MadeInItaly",
+      "XL",
+      "Weiß"
+    ],
+    "category_suggestion": "Herren > Oberbekleidung > Sweatjacken"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD10_1_090c0fee.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD10_2_053ac8ce.jpg"
+  ],
+  "id": "TRANSFER-20251121001720",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

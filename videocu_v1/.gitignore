@@ -1,0 +1,111 @@
+# VIDEOCU v1 - Git Ignore File
+# Sensitive data and environment files
+
+# === API KEYS & SECRETS ===
+.env
+.env.local
+.env.production
+*.key
+*.pem
+credentials.json
+token.json
+client_secret*.json
+youtube_credentials.pickle
+api_keys_metadata.json
+
+# === DATABASE FILES ===
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# === LOGS ===
+logs/
+*.log
+*.log.*
+error.log
+debug.log
+app.log
+
+# === PYTHON ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# === VIRTUAL ENVIRONMENT ===
+venv/
+ENV/
+env/
+.venv
+
+# === PYQT/QT ===
+*.qmlc
+*.jsc
+*.ui.py
+
+# === BROWSER AUTOMATION ===
+.playwright/
+playwright/.ms-playwright/
+ms-playwright/
+
+# === VIDEO & MEDIA FILES ===
+videos/
+output/
+generated/
+temp/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.flv
+*.webm
+*.wav
+*.mp3
+
+# === TEMP FILES ===
+*.tmp
+*.temp
+*.cache
+.cache/
+tmp/
+
+# === IDE & EDITORS ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# === INSTAGRAM/TIKTOK SESSION ===
+instagram_session.json
+tiktok_session.json
+
+# === TESTING ===
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# === OS ===
+*.bak
+desktop.ini

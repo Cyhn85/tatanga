@@ -1,0 +1,21 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/zara-herren-schuhe-gr-45-neuwertig-/3242797049-158-3435",
+    "scraped_at": "2025-11-20T23:29:32.219127",
+    "title": "",
+    "price": 0,
+    "description": "",
+    "images": []
+  },
+  "optimized": {
+    "title": "",
+    "description": "",
+    "suggested_price": 0.0
+  },
+  "images": [],
+  "id": "TRANSFER-20251120232943",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

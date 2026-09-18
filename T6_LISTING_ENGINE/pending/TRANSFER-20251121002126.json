@@ -1,0 +1,39 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/paciotti-4us-sweatjacke-gr-xl-trainingsjacke-weiss-hellblau/3242852844-160-3435",
+    "scraped_at": "2025-11-21T00:21:11.535497",
+    "title": "Paciotti 4US Sweatjacke Gr. XL | Trainingsjacke | Weiß Hellblau",
+    "price": 15,
+    "description": "Hallo,\n\nich verkaufe diese coole Sweatjacke (Trainingsjacke) der Marke Paciotti 4US.\n\n**Größe:** XL\n**Farbe:** Weiß mit hellblauen Einsätzen\n**Material:** 100% Baumwolle (laut Etikett)\n**Highlight:** Made in Italy\n\nDie Jacke ist gebraucht, aber in einem guten, gepflegten Zustand (siehe Fotos). Sie stammt aus einem tierfreien Nichtraucherhaushalt.\n\n**Abholung & Versand:**\n\n**Abholung:** Gerne in Berlin Spandau.\n**Versand:** Versicherter Versand ist möglich (z.B. 4,95 € mit Hermes oder 5,49 € mit DHL).\n\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* Die \"Sicher Bezahlen\" Funktion von Kleinanzeigen\n* PayPal (Waren & Dienstleistungen)\n* Banküberweisung\n\n---\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/40/4013bdbf-c566-4503-83fc-8ca535761c8d?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/e7/e7318487-7cb4-4ec7-96f9-f399fa627b4e?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/96/962976c0-d3d5-48f9-838d-5f928cf9f7e2?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Paciotti 4US XL Sweatjacke",
+    "description": "Gebrauchte Paciotti 4US Sweatjacke in XL, weiß mit hellblauen Einsätzen, 100% Baumwolle, Made in Italy. Guter Zustand, tierfreier Nichtraucherhaushalt. Abholung in Berlin Spandau oder versicherter Versand möglich.",
+    "suggested_price": 17.25,
+    "hashtags": [
+      "Paciotti4US",
+      "Sweatjacke",
+      "XL",
+      "Weiß",
+      "Hellblau",
+      "Gebraucht",
+      "MadeInItaly"
+    ],
+    "category_suggestion": "Herren > Oberbekleidung > Sweatjacken"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD11_1_6c302ad8.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD11_2_ad83fbb7.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD11_3_6f485363.jpg"
+  ],
+  "id": "TRANSFER-20251121002126",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

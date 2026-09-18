@@ -1,0 +1,37 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/nike-court-advantage-tennisschuhe-gr-46-sportschuhe-weiss/3243028934-158-3435",
+    "scraped_at": "2025-11-20T23:52:22.303361",
+    "title": "Nike Court Advantage Tennisschuhe Gr. 46 | Sportschuhe | Weiß",
+    "price": 25,
+    "description": "Hallo,\n\nich verkaufe diese gut erhaltenen Herren-Tennisschuhe von Nike in Größe 46.\n\n* **Marke:** Nike\n* **Modell:** Court Advantage\n* **Größe:** 46\n* **Farbe:** Weiß / Grau / Rot (Swoosh)\n* **Zustand:** Sehr gut, getragen, aber gepflegt (siehe Fotos).\n\nDie Schuhe sind perfekt für den Tennisplatz (oder andere Hallensportarten) oder einfach als bequeme Sneaker für den Alltag. Die Sohle ist in einem guten Zustand.\n\nSie stammen aus einem gepflegten, tierfreien Nichtraucherhaushalt.\n\n---\n**Abholung & Versand:**\n\n* **Abholung:** Gerne in Berlin Spandau.\n* **Versand:** Versicherter Versand ist möglich (z.B. 4,95 € mit Hermes oder 5,49 € mit DHL).\n\n---\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* PayPal\n* Banküberweisung\n\n---\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/79/7958e6ed-d63b-4635-b46e-04615abce141?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/9e/9e490fd0-d228-49a4-9c3c-24bee9783de7?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/5a/5a1c74e5-35fa-424e-998e-bda4a6d61d93?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Nike Tennisschuhe Gr. 46 Weiß",
+    "description": "Gut erhaltene Herren-Tennisschuhe von Nike, Größe 46, Weiß/Grau/Rot, sehr guter Zustand, ideal für Tennis oder Alltag, aus tierfreiem Nichtraucherhaushalt",
+    "suggested_price": 28.75,
+    "hashtags": [
+      "Nike",
+      "Tennisschuhe",
+      "Herrenschuhe",
+      "Weiß",
+      "Größe 46"
+    ],
+    "category_suggestion": "Herrenschuhe"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD4_1_59ff9265.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD4_2_636747b6.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD4_3_abcee3a5.jpg"
+  ],
+  "id": "TRANSFER-20251120235236",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

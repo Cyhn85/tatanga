@@ -1,0 +1,840 @@
+{% extends "base.html" %}
+{% set active_page = "scraper" %}
+{% block title %}Kazima Merkezi{% endblock %}
+{% block page_title %}<i class="fas fa-spider me-2"></i>Kazima Merkezi{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <!-- SOL: Accordion Bölümleri -->
+    <div class="col-lg-8">
+        <div class="accordion" id="scraperAccordion">
+
+            <!-- BÖLÜM 1 — Anahtar Kelime ile Kazıma (AÇIK) -->
+            <div class="accordion-item mb-2" style="border:1px solid rgba(13,110,253,0.3);border-radius:10px;overflow:hidden;">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#acc-keyword"
+                            aria-expanded="true" aria-controls="acc-keyword"
+                            style="background:rgba(13,110,253,0.08);font-weight:600;border-radius:0;">
+                        <i class="fas fa-search me-2 text-primary"></i>
+                        Anahtar Kelime ile Kazıma
+                        <small class="text-muted ms-2 fw-normal" style="font-size:0.7rem;">— Tüm platformlarda otomatik arama</small>
+                    </button>
+                </h2>
+                <div id="acc-keyword" class="accordion-collapse collapse show" data-bs-parent="#scraperAccordion">
+                    <div class="accordion-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label small">Anahtar Kelime</label>
+                                <input type="text" id="keyword" class="form-control"
+                                       placeholder="Nike Air Max, Zara Kleid, Prada Tasche..."
+                                       onkeydown="if(event.key==='Enter') launchScrape()">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small d-flex justify-content-between">
+                                    Maks. Sayfa
+                                    <i class="fas fa-info-circle text-muted"
+                                       title="Her platform icin taranacak sayfa sayisi. 1 sayfa = ~50-96 urun. 3 sayfa onerilir."></i>
+                                </label>
+                                <select id="max-pages" class="form-select">
+                                    <option value="1">1 (~50-96 urun)</option>
+                                    <option value="3" selected>3 (~150-288 urun)</option>
+                                    <option value="5">5 (~250-480 urun)</option>
+                                    <option value="10">10 (~500-960 urun)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small">Strateji
+                                    <i class="fas fa-info-circle text-muted ms-1"
+                                       title="Coklu Siralama: Her platform icin birden fazla siralama ile kazir. Daha fazla urun bulur, daha yavas calisir. — Facet: siralamaya ek olarak renk/beden facet'leriyle sorguyu boler ve yeterli karli urun bulunana ya da facet'ler tukenene kadar surer (en yavas, en genis)."></i>
+                                </label>
+                                <select id="scrape-strategy" class="form-select">
+                                    <option value="single">Standart (hizli, tek siralama)</option>
+                                    <option value="multi_order" selected>✨ Çoklu Sıralama (önerilen — 3-4× fazla ürün)</option>
+                                    <option value="faceted">🎯 Facet — tam sonuca kadar sür (en geniş, en yavaş)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="form-label small">Platformlar <small class="text-muted">(tikla sec/kaldir)</small></label>
+                            <div class="platform-chips">
+                                <label class="chip active" data-platform="vinted"><input type="checkbox" checked hidden> Vinted.de</label>
+                                <label class="chip" data-platform="vinted_fr"><input type="checkbox" hidden> Vinted.fr</label>
+                                <label class="chip" data-platform="vinted_pl"><input type="checkbox" hidden> Vinted.pl</label>
+                                <label class="chip" data-platform="vinted_be"><input type="checkbox" hidden> Vinted.be</label>
+                                <label class="chip" data-platform="vinted_uk"><input type="checkbox" hidden> Vinted.uk</label>
+                                <label class="chip active" data-platform="kleinanzeigen"><input type="checkbox" checked hidden> Kleinanzeigen</label>
+                                <label class="chip active" data-platform="ebay"><input type="checkbox" checked hidden> eBay</label>
+                                <label class="chip" data-platform="sellpy"><input type="checkbox" hidden> Sellpy</label>
+                                <label class="chip" data-platform="willhaben"><input type="checkbox" hidden> Willhaben</label>
+                                <label class="chip" data-platform="tradera"><input type="checkbox" hidden> Tradera</label>
+                                <label class="chip" data-platform="leboncoin"><input type="checkbox" hidden> Leboncoin</label>
+                                <label class="chip" data-platform="markt"><input type="checkbox" hidden> Markt.de</label>
+                                <label class="chip" data-platform="depop"><input type="checkbox" hidden> Depop</label>
+                                <label class="chip" data-platform="percentil"><input type="checkbox" hidden> Percentil</label>
+                            </div>
+                        </div>
+
+                        <!-- Gelişmiş / Akıllı Filtre (opsiyonel — eski BÖLÜM 2 buraya taşındı) -->
+                        <div class="mt-3">
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#adv-filters"
+                                    style="font-size:0.8rem;">
+                                <i class="fas fa-sliders-h me-1"></i> Gelişmiş / Akıllı Filtre
+                            </button>
+                            <div class="collapse mt-2" id="adv-filters">
+                                <div class="row g-2 align-items-end p-2"
+                                     style="background:rgba(255,255,255,0.03);border-radius:8px;">
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-1">Min. Favori
+                                            <i class="fas fa-info-circle text-muted"
+                                               title="Altindaki urunler DB'ye hic girmez. Favori sayisi yalnizca Vinted/Depop'ta olcumlenir."></i>
+                                        </label>
+                                        <select id="adv-min-fav" class="form-select form-select-sm">
+                                            <option value="0" selected>0 (filtre yok)</option>
+                                            <option value="3">3+</option>
+                                            <option value="5">5+ (önerilen)</option>
+                                            <option value="10">10+</option>
+                                            <option value="20">20+</option>
+                                            <option value="50">50+ (çok popüler)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-1">Min. Görüntülenme</label>
+                                        <select id="adv-min-views" class="form-select form-select-sm">
+                                            <option value="0" selected>Hepsi</option>
+                                            <option value="50">50+</option>
+                                            <option value="100">100+</option>
+                                            <option value="500">500+</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <small class="text-muted" style="font-size:0.65rem;">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Bir filtre seçersen "akıllı kazıma" devreye girer — atıl ürünler DB'ye hiç girmez.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 d-flex gap-2">
+                            <button class="btn btn-primary" id="btn-scrape" onclick="launchScrape()">
+                                <i class="fas fa-rocket me-1"></i> Kazımayı Başlat
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="clearProgress()">
+                                <i class="fas fa-eraser me-1"></i> Temizle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BÖLÜM 2 (Akıllı Kazıma) BÖLÜM 1'e "Gelişmiş / Akıllı Filtre" olarak
+                 taşındı; bu blok gizlendi. JS launchScrape filtreye göre otomatik
+                 /api/scrape/start veya /api/scrape/smart-start'a yönlenir. Dead HTML
+                 sonra fiziksel budanabilir. -->
+            <div class="accordion-item mb-2" style="display:none;border:1px solid rgba(255,165,0,0.3);border-radius:10px;overflow:hidden;">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#acc-smart"
+                            aria-expanded="false" aria-controls="acc-smart"
+                            style="background:rgba(255,140,0,0.06);font-weight:600;border-radius:0;">
+                        <i class="fas fa-brain me-2" style="color:#ffa500;"></i>
+                        Akıllı Kazıma
+                        <span class="badge ms-2" style="background:#ffa500;font-size:0.6rem;">
+                            <i class="fas fa-heart me-1"></i> Favori Filtreli
+                        </span>
+                        <small class="text-muted ms-2 fw-normal" style="font-size:0.7rem;">— Popüler ürünleri filtrele</small>
+                    </button>
+                </h2>
+                <div id="acc-smart" class="accordion-collapse collapse" data-bs-parent="#scraperAccordion">
+                    <div class="accordion-body">
+                        <p class="small text-muted mb-3">
+                            Kaynak platformda <strong>yeterli favori/etkileşim almış</strong> ürünleri kazır.
+                            Atıl ürünler DB'ye hiç girmez. Şu an aktif filtre: <strong>Vinted</strong>
+                            (diğer platformlar favori sayısı vermez, onlar filtresiz gelir).
+                        </p>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label small">Anahtar Kelime</label>
+                                <input type="text" id="smart-keyword" class="form-control"
+                                       placeholder="Nike Air Max, Prada Bag...">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small d-flex justify-content-between align-items-center">
+                                    Min. Favori
+                                    <i class="fas fa-info-circle text-muted"
+                                       title="Bu sayının altındaki ürünler veritabanına hiç kaydedilmez (Vinted için)"></i>
+                                </label>
+                                <select id="smart-min-fav" class="form-select">
+                                    <option value="0">0 (filtre yok)</option>
+                                    <option value="3">3+</option>
+                                    <option value="5" selected>5+ (önerilen)</option>
+                                    <option value="10">10+</option>
+                                    <option value="20">20+</option>
+                                    <option value="50">50+ (çok popüler)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Min. Görüntülenme</label>
+                                <select id="smart-min-views" class="form-select">
+                                    <option value="0" selected>Hepsi</option>
+                                    <option value="50">50+</option>
+                                    <option value="100">100+</option>
+                                    <option value="500">500+</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Maks. Sayfa</label>
+                                <select id="smart-max-pages" class="form-select">
+                                    <option value="1">1 sayfa</option>
+                                    <option value="3" selected>3 sayfa</option>
+                                    <option value="5">5 sayfa</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Strateji</label>
+                                <select id="smart-strategy" class="form-select">
+                                    <option value="single">Standart</option>
+                                    <option value="multi_order" selected>✨ Çoklu</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label small">Platformlar</label>
+                            <div class="platform-chips">
+                                <label class="chip active" data-smart-platform="vinted"><input type="checkbox" checked hidden> Vinted.de</label>
+                                <label class="chip" data-smart-platform="vinted_fr"><input type="checkbox" hidden> Vinted.fr</label>
+                                <label class="chip" data-smart-platform="vinted_pl"><input type="checkbox" hidden> Vinted.pl</label>
+                                <label class="chip" data-smart-platform="vinted_be"><input type="checkbox" hidden> Vinted.be</label>
+                                <label class="chip" data-smart-platform="vinted_uk"><input type="checkbox" hidden> Vinted.uk</label>
+                                <label class="chip" data-smart-platform="kleinanzeigen"><input type="checkbox" hidden> Kleinanzeigen</label>
+                                <label class="chip" data-smart-platform="ebay"><input type="checkbox" hidden> eBay</label>
+                                <label class="chip" data-smart-platform="sellpy"><input type="checkbox" hidden> Sellpy</label>
+                                <label class="chip" data-smart-platform="willhaben"><input type="checkbox" hidden> Willhaben</label>
+                                <label class="chip" data-smart-platform="depop"><input type="checkbox" hidden> Depop</label>
+                                <label class="chip" data-smart-platform="markt"><input type="checkbox" hidden> Markt.de</label>
+                            </div>
+                            <small class="text-muted" style="font-size:0.65rem;">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Favori filtresi yalnizca Vinted ve Depop icin calisir.
+                            </small>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-warning" id="btn-smart-scrape" onclick="launchSmartScrape()">
+                                <i class="fas fa-brain me-1"></i> Akıllı Kazıma Başlat
+                            </button>
+                        </div>
+                        <div id="smart-result" class="mt-2" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BÖLÜM — Kategori Bazlı Kazıma -->
+            <div class="accordion-item mb-2" style="border:1px solid rgba(40,167,69,0.3);border-radius:10px;overflow:hidden;">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#acc-category"
+                            aria-expanded="false" aria-controls="acc-category"
+                            style="background:rgba(40,167,69,0.08);font-weight:600;border-radius:0;">
+                        <i class="fas fa-th-large me-2" style="color:#28a745;"></i>
+                        Kategori Bazlı Kazıma
+                        <span class="badge ms-2" style="background:#28a745;font-size:0.6rem;">
+                            <i class="fas fa-brain me-1"></i> Otomatik Plan
+                        </span>
+                        <small class="text-muted ms-2 fw-normal" style="font-size:0.7rem;">— Keşif/sömürü dengeli, pazar taraması</small>
+                    </button>
+                </h2>
+                <div id="acc-category" class="accordion-collapse collapse" data-bs-parent="#scraperAccordion">
+                    <div class="accordion-body">
+                        <p class="small text-muted mb-3">
+                            Tüm giyim kategorilerini <strong>keşif/sömürü dengesiyle</strong> otomatik tarar.
+                            Az kapsanan kategorilere öncelik verir, kanıtlanmış iyi kategorileri tekrarlar.
+                            Kalite filtresi aktif: sorunlu ürünler DB'ye hiç girmez.
+                        </p>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label small">Tur Boyutu</label>
+                                <select id="cat-batch" class="form-select">
+                                    <option value="6">6 görev (hızlı)</option>
+                                    <option value="12" selected>12 görev (önerilen)</option>
+                                    <option value="24">24 görev (geniş)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Maks. Sayfa</label>
+                                <select id="cat-pages" class="form-select">
+                                    <option value="1">1</option>
+                                    <option value="2" selected>2</option>
+                                    <option value="3">3</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">Strateji</label>
+                                <select id="cat-strategy" class="form-select">
+                                    <option value="single">Standart</option>
+                                    <option value="multi_order" selected>Çoklu Sıralama</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Kategori Filtresi <small class="text-muted">(boş = tümü)</small></label>
+                                <select id="cat-filter" class="form-select" multiple size="3" style="font-size:0.8rem;">
+                                    <option value="jacken">Jacken</option>
+                                    <option value="mantel">Mantel & Parka</option>
+                                    <option value="fleece">Fleece</option>
+                                    <option value="pullover">Pullover & Hoodie</option>
+                                    <option value="hemden">Hemden & Blusen</option>
+                                    <option value="tshirts">T-Shirts & Polos</option>
+                                    <option value="hosen">Hosen & Jeans</option>
+                                    <option value="kleider">Kleider & Röcke</option>
+                                    <option value="schuhe">Schuhe</option>
+                                    <option value="taschen">Taschen & Rucksäcke</option>
+                                    <option value="sport">Sport</option>
+                                    <option value="accessoires">Accessoires</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-4">
+                                <label class="form-label small">Cinsiyet Filtresi</label>
+                                <div class="d-flex gap-2">
+                                    <label class="chip active" data-cat-gender="herren"><input type="checkbox" checked hidden> Herren</label>
+                                    <label class="chip active" data-cat-gender="damen"><input type="checkbox" checked hidden> Damen</label>
+                                    <label class="chip" data-cat-gender="kinder"><input type="checkbox" hidden> Kinder</label>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label small">Platformlar</label>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <label class="chip active" data-cat-platform="vinted"><input type="checkbox" checked hidden> Vinted.de</label>
+                                    <label class="chip" data-cat-platform="vinted_fr"><input type="checkbox" hidden> Vinted.fr</label>
+                                    <label class="chip active" data-cat-platform="kleinanzeigen"><input type="checkbox" checked hidden> Kleinanzeigen</label>
+                                    <label class="chip active" data-cat-platform="markt"><input type="checkbox" checked hidden> Marktplaats</label>
+                                    <label class="chip active" data-cat-platform="tradera"><input type="checkbox" checked hidden> Tradera</label>
+                                    <label class="chip" data-cat-platform="leboncoin"><input type="checkbox" hidden> Leboncoin</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex gap-2 align-items-center">
+                            <button class="btn btn-success" id="btn-cat-scrape" onclick="launchCategoryRound()">
+                                <i class="fas fa-layer-group me-1"></i> Kategori Turunu Başlat
+                            </button>
+                            <button class="btn btn-outline-info btn-sm" onclick="loadCoverage()">
+                                <i class="fas fa-chart-bar me-1"></i> Kapsama Raporu
+                            </button>
+                        </div>
+                        <div id="cat-coverage" class="mt-2" style="display:none;"></div>
+                        <div id="cat-result" class="mt-2" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BÖLÜM 3 — URL ile Tekil Ürün Ekle (KAPALI) -->
+            <div class="accordion-item mb-2" style="border:1px solid rgba(255,193,7,0.3);border-radius:10px;overflow:hidden;">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#acc-url"
+                            aria-expanded="false" aria-controls="acc-url"
+                            style="background:rgba(255,193,7,0.06);font-weight:600;border-radius:0;">
+                        <i class="fas fa-link me-2 text-warning"></i>
+                        URL ile Tekil Ürün Ekle
+                        <small class="text-muted ms-2 fw-normal" style="font-size:0.7rem;">— Balık tutma modu</small>
+                    </button>
+                </h2>
+                <div id="acc-url" class="accordion-collapse collapse" data-bs-parent="#scraperAccordion">
+                    <div class="accordion-body">
+                        <p class="small text-muted mb-3">
+                            Vinted, eBay, Kleinanzeigen vb. sitelerden buldugu urunun linkini yapistir.
+                            Otomatik olarak urun bilgileri cekilir, resim islenir ve listeye eklenir.
+                        </p>
+                        <div class="row g-2">
+                            <div class="col-md-9">
+                                <input type="text" id="product-url" class="form-control"
+                                       placeholder="https://www.vinted.de/items/12345... veya eBay/Kleinanzeigen linki"
+                                       onkeydown="if(event.key==='Enter') addByUrl()">
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-warning w-100" onclick="addByUrl()" id="btn-url-add">
+                                    <i class="fas fa-fish me-1"></i> Yakala
+                                </button>
+                            </div>
+                        </div>
+                        <div id="url-result" class="mt-2" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BÖLÜM 4 — Kazıma Geçmişi (KAPALI) -->
+            <div class="accordion-item" style="border:1px solid rgba(108,117,125,0.3);border-radius:10px;overflow:hidden;">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#acc-history"
+                            aria-expanded="false" aria-controls="acc-history"
+                            style="background:rgba(108,117,125,0.06);font-weight:600;border-radius:0;">
+                        <i class="fas fa-history me-2 text-secondary"></i>
+                        Kazıma Geçmişi
+                        <small class="text-muted ms-2 fw-normal" style="font-size:0.7rem;">— Son kazımalar</small>
+                    </button>
+                </h2>
+                <div id="acc-history" class="accordion-collapse collapse" data-bs-parent="#scraperAccordion">
+                    <div class="accordion-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" style="font-size:0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th class="ps-3">Anahtar Kelime</th>
+                                        <th>Platformlar</th>
+                                        <th>Bulunan</th>
+                                        <th>Karli</th>
+                                        <th>Durum</th>
+                                        <th>Tarih</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for job in jobs %}
+                                    <tr>
+                                        <td class="ps-3"><strong>{{ job.keyword }}</strong></td>
+                                        <td>
+                                            {% for p in (job.platforms | default('[]')) | fromjson if job.platforms %}
+                                            <span class="platform-badge {{ p }}" style="font-size:0.6rem;">{{ p }}</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td>{{ job.total_found or 0 }}</td>
+                                        <td style="color:#28a745;font-weight:600;">{{ job.profitable_count or 0 }}</td>
+                                        <td>
+                                            {% if job.status == 'completed' %}
+                                            <span class="badge bg-success">Tamamlandi</span>
+                                            {% elif job.status == 'running' %}
+                                            <span class="badge bg-warning text-dark"><i class="fas fa-spinner fa-spin"></i> Calisiyor</span>
+                                            {% elif job.status == 'failed' %}
+                                            <span class="badge bg-danger">Basarisiz</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">{{ job.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><small class="text-muted">{{ (job.created_at or '')[:16] }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not jobs %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            <i class="fas fa-spider fa-2x mb-2 d-block"></i>
+                                            Henuz kazima yapilmadi
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /accordion -->
+    </div>
+
+    <!-- SAG: Canlı Durum Paneli (sticky) -->
+    <div class="col-lg-4">
+        <div class="card" style="position:sticky;top:80px;">
+            <div class="card-header d-flex justify-content-between">
+                <h6 class="mb-0"><i class="fas fa-terminal me-1"></i> Canlı Durum</h6>
+                <span class="badge" id="quick-status" style="background:#333;">Bekleniyor</span>
+            </div>
+            <div class="card-body p-2">
+                <!-- Progress bar -->
+                <div class="progress mb-2" style="height:6px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                         id="scrape-bar" style="width:0%"></div>
+                </div>
+
+                <!-- Platform durumları -->
+                <div id="platform-status" class="mb-2">
+                    <div class="text-center text-muted py-3" id="no-scrape-msg">
+                        <i class="fas fa-hourglass-start fa-2x mb-2 d-block"></i>
+                        <small>Kazima baslatiginda burada canli takip edebilirsin</small>
+                    </div>
+                </div>
+
+                <!-- Canlı log -->
+                <div style="max-height:300px;overflow-y:auto;font-size:0.7rem;" id="scrape-log"></div>
+
+                <!-- Özet (kazıma bitince) -->
+                <div id="scrape-summary" style="display:none;" class="mt-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Platform chip toggle
+document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+        this.classList.toggle('active');
+        this.querySelector('input').checked = this.classList.contains('active');
+    });
+});
+
+let scrapeJobId = null;
+let activePlatforms = [];
+
+async function launchScrape() {
+    const keyword = document.getElementById('keyword').value.trim();
+    if (!keyword) { showToast('Anahtar kelime girin', 'warning'); return; }
+
+    const platforms = [];
+    document.querySelectorAll('.chip.active[data-platform]').forEach(c => platforms.push(c.dataset.platform));
+    if (!platforms.length) { showToast('En az 1 platform secin', 'warning'); return; }
+
+    activePlatforms = [...platforms];
+    const maxPages = parseInt(document.getElementById('max-pages').value);
+    const strategy = document.getElementById('scrape-strategy').value;
+    // Gelişmiş / Akıllı filtre (eski BÖLÜM 2 buraya taşındı):
+    // bir filtre seçiliyse akıllı uca yönlen, değilse normal kazıma.
+    const _advFav = document.getElementById('adv-min-fav');
+    const _advViews = document.getElementById('adv-min-views');
+    const minFav = _advFav ? parseInt(_advFav.value) : 0;
+    const minViews = _advViews ? parseInt(_advViews.value) : 0;
+    const useSmart = (minFav > 0 || minViews > 0);
+
+    const btn = document.getElementById('btn-scrape');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Kaziniyor...';
+
+    document.getElementById('no-scrape-msg').style.display = 'none';
+    document.getElementById('quick-status').textContent = 'Calisiyor';
+    document.getElementById('quick-status').style.background = '#ffa500';
+    document.getElementById('scrape-bar').style.width = '5%';
+    document.getElementById('scrape-log').innerHTML = '';
+    document.getElementById('scrape-summary').style.display = 'none';
+
+    const statusDiv = document.getElementById('platform-status');
+    statusDiv.innerHTML = platforms.map(p => `
+        <div class="d-flex justify-content-between align-items-center mb-1 p-1"
+             id="ps-${p}" style="background:rgba(255,255,255,0.03);border-radius:6px;font-size:0.75rem;">
+            <span><span class="platform-badge ${p}" style="font-size:0.6rem;">${p}</span></span>
+            <span class="badge bg-secondary" id="ps-badge-${p}">Bekliyor</span>
+        </div>
+    `).join('');
+
+    addLog('Kazima baslatiliyor: ' + keyword + ' (' + platforms.join(', ') + ') [' + strategy + ']');
+
+    try {
+        const endpoint = useSmart ? '/api/scrape/smart-start' : '/api/scrape/start';
+        const payload = useSmart
+            ? { keyword, platforms, max_pages: maxPages, min_favorites: minFav, min_views: minViews, scrape_strategy: strategy }
+            : { keyword, platforms, max_pages: maxPages, scrape_strategy: strategy };
+        if (useSmart) addLog('Akilli filtre aktif: min_fav>=' + minFav + ' | min_views>=' + minViews);
+        const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        scrapeJobId = data.job_id;
+        addLog('Job ID: ' + scrapeJobId);
+        pollScrapeStatus(scrapeJobId);
+    } catch (e) {
+        showToast('Hata: ' + e.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-rocket me-1"></i> Kazımayı Başlat';
+    }
+}
+
+async function pollScrapeStatus(jobId) {
+    const poll = setInterval(async () => {
+        try {
+            const resp = await fetch('/api/scrape/status/' + jobId);
+            const data = await resp.json();
+            if (data.status === 'completed' || data.status === 'failed') {
+                clearInterval(poll);
+                onScrapeComplete(data);
+            }
+        } catch(e) {}
+    }, 2000);
+}
+
+function onScrapeComplete(data) {
+    const btn = document.getElementById('btn-scrape');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-rocket me-1"></i> Kazımayı Başlat';
+
+    document.getElementById('scrape-bar').style.width = '100%';
+    document.getElementById('scrape-bar').classList.remove('progress-bar-animated');
+    document.getElementById('scrape-bar').classList.add('bg-success');
+    document.getElementById('quick-status').textContent = 'Tamamlandi';
+    document.getElementById('quick-status').style.background = '#28a745';
+
+    addLog('TAMAMLANDI: ' + data.total_found + ' urun, ' + data.profitable_count + ' karli');
+
+    const summary = document.getElementById('scrape-summary');
+    summary.style.display = 'block';
+    summary.innerHTML = `
+        <div style="background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.3);border-radius:8px;padding:10px;">
+            <div class="d-flex justify-content-between">
+                <span style="color:#28a745;font-weight:600;">${data.total_found} Ürün</span>
+                <span style="color:#ffa500;font-weight:600;">${data.profitable_count} Karlı</span>
+            </div>
+            <a href="/products" class="btn btn-sm btn-success mt-2 w-100">
+                <i class="fas fa-eye me-1"></i> Ürünleri Gör
+            </a>
+        </div>
+    `;
+    showToast('Kazima tamamlandi! ' + data.total_found + ' urun', 'success');
+}
+
+function addLog(msg) {
+    const log = document.getElementById('scrape-log');
+    if (!log) return;
+    const div = document.createElement('div');
+    div.className = 'mb-1';
+    div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+    div.style.paddingBottom = '2px';
+    const time = new Date().toLocaleTimeString('de-DE');
+    div.innerHTML = '<span style="color:#666;">' + time + '</span> ' + msg;
+    log.prepend(div);
+}
+
+function clearProgress() {
+    document.getElementById('scrape-log').innerHTML = '';
+    document.getElementById('scrape-bar').style.width = '0%';
+    document.getElementById('scrape-bar').className = 'progress-bar progress-bar-striped progress-bar-animated';
+    document.getElementById('quick-status').textContent = 'Bekleniyor';
+    document.getElementById('quick-status').style.background = '#333';
+    document.getElementById('scrape-summary').style.display = 'none';
+    document.getElementById('no-scrape-msg').style.display = 'block';
+    document.getElementById('platform-status').innerHTML = `
+        <div class="text-center text-muted py-3" id="no-scrape-msg">
+            <i class="fas fa-hourglass-start fa-2x mb-2 d-block"></i>
+            <small>Kazima baslatiginda burada canli takip edebilirsin</small>
+        </div>`;
+}
+
+// =============================================
+// AKILLI KAZIMA
+// =============================================
+async function launchSmartScrape() {
+    const keyword = document.getElementById('smart-keyword').value.trim();
+    if (!keyword) { showToast('Anahtar kelime girin', 'warning'); return; }
+
+    const minFav = parseInt(document.getElementById('smart-min-fav').value);
+    const minViews = parseInt(document.getElementById('smart-min-views').value);
+    const maxPages = parseInt(document.getElementById('smart-max-pages').value);
+    const strategy = document.getElementById('smart-strategy').value;
+
+    const platforms = [];
+    document.querySelectorAll('.chip.active[data-smart-platform]').forEach(c => platforms.push(c.dataset.smartPlatform));
+    if (!platforms.length) { showToast('En az 1 platform secin', 'warning'); return; }
+
+    const btn = document.getElementById('btn-smart-scrape');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Kaziniyor...';
+
+    const resultDiv = document.getElementById('smart-result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = `
+        <div class="p-2 mt-2" style="background:rgba(255,165,0,0.1);border:1px solid rgba(255,165,0,0.3);border-radius:8px;font-size:0.8rem;">
+            <i class="fas fa-spinner fa-spin me-1" style="color:#ffa500;"></i>
+            Akilli kazima calisiyor: <strong>${keyword}</strong>
+            | min_fav≥${minFav} | min_views≥${minViews} | ${maxPages} sayfa | [${strategy}]
+        </div>`;
+
+    addLog('[AKILLI] Basladi: ' + keyword + ' | min_fav>=' + minFav + ' | ' + platforms.join(', ') + ' [' + strategy + ']');
+
+    try {
+        const resp = await fetch('/api/scrape/smart-start', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ keyword, platforms, max_pages: maxPages, min_favorites: minFav, min_views: minViews, scrape_strategy: strategy })
+        });
+        const data = await resp.json();
+        if (data.job_id) {
+            addLog('[AKILLI] Job ID: ' + data.job_id);
+            pollSmartScrapeStatus(data.job_id, btn, resultDiv, keyword, minFav);
+        } else {
+            throw new Error(JSON.stringify(data));
+        }
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-brain me-1"></i> Akıllı Kazıma Başlat';
+        resultDiv.style.display = 'none';
+    }
+}
+
+async function pollSmartScrapeStatus(jobId, btn, resultDiv, keyword, minFav) {
+    const poll = setInterval(async () => {
+        try {
+            const resp = await fetch('/api/scrape/status/' + jobId);
+            const data = await resp.json();
+
+            if (data.status === 'completed' || data.status === 'failed') {
+                clearInterval(poll);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-brain me-1"></i> Akıllı Kazıma Başlat';
+
+                if (data.status === 'completed') {
+                    resultDiv.innerHTML = `
+                        <div class="p-2 mt-2" style="background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.3);border-radius:8px;">
+                            <div class="d-flex justify-content-between mb-1" style="font-size:0.8rem;">
+                                <span><i class="fas fa-check-circle text-success me-1"></i> <strong>Akilli Kazima Tamamlandi</strong></span>
+                                <span class="text-muted" style="font-size:0.7rem;">min_fav≥${minFav}</span>
+                            </div>
+                            <div class="d-flex gap-3" style="font-size:0.8rem;">
+                                <span>✅ Kaydedilen: <strong>${data.total_found}</strong></span>
+                                <span>💚 Kârli: <strong>${data.profitable_count || 0}</strong></span>
+                            </div>
+                            <a href="/products" class="btn btn-sm btn-success mt-2 w-100">
+                                <i class="fas fa-eye me-1"></i> Ürünleri Gör
+                            </a>
+                        </div>`;
+                    showToast('Akilli kazima tamamlandi! ' + data.total_found + ' urun kaydedildi.', 'success');
+                    addLog('[AKILLI] TAMAMLANDI: ' + data.total_found + ' urun kaydedildi');
+                } else {
+                    resultDiv.innerHTML = `<div class="text-danger small mt-1"><i class="fas fa-exclamation-triangle me-1"></i> Kazima basarisiz oldu.</div>`;
+                    showToast('Akilli kazima basarisiz!', 'danger');
+                }
+            }
+        } catch(e) {}
+    }, 2500);
+}
+
+// URL ile ürün ekleme
+async function addByUrl() {
+    const url = document.getElementById('product-url').value.trim();
+    if (!url) { showToast('URL girin', 'warning'); return; }
+    if (!url.startsWith('http')) { showToast('Gecerli bir URL girin', 'warning'); return; }
+
+    const btn = document.getElementById('btn-url-add');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Yakalaniyor...';
+
+    const result = document.getElementById('url-result');
+    result.style.display = 'block';
+    result.innerHTML = '<div class="text-info"><i class="fas fa-spinner fa-spin"></i> Urun bilgileri cekiliyor...</div>';
+
+    try {
+        const resp = await fetch('/api/product/add-by-url', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ url })
+        });
+        const data = await resp.json();
+
+        if (data.status === 'ok') {
+            result.innerHTML = `
+                <div class="p-2" style="background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.3);border-radius:8px;">
+                    <div class="d-flex gap-2 align-items-center">
+                        ${data.image ? '<img src="'+data.image+'" style="width:50px;height:50px;object-fit:cover;border-radius:6px;">' : ''}
+                        <div>
+                            <div class="fw-bold small">${data.title || 'Urun eklendi'}</div>
+                            <div style="font-size:0.7rem;color:#28a745;">${data.price || 0} EUR | ${data.platform}</div>
+                        </div>
+                        <a href="/product/${data.product_id}" class="btn btn-sm btn-outline-success ms-auto">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                </div>
+            `;
+            document.getElementById('product-url').value = '';
+            showToast('Urun yakalandi: ' + (data.title || '').substring(0,40), 'success');
+        } else {
+            result.innerHTML = '<div class="text-danger"><i class="fas fa-times"></i> ' + (data.error || 'Urun cekilemedi') + '</div>';
+        }
+    } catch (e) {
+        result.innerHTML = '<div class="text-danger"><i class="fas fa-times"></i> Hata: ' + e.message + '</div>';
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-fish me-1"></i> Yakala';
+}
+
+async function launchCategoryRound() {
+    const btn = document.getElementById('btn-cat-scrape');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Planlanıyor...';
+
+    const batch = parseInt(document.getElementById('cat-batch').value);
+    const pages = parseInt(document.getElementById('cat-pages').value);
+    const strategy = document.getElementById('cat-strategy').value;
+
+    const cats = [...document.getElementById('cat-filter').selectedOptions].map(o => o.value);
+    const genders = [];
+    document.querySelectorAll('.chip.active[data-cat-gender]').forEach(c => genders.push(c.dataset.catGender));
+    const platforms = [];
+    document.querySelectorAll('.chip.active[data-cat-platform]').forEach(c => platforms.push(c.dataset.catPlatform));
+
+    if (!platforms.length) { showToast('En az 1 platform secin', 'warning'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-layer-group me-1"></i> Kategori Turunu Başlat'; return; }
+
+    document.getElementById('no-scrape-msg').style.display = 'none';
+    document.getElementById('quick-status').textContent = 'Kategori Turu';
+    document.getElementById('quick-status').style.background = '#28a745';
+    document.getElementById('scrape-bar').style.width = '5%';
+    document.getElementById('scrape-log').innerHTML = '';
+    addLog('Kategori turu baslatiliyor: ' + batch + ' gorev, ' + platforms.join(', '));
+
+    try {
+        const resp = await fetch('/api/scrape/category-round', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                batch_size: batch, max_pages: pages, scrape_strategy: strategy,
+                categories: cats, genders: genders, platforms: platforms
+            })
+        });
+        const data = await resp.json();
+        if (data.error) {
+            showToast(data.error, 'warning');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-layer-group me-1"></i> Kategori Turunu Başlat';
+            return;
+        }
+        scrapeJobId = data.job_id;
+        addLog('Job ID: ' + scrapeJobId);
+        const result = document.getElementById('cat-result');
+        result.style.display = 'block';
+        result.innerHTML = '<div class="small text-success"><i class="fas fa-check"></i> ' +
+            data.tasks.length + ' gorev planlandı. Kapsama: %' + (data.coverage?.kapsama_yuzde || '?') +
+            '</div><div class="small text-muted mt-1">' +
+            data.tasks.map(t => '<span class="badge bg-secondary me-1 mb-1" style="font-size:0.6rem;">' + t.query + ' (' + t.reason.split(':')[0] + ')</span>').join('') +
+            '</div>';
+        activePlatforms = [...platforms];
+        const statusDiv = document.getElementById('platform-status');
+        statusDiv.innerHTML = platforms.map(p => `
+            <div class="d-flex justify-content-between align-items-center mb-1 p-1"
+                 id="ps-${p}" style="background:rgba(255,255,255,0.03);border-radius:6px;font-size:0.75rem;">
+                <span><span class="platform-badge ${p}" style="font-size:0.6rem;">${p}</span></span>
+                <span class="badge bg-secondary" id="ps-badge-${p}">Bekliyor</span>
+            </div>
+        `).join('');
+        pollScrapeStatus(scrapeJobId);
+    } catch (e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-layer-group me-1"></i> Kategori Turunu Başlat';
+}
+
+async function loadCoverage() {
+    try {
+        const resp = await fetch('/api/scrape/category-coverage');
+        const data = await resp.json();
+        const div = document.getElementById('cat-coverage');
+        div.style.display = 'block';
+        const cats = Object.entries(data.kategori_gozlem || {});
+        div.innerHTML = '<div class="p-2" style="background:rgba(255,255,255,0.03);border-radius:8px;font-size:0.75rem;">' +
+            '<div class="d-flex justify-content-between mb-2"><strong>Kapsama: %' + data.kapsama_yuzde + '</strong>' +
+            '<span class="text-muted">' + data.taranan_gorev + '/' + data.toplam_gorev + ' gorev, ' + data.toplam_gozlem + ' gozlem</span></div>' +
+            '<div class="d-flex flex-wrap gap-1">' +
+            cats.map(([k, v]) => '<span class="badge ' + (v > 0 ? 'bg-success' : 'bg-danger') + '" style="font-size:0.6rem;">' + k + ': ' + v + '</span>').join('') +
+            '</div>' +
+            (data.hic_taranmayan_kategoriler?.length ? '<div class="text-danger mt-1"><i class="fas fa-exclamation-triangle"></i> Hic taranmayan: ' + data.hic_taranmayan_kategoriler.join(', ') + '</div>' : '') +
+            '</div>';
+    } catch (e) {
+        showToast('Kapsama raporu alinamadi: ' + e.message, 'danger');
+    }
+}
+</script>
+{% endblock %}

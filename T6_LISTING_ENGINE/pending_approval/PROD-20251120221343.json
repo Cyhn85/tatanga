@@ -1,0 +1,43 @@
+{
+  "id": "PROD-20251120221343",
+  "original": {
+    "source": "kleinanzeigen",
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/zara-herren-schuhe-gr-45-neuwertig-/3242797049-158-3435",
+    "scraped_at": "2025-11-20T22:13:12.786041",
+    "title": "Zara Herren Schuhe Gr 45 (Neuwertig)",
+    "price": 30,
+    "description": "Hallo,\n\nich verkaufe diese neuwertigen Herrenschuhe von Zara in Größe 45. Es sind elegante Stiefeletten (Boots) aus braunem Echtleder.\n\nDie Schuhe wurden kaum getragen (siehe Fotos) und sind daher in einem Top-Zustand. Perfekt für den Herbst/Winter.\n\nSie stammen aus einem gepflegten, tierfreien Nichtraucherhaushalt.\n\n**Abholung & Versand:**\n\n-Abholung (Bevorzugt):** Die Schuhe können gerne direkt in Berlin Spandau anprobiert und abgeholt werden.\n-Versand:** Ein versicherter Versand innerhalb Deutschlands ist natürlich auch möglich (z.B. für 5,49 € mit DHL oder 4,95 € mit Hermes).\n\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* Die \"Sicher Bezahlen\" Funktion von Kleinanzeigen\n* PayPal (Waren & Dienstleistungen)\n* Banküberweisung\n\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/bc/bc0c73dc-394b-4f5f-9d36-0ed46c8fd77e?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/6f/6f2f1ad8-9802-476b-b744-cef1ce8e2e9b?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a7/a730f429-1053-4820-ab7f-66669283fe03?rule=$_59.AUTO"
+    ],
+    "category": ""
+  },
+  "optimized": {
+    "title": "Zara Herren Boots Gr 45",
+    "description": "Elegante Zara Herrenschuhe aus braunem Echtleder, kaum getragen, Top-Zustand, perfekt für Herbst/Winter. Aus gepflegtem Haushalt, Abholung in Berlin Spandau möglich.",
+    "price": 32,
+    "tags": [
+      "Zara",
+      "Herrenschuhe",
+      "Boots",
+      "Echtleder",
+      "Herbst",
+      "Winter"
+    ],
+    "seo_keywords": [
+      "Zara Herrenschuhe",
+      "Herren Boots",
+      "Echtleder Schuhe",
+      "Herren Mode"
+    ]
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD-20251120221343_1_e481359c.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD-20251120221343_2_39282ce4.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD-20251120221343_3_9d3ea28e.jpg"
+  ],
+  "target_platform": "vinted",
+  "target_account": "main"
+}

@@ -1,0 +1,37 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/zara-man-weste-steppweste-gr-l-braun-glaenzend-mit-kapuze/3242978021-160-3435",
+    "scraped_at": "2025-11-21T00:05:05.436596",
+    "title": "Zara Man Weste / Steppweste Gr. L | Braun Glänzend | mit Kapuze",
+    "price": 25,
+    "description": "Hallo,\n\nich verkaufe diese coole Steppweste für Herren von Zara Man in der Größe L.\n\n* **Marke:** Zara Man\n* **Größe:** L (EUR L / USA L)\n* **Farbe:** Braun (glänzend), innen Dunkelblau\n* **Stil:** Wattierte Winterweste / Bodywarmer mit Kapuze\n* **Zustand:** Sehr gut, kaum getragen (siehe Fotos).\n\nDie Weste ist schön warm wattiert und perfekt für den Herbst oder als Übergangsweste. Sie hat eine gesteppte Schulterpartie und praktische Reißverschlusstaschen.\n\nSie stammt aus einem gepflegten, tierfreien Nichtraucherhaushalt.\n\n---\n**Abholung & Versand:**\n\n* **Abholung:** Gerne in Berlin Spandau.\n* **Versand:** Versicherter Versand ist möglich (z.B. 4,95 € mit Hermes oder 5,49 € mit DHL).\n\n---\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* Die \"Sicher Bezahlen\" Funktion von Kleinanzeigen\n* PayPal\n* Banküberweisung\n\n---\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/75/752e3cbc-0a40-41b3-a730-10fc5d8e51aa?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/fe/fe8c6c97-ea23-43c7-8a30-cd347d6539e6?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/9f/9fb058fa-048e-4d58-93b0-e4f6b8cc8e84?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Zara Herren Steppweste L Braun",
+    "description": "Zara Herren Steppweste Gr. L, braun glänzend, mit Kapuze. Sehr guter Zustand, kaum getragen. Wattiert, warm und perfekt für Herbst oder Übergang. Gesteppte Schulterpartie und Reißverschlusstaschen. Aus gepflegtem Haushalt.",
+    "suggested_price": 28.75,
+    "hashtags": [
+      "Zara",
+      "Herrenweste",
+      "Steppweste",
+      "Braun",
+      "Größe L"
+    ],
+    "category_suggestion": "Herren > Jacken & Mäntel > Steppwesten"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD7_1_89eda5e0.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD7_2_fa1ee87b.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD7_3_ec144bab.jpg"
+  ],
+  "id": "TRANSFER-20251121000520",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

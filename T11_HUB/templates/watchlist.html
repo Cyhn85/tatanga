@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% set active_page = "watchlist" %}
+
+{% block title %}Favoriler - TATANGA Hub{% endblock %}
+{% block page_title %}<i class="fas fa-heart me-2 text-danger"></i>Favoriler{% endblock %}
+
+{% block content %}
+<!-- STATS -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-danger-soft"><i class="fas fa-heart text-danger"></i></div>
+            <div class="stat-value">{{ watchlist|length }}</div>
+            <div class="stat-label">Takipte</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success-soft"><i class="fas fa-check-circle text-success"></i></div>
+            <div class="stat-value">{{ watchlist|selectattr('last_status', 'equalto', 'active')|list|length }}</div>
+            <div class="stat-label">Aktif</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary-soft"><i class="fas fa-rocket text-primary"></i></div>
+            <div class="stat-value">{{ watchlist|selectattr('product_status', 'equalto', 'published')|list|length }}</div>
+            <div class="stat-label">Yayinda</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info-soft"><i class="fas fa-clock text-info"></i></div>
+            <div class="stat-value">5 dk</div>
+            <div class="stat-label">Kontrol Araligi</div>
+        </div>
+    </div>
+</div>
+
+<!-- FILTRE BAR + ARAÇLAR -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-sm btn-primary active" onclick="filterCards('all', this)">
+            <i class="fas fa-list me-1"></i> Tümü <span class="badge bg-white text-dark ms-1">{{ watchlist|length }}</span>
+        </button>
+        <button class="btn btn-sm btn-outline-success" onclick="filterCards('active', this)">
+            <i class="fas fa-check me-1"></i> Yayın Bekleyen
+        </button>
+        <button class="btn btn-sm btn-outline-primary" onclick="filterCards('published', this)">
+            <i class="fas fa-rocket me-1"></i> Yayında
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="filterCards('sold', this)">
+            <i class="fas fa-shopping-cart me-1"></i> Satılan
+        </button>
+    </div>
+    <button class="btn btn-sm btn-outline-info" onclick="checkAllWatchlist()">
+        <i class="fas fa-sync me-1"></i> Tümünü Kontrol Et
+    </button>
+</div>
+
+<!-- ÜRÜN KARTLARI -->
+{% if watchlist %}
+<div class="row g-3" id="watchlist-grid">
+    {% for item in watchlist %}
+    {% set images = item.images_json|fromjson if item.images_json else [] %}
+    {% set img_src = images[0] if images else '/static/img/no-image.svg' %}
+    {% set display_price = item.current_product_price or item.price or item.current_price or 0 %}
+    {% set status = item.last_status or item.source_status or 'unknown' %}
+    {% set pstatus = item.product_status or 'scraped' %}
+
+    <div class="col-6 col-md-4 col-lg-3 watch-card-col"
+         data-status="{{ status }}"
+         data-pstatus="{{ pstatus }}"
+         id="wcard-{{ item.product_id }}">
+        <div class="card h-100" style="border:1px solid rgba(255,255,255,0.08);transition:border-color 0.2s;">
+
+            <!-- GÖRSEL -->
+            <div style="position:relative;">
+                <img src="{{ img_src }}" class="card-img-top"
+                     style="height:180px;object-fit:cover;"
+                     onerror="this.src='/static/img/no-image.svg'" alt="{{ item.title }}">
+
+                <!-- Durum badge'i -->
+                <div style="position:absolute;top:6px;left:6px;display:flex;flex-direction:column;gap:3px;">
+                    {% if status == 'active' %}
+                    <span class="badge bg-success" style="font-size:0.6rem;">Aktif</span>
+                    {% elif status == 'sold' %}
+                    <span class="badge bg-danger" style="font-size:0.6rem;">Satıldı</span>
+                    {% elif status == 'reserved' %}
+                    <span class="badge bg-warning text-dark" style="font-size:0.6rem;">Rezerve</span>
+                    {% elif status == 'removed' %}
+                    <span class="badge bg-dark" style="font-size:0.6rem;">Kaldırıldı</span>
+                    {% else %}
+                    <span class="badge bg-secondary" style="font-size:0.6rem;">Bilinmiyor</span>
+                    {% endif %}
+
+                    {% if pstatus == 'published' %}
+                    <span class="badge bg-primary" style="font-size:0.6rem;"><i class="fas fa-rocket me-1"></i>Yayında</span>
+                    {% endif %}
+                </div>
+
+                <!-- Öneri badge'i -->
+                {% if item.recommendation == 'buy' %}
+                <div style="position:absolute;top:6px;right:6px;">
+                    <span class="badge bg-success" style="font-size:0.6rem;">AL</span>
+                </div>
+                {% elif item.recommendation == 'watch' %}
+                <div style="position:absolute;top:6px;right:6px;">
+                    <span class="badge bg-warning text-dark" style="font-size:0.6rem;">İZLE</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card-body p-2 d-flex flex-column">
+                <!-- Başlık -->
+                <a href="/product/{{ item.product_id }}" class="text-decoration-none" style="font-size:0.8rem;font-weight:600;color:inherit;line-height:1.3;display:block;margin-bottom:4px;">
+                    {{ (item.title or 'İsimsiz')[:55] }}{% if item.title and item.title|length > 55 %}...{% endif %}
+                </a>
+
+                <!-- Platform + Fiyat -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="platform-badge {{ item.source_platform or '' }}" style="font-size:0.6rem;">{{ item.source_platform or 'N/A' }}</span>
+                    <span style="font-size:0.8rem;font-weight:700;">{{ '%.2f'|format(display_price) }}&euro;</span>
+                </div>
+
+                <!-- Kâr bilgisi -->
+                {% if item.profit_euro and item.profit_euro > 0 %}
+                <div style="font-size:0.7rem;color:rgba(40,167,69,0.9);margin-bottom:6px;">
+                    +{{ '%.2f'|format(item.profit_euro) }}&euro; kâr &nbsp;·&nbsp; %{{ '%.0f'|format(item.profit_margin or 0) }} marj
+                </div>
+                {% endif %}
+
+                <!-- Son kontrol -->
+                <div class="text-muted mb-2" style="font-size:0.65rem;">
+                    <i class="fas fa-clock me-1"></i>
+                    {{ item.last_checked[:16] if item.last_checked else 'Henüz kontrol edilmedi' }}
+                </div>
+
+                <!-- ACTION BUTONLAR -->
+                <div class="mt-auto">
+                    <div class="d-flex gap-1 flex-wrap mb-1">
+                        <a href="/product/{{ item.product_id }}" class="btn btn-outline-info btn-sm flex-fill" title="Detay" style="font-size:0.65rem;padding:3px 6px;">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <button class="btn btn-outline-secondary btn-sm flex-fill" title="Kaynak Kontrol" style="font-size:0.65rem;padding:3px 6px;"
+                                onclick="checkWatchItem('{{ item.product_id }}')">
+                            <i class="fas fa-sync"></i>
+                        </button>
+                        <button class="btn btn-outline-purple btn-sm flex-fill" title="Arka Plan Kaldır" style="font-size:0.65rem;padding:3px 6px;border-color:#9b59b6;color:#9b59b6;"
+                                onclick="removeBg('{{ item.product_id }}')">
+                            <i class="fas fa-magic"></i>
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm flex-fill" title="SEO Üret" style="font-size:0.65rem;padding:3px 6px;"
+                                onclick="generateSeo('{{ item.product_id }}')">
+                            <i class="fas fa-star"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex gap-1">
+                        {% if pstatus != 'published' %}
+                        <button class="btn btn-primary btn-sm flex-fill" style="font-size:0.7rem;"
+                                onclick="togglePublishForm('{{ item.product_id }}')">
+                            <i class="fas fa-rocket me-1"></i> Yayınla
+                        </button>
+                        {% else %}
+                        <a href="/published" class="btn btn-outline-primary btn-sm flex-fill" style="font-size:0.7rem;">
+                            <i class="fas fa-external-link-alt me-1"></i> Yayında
+                        </a>
+                        {% endif %}
+                        <button class="btn btn-outline-danger btn-sm" style="font-size:0.7rem;padding:3px 8px;" title="Favoriden Çıkar"
+                                onclick="removeFromWatchlist('{{ item.product_id }}')">
+                            <i class="fas fa-heart-broken"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INLINE YAYINLAMA FORMU (başlangıçta gizli) -->
+            <div id="pform-{{ item.product_id }}" class="publish-inline-form"
+                 style="display:none;border-top:1px solid rgba(13,110,253,0.3);background:rgba(13,110,253,0.05);padding:10px;">
+                <div class="mb-2">
+                    <label class="form-label small mb-1">Satış Fiyatı (€)</label>
+                    <input type="number" class="form-control form-control-sm"
+                           id="pfprice-{{ item.product_id }}"
+                           value="{{ '%.2f'|format(item.estimated_sell_price or (display_price * 1.5)) }}"
+                           step="0.5" min="1">
+                </div>
+                <div class="row g-1 mb-2">
+                    <div class="col-6">
+                        <label class="form-label small mb-1">Kategori</label>
+                        <select class="form-select form-select-sm" id="pfcat-{{ item.product_id }}">
+                            <option value="damen">Damen</option>
+                            <option value="herren">Herren</option>
+                            <option value="schuhe">Schuhe</option>
+                            <option value="taschen">Taschen</option>
+                            <option value="accessoires">Accessoires</option>
+                            <option value="kinder">Kinder</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small mb-1">Durum</label>
+                        <select class="form-select form-select-sm" id="pfcond-{{ item.product_id }}">
+                            <option value="good">Good</option>
+                            <option value="very_good">Very Good</option>
+                            <option value="new_with_tags">Yeni (Etiketli)</option>
+                            <option value="satisfactory">Satisfactory</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-success btn-sm flex-fill" style="font-size:0.75rem;"
+                            onclick="doPublish('{{ item.product_id }}')">
+                        <i class="fas fa-check me-1"></i> Yayınla
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" style="font-size:0.75rem;"
+                            onclick="togglePublishForm('{{ item.product_id }}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="pfresult-{{ item.product_id }}" class="mt-1" style="display:none;font-size:0.7rem;"></div>
+            </div>
+
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-heart fa-4x text-muted mb-3 d-block"></i>
+    <h5 class="text-muted">Favori listeniz boş</h5>
+    <p class="text-muted">Ürünler sayfasından ürünleri favorilere ekleyebilirsiniz.</p>
+    <a href="/products" class="btn btn-primary"><i class="fas fa-box-open me-1"></i> Ürünlere Git</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Filtre
+function filterCards(type, btn) {
+    document.querySelectorAll('[onclick^="filterCards"]').forEach(b => b.classList.remove('active', 'btn-primary','btn-success','btn-outline-success','btn-outline-primary','btn-outline-secondary'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.watch-card-col').forEach(col => {
+        const status = col.dataset.status;
+        const pstatus = col.dataset.pstatus;
+        let show = false;
+        if (type === 'all') show = true;
+        else if (type === 'published') show = pstatus === 'published';
+        else if (type === 'sold') show = (status === 'sold');
+        else if (type === 'active') show = (status === 'active' && pstatus !== 'published');
+        col.style.display = show ? '' : 'none';
+    });
+}
+
+// Yayın formunu aç/kapat
+function togglePublishForm(productId) {
+    const form = document.getElementById('pform-' + productId);
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+// Yayınla
+async function doPublish(productId) {
+    const price = parseFloat(document.getElementById('pfprice-' + productId).value);
+    const cat = document.getElementById('pfcat-' + productId).value;
+    const cond = document.getElementById('pfcond-' + productId).value;
+    const resultDiv = document.getElementById('pfresult-' + productId);
+
+    if (!price || price <= 0) { showToast('Geçerli bir fiyat girin', 'warning'); return; }
+
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-1 text-primary"></i> Yayınlanıyor...';
+
+    try {
+        const resp = await fetch('/api/product/' + productId + '/publish', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ sell_price: price, category_slug: cat, condition: cond })
+        });
+        const data = await resp.json();
+
+        if (data.status === 'published' || data.cssberlin_id) {
+            resultDiv.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i> Yayınlandı!';
+            resultDiv.style.color = '#28a745';
+            showToast('Ürün cssberlin.de\'ye yayınlandı!', 'success');
+            // Kartı güncelle
+            setTimeout(() => {
+                const card = document.getElementById('wcard-' + productId);
+                if (card) {
+                    card.dataset.pstatus = 'published';
+                    const form = document.getElementById('pform-' + productId);
+                    if (form) form.style.display = 'none';
+                    // Yayınla butonunu linkle değiştir
+                    const publishBtn = card.querySelector('[onclick="togglePublishForm(\''+productId+'\')"]');
+                    if (publishBtn) {
+                        publishBtn.outerHTML = '<a href="/published" class="btn btn-outline-primary btn-sm flex-fill" style="font-size:0.7rem;"><i class="fas fa-external-link-alt me-1"></i> Yayında</a>';
+                    }
+                }
+            }, 1500);
+        } else {
+            resultDiv.innerHTML = '<i class="fas fa-times text-danger me-1"></i> ' + (data.error || 'Yayın başarısız');
+            resultDiv.style.color = '#dc3545';
+        }
+    } catch(e) {
+        resultDiv.innerHTML = '<i class="fas fa-times text-danger me-1"></i> ' + e.message;
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+
+// Kaynak Kontrol
+async function checkWatchItem(productId) {
+    const card = document.getElementById('wcard-' + productId);
+    if (card) card.style.opacity = '0.6';
+    try {
+        await fetch('/api/product/' + productId + '/check-source', {method: 'POST'});
+        showToast('Kontrol başlatıldı', 'info');
+        setTimeout(() => location.reload(), 5000);
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+    if (card) card.style.opacity = '1';
+}
+
+// Tümünü Kontrol
+async function checkAllWatchlist() {
+    try {
+        const resp = await fetch('/api/products/bulk-check-source', {method: 'POST'});
+        const data = await resp.json();
+        showToast((data.count || 0) + ' ürün kontrol ediliyor...', 'info');
+        setTimeout(() => location.reload(), 10000);
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+
+// Favori'den Çıkar
+async function removeFromWatchlist(productId) {
+    if (!confirm('Bu ürünü favorilerden çıkarmak istediğinize emin misiniz?')) return;
+    try {
+        await fetch('/api/watchlist/' + productId, {method: 'DELETE'});
+        const col = document.getElementById('wcard-' + productId);
+        if (col) {
+            col.style.transition = 'opacity 0.3s';
+            col.style.opacity = '0';
+            setTimeout(() => col.remove(), 300);
+        }
+        showToast('Favorilerden çıkarıldı', 'success');
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+
+// Arka Plan Kaldır
+async function removeBg(productId) {
+    try {
+        await fetch('/api/product/' + productId + '/remove-bg', {method: 'POST'});
+        showToast('Arka plan kaldırma başlatıldı', 'info');
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+
+// SEO Üret
+async function generateSeo(productId) {
+    try {
+        await fetch('/api/product/' + productId + '/generate-seo', {method: 'POST'});
+        showToast('SEO içeriği üretiliyor...', 'info');
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,54 @@
+# VIDEOCU v1 - Requirements
+
+# GUI
+PyQt5==5.15.10
+PyQt5-Qt5==5.15.2
+PyQt5-sip==12.13.0
+
+# AI & Content
+google-generativeai==0.8.5
+elevenlabs==0.2.27
+requests==2.31.0
+
+# Trend Analysis
+pytrends==4.9.2
+google-api-python-client==2.108.0
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+
+# Video Processing
+moviepy==1.0.3
+Pillow==10.1.0
+numpy==1.24.3
+imageio==2.33.0
+imageio-ffmpeg==0.4.9
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9  # PostgreSQL adapter for production
+
+# Utils
+python-dotenv==1.0.0
+pydantic==2.5.0
+psutil==5.9.6
+
+# EXE Build
+pyinstaller==6.3.0
+
+# Social Media APIs
+TikTokApi>=6.0.0
+playwright>=1.40.0
+instagrapi>=2.2.1
+
+# Telegram Bot
+python-telegram-bot==20.7
+
+# FastAPI Backend
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pyjwt==2.8.0
+websockets==12.0
+
+# Task Queue (Production)
+celery[redis]==5.3.4
+redis==5.0.1

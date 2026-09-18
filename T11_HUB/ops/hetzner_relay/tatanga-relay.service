@@ -1,0 +1,29 @@
+[Unit]
+Description=TATANGA posta rolesi (IMAP -> Telegram, salt okunur)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tatanga-relay
+ExecStart=/usr/bin/python3 /opt/tatanga-relay/relay.py
+Restart=always
+RestartSec=30
+
+# Sunucuda 5.6 GB bos disk ve 2.4 GB bos RAM var; bu servis kaza ile
+# bunlari yiyip cssberlin'i etkilemesin diye sinirlandirildi.
+MemoryMax=200M
+CPUQuota=25%
+
+# Sertlestirme: servis yalnizca kendi klasorune yazabilir.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/tatanga-relay
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

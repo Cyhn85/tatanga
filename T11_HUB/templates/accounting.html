@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% set active_page = "accounting" %}
+{% block title %}Muhasebe - Kleinunternehmen{% endblock %}
+{% block page_title %}<i class="fas fa-calculator me-2"></i>Muhasebe (Kleinunternehmer &sect;19 UStG){% endblock %}
+
+{% block content %}
+<!-- DURUM KARTLARI -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card p-3 text-center" style="border-left:4px solid #28a745;">
+            <div style="font-size:0.7rem;color:#888;">TOPLAM GELIR ({{ current_year }})</div>
+            <div style="font-size:1.4rem;font-weight:700;color:#28a745;" id="total-income">{{ "%.2f"|format(summary.total_income or 0) }} &euro;</div>
+            <div style="font-size:0.6rem;color:#ffa500;">Limit: 25.000 &euro; / yil</div>
+            <div class="progress mt-1" style="height:6px;">
+                <div class="progress-bar bg-{{ 'danger' if (summary.total_income or 0) > 22000 else 'warning' if (summary.total_income or 0) > 18000 else 'success' }}"
+                     style="width:{{ [((summary.total_income or 0)/25000*100), 100]|min }}%"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 text-center" style="border-left:4px solid #dc3545;">
+            <div style="font-size:0.7rem;color:#888;">TOPLAM GIDER ({{ current_year }})</div>
+            <div style="font-size:1.4rem;font-weight:700;color:#dc3545;" id="total-expense">{{ "%.2f"|format(summary.total_expense or 0) }} &euro;</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 text-center" style="border-left:4px solid #17a2b8;">
+            <div style="font-size:0.7rem;color:#888;">NET KAR ({{ current_year }})</div>
+            <div style="font-size:1.4rem;font-weight:700;color:#17a2b8;">{{ "%.2f"|format((summary.total_income or 0) - (summary.total_expense or 0)) }} &euro;</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 text-center" style="border-left:4px solid #ffa500;">
+            <div style="font-size:0.7rem;color:#888;">SATILAN URUN</div>
+            <div style="font-size:1.4rem;font-weight:700;color:#ffa500;">{{ summary.total_sales or 0 }}</div>
+            <div style="font-size:0.6rem;color:#888;">Bu ay: {{ summary.monthly_sales or 0 }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- KLEINUNTERNEHMER UYARI -->
+{% if (summary.total_income or 0) > 22000 %}
+<div class="alert alert-danger d-flex align-items-center mb-3" style="background:rgba(220,53,69,0.15);border:1px solid rgba(220,53,69,0.4);">
+    <i class="fas fa-exclamation-triangle me-2 fa-2x"></i>
+    <div>
+        <strong>DIKKAT!</strong> Yillik geliriniz 22.000 &euro; sinirini asti.
+        Bir sonraki yil KDV mukellefi olabilirsiniz. Mali musavirinize danisin.
+    </div>
+</div>
+{% elif (summary.total_income or 0) > 18000 %}
+<div class="alert alert-warning d-flex align-items-center mb-3" style="background:rgba(255,165,0,0.15);border:1px solid rgba(255,165,0,0.4);">
+    <i class="fas fa-info-circle me-2"></i>
+    <div>Yillik gelir 22.000 &euro; sinirana yaklasiyorsunuz ({{ "%.0f"|format((summary.total_income or 0)/25000*100) }}%). Dikkatli olun.</div>
+</div>
+{% endif %}
+
+<!-- TABS -->
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-entries" style="color:#fff;">
+            <i class="fas fa-list"></i> Kayitlar
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-add" style="color:#fff;">
+            <i class="fas fa-plus"></i> Yeni Kayit
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-sales" style="color:#fff;">
+            <i class="fas fa-shopping-cart"></i> Satislar
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-euer" style="color:#fff;">
+            <i class="fas fa-file-invoice"></i> EUeR Raporu
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- KAYITLAR TAB -->
+    <div class="tab-pane fade show active" id="tab-entries">
+        <div class="d-flex justify-content-between mb-2">
+            <select class="form-select form-select-sm" style="width:auto;" id="filter-type" onchange="loadEntries()">
+                <option value="">Tumu</option>
+                <option value="income">Gelir</option>
+                <option value="expense">Gider</option>
+            </select>
+            <select class="form-select form-select-sm" style="width:auto;" id="filter-month" onchange="loadEntries()">
+                <option value="">Tum Aylar</option>
+                <option value="01">Ocak</option><option value="02">Subat</option>
+                <option value="03">Mart</option><option value="04">Nisan</option>
+                <option value="05">Mayis</option><option value="06">Haziran</option>
+                <option value="07">Temmuz</option><option value="08">Agustos</option>
+                <option value="09">Eylul</option><option value="10">Ekim</option>
+                <option value="11">Kasim</option><option value="12">Aralik</option>
+            </select>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dark table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Tarih</th><th>Tur</th><th>Kategori</th><th>Aciklama</th>
+                        <th>Platform</th><th class="text-end">Tutar</th><th>Islem</th>
+                    </tr>
+                </thead>
+                <tbody id="entries-table">
+                    {% for e in entries %}
+                    <tr>
+                        <td>{{ e.date }}</td>
+                        <td><span class="badge bg-{{ 'success' if e.entry_type == 'income' else 'danger' }}">
+                            {{ 'Gelir' if e.entry_type == 'income' else 'Gider' }}</span></td>
+                        <td>{{ e.category }}</td>
+                        <td>{{ e.description[:40] }}</td>
+                        <td>{{ e.platform or '-' }}</td>
+                        <td class="text-end fw-bold" style="color:{{ '#28a745' if e.entry_type == 'income' else '#dc3545' }}">
+                            {{ '+' if e.entry_type == 'income' else '-' }}{{ "%.2f"|format(e.amount) }} &euro;</td>
+                        <td><button class="btn btn-sm btn-outline-danger" onclick="deleteEntry({{ e.id }})"><i class="fas fa-trash"></i></button></td>
+                    </tr>
+                    {% endfor %}
+                    {% if not entries %}
+                    <tr><td colspan="7" class="text-center text-muted">Henuz kayit yok</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- YENI KAYIT TAB -->
+    <div class="tab-pane fade" id="tab-add">
+        <form id="entry-form" onsubmit="submitEntry(event)">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label small">Tur</label>
+                    <select class="form-select" name="entry_type" required>
+                        <option value="income">Gelir (Einnahme)</option>
+                        <option value="expense">Gider (Ausgabe)</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Kategori</label>
+                    <select class="form-select" name="category" required>
+                        <option value="">Secin...</option>
+                        <optgroup label="Gelir">
+                            <option value="online_sale">Online Satis</option>
+                            <option value="offline_sale">Yuz Yuze Satis</option>
+                            <option value="shipping_income">Kargo Geliri</option>
+                            <option value="other_income">Diger Gelir</option>
+                        </optgroup>
+                        <optgroup label="Gider">
+                            <option value="purchase">Urun Alimi</option>
+                            <option value="shipping_expense">Kargo Gideri</option>
+                            <option value="packaging">Paketleme Malzemesi</option>
+                            <option value="platform_fee">Platform Komisyonu</option>
+                            <option value="software">Yazilim/Abonelik</option>
+                            <option value="office">Buro Malzemesi</option>
+                            <option value="communication">Iletisim (Tel/Internet)</option>
+                            <option value="advertising">Reklam</option>
+                            <option value="bank_fee">Banka Masrafi</option>
+                            <option value="other_expense">Diger Gider</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Tarih</label>
+                    <input type="date" class="form-control" name="date" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Aciklama</label>
+                    <input type="text" class="form-control" name="description" placeholder="Ornek: Nike Windbreaker Vinted satisi" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Tutar (&euro;)</label>
+                    <input type="number" step="0.01" class="form-control" name="amount" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Platform</label>
+                    <select class="form-select" name="platform">
+                        <option value="">Yok</option>
+                        <option value="vinted">Vinted</option>
+                        <option value="ebay">eBay</option>
+                        <option value="kleinanzeigen">Kleinanzeigen</option>
+                        <option value="willhaben">Willhaben</option>
+                        <option value="sellpy">Sellpy</option>
+                        <option value="cssberlin">CSS Berlin</option>
+                        <option value="offline">Yuz Yuze</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Karsi Taraf (Alici/Satici)</label>
+                    <input type="text" class="form-control" name="counterparty" placeholder="Ornek: max_mustermann_123">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Fatura No</label>
+                    <input type="text" class="form-control" name="invoice_number" placeholder="Opsiyonel">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Odeme Yontemi</label>
+                    <select class="form-select" name="payment_method">
+                        <option value="platform_payment">Platform Odemesi</option>
+                        <option value="bank_transfer">Banka Transferi</option>
+                        <option value="paypal">PayPal</option>
+                        <option value="cash">Nakit</option>
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label small">Notlar</label>
+                    <textarea class="form-control" name="notes" rows="2" placeholder="Opsiyonel notlar..."></textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Kaydet</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- SATISLAR TAB -->
+    <div class="tab-pane fade" id="tab-sales">
+        <div class="table-responsive">
+            <table class="table table-dark table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Tarih</th><th>Urun</th><th>Platform</th><th>Alis</th>
+                        <th>Satis</th><th>Komisyon</th><th>Kargo</th><th class="text-end">Net Kar</th>
+                    </tr>
+                </thead>
+                <tbody id="sales-table">
+                    {% for s in sales %}
+                    <tr>
+                        <td>{{ s.sold_date }}</td>
+                        <td>{{ s.product_title or s.product_id or '-' }}</td>
+                        <td><span class="badge bg-secondary">{{ s.sold_platform }}</span></td>
+                        <td>{{ "%.2f"|format(s.buy_price or 0) }} &euro;</td>
+                        <td>{{ "%.2f"|format(s.sold_price) }} &euro;</td>
+                        <td style="color:#dc3545;">-{{ "%.2f"|format(s.platform_fee or 0) }} &euro;</td>
+                        <td style="color:#dc3545;">-{{ "%.2f"|format(s.shipping_cost_actual or 0) }} &euro;</td>
+                        <td class="text-end fw-bold" style="color:{{ '#28a745' if (s.net_profit or 0) > 0 else '#dc3545' }}">
+                            {{ "%.2f"|format(s.net_profit or 0) }} &euro;</td>
+                    </tr>
+                    {% endfor %}
+                    {% if not sales %}
+                    <tr><td colspan="8" class="text-center text-muted">Henuz satis kaydedilmemis</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- EUeR RAPORU TAB -->
+    <div class="tab-pane fade" id="tab-euer">
+        <div class="card p-3 mb-3">
+            <h6><i class="fas fa-file-invoice me-2"></i>Einnahmen-Ueberschuss-Rechnung (EUeR) - {{ current_year }}</h6>
+            <p class="small text-muted">Kleinunternehmer &sect;19 UStG - KDV muaf, yillik gelir limiti 25.000 &euro;</p>
+            <hr>
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 style="color:#28a745;">EINNAHMEN (Gelirler)</h6>
+                    <table class="table table-sm table-dark">
+                        {% for cat, amount in euer.income_by_category.items() %}
+                        <tr><td>{{ cat }}</td><td class="text-end" style="color:#28a745;">{{ "%.2f"|format(amount) }} &euro;</td></tr>
+                        {% endfor %}
+                        <tr class="fw-bold"><td>TOPLAM GELIR</td><td class="text-end" style="color:#28a745;">{{ "%.2f"|format(euer.total_income or 0) }} &euro;</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6 style="color:#dc3545;">AUSGABEN (Giderler)</h6>
+                    <table class="table table-sm table-dark">
+                        {% for cat, amount in euer.expense_by_category.items() %}
+                        <tr><td>{{ cat }}</td><td class="text-end" style="color:#dc3545;">{{ "%.2f"|format(amount) }} &euro;</td></tr>
+                        {% endfor %}
+                        <tr class="fw-bold"><td>TOPLAM GIDER</td><td class="text-end" style="color:#dc3545;">{{ "%.2f"|format(euer.total_expense or 0) }} &euro;</td></tr>
+                    </table>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="p-3" style="background:rgba(23,162,184,0.1);border-radius:8px;">
+                        <div style="font-size:0.8rem;color:#17a2b8;">GEWINN (Net Kar)</div>
+                        <div style="font-size:1.8rem;font-weight:700;color:#17a2b8;">{{ "%.2f"|format(euer.net_profit or 0) }} &euro;</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3" style="background:rgba(255,165,0,0.1);border-radius:8px;">
+                        <div style="font-size:0.8rem;color:#ffa500;">Kleinunternehmer Durum</div>
+                        {% if (euer.total_income or 0) <= 25000 %}
+                        <div style="font-size:1rem;color:#28a745;"><i class="fas fa-check-circle"></i> KDV muaf - &sect;19 UStG aktif</div>
+                        <div style="font-size:0.7rem;color:#888;">Kalan limit: {{ "%.2f"|format(25000 - (euer.total_income or 0)) }} &euro;</div>
+                        {% else %}
+                        <div style="font-size:1rem;color:#dc3545;"><i class="fas fa-times-circle"></i> Limit asildi!</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-outline-info btn-sm" onclick="downloadEUeR()"><i class="fas fa-download me-1"></i>EUeR PDF Indir</button>
+                <button class="btn btn-outline-warning btn-sm" onclick="generateElster()"><i class="fas fa-file-export me-1"></i>ELSTER Hazirla</button>
+            </div>
+        </div>
+
+        <!-- AYLIK OZET -->
+        <div class="card p-3">
+            <h6><i class="fas fa-chart-bar me-2"></i>Aylik Ozet - {{ current_year }}</h6>
+            <div class="table-responsive">
+                <table class="table table-dark table-sm">
+                    <thead><tr><th>Ay</th><th class="text-end">Gelir</th><th class="text-end">Gider</th><th class="text-end">Net</th><th class="text-end">Kumulatif</th></tr></thead>
+                    <tbody>
+                        {% for m in euer.monthly %}
+                        <tr>
+                            <td>{{ m.month_name }}</td>
+                            <td class="text-end" style="color:#28a745;">{{ "%.2f"|format(m.income) }} &euro;</td>
+                            <td class="text-end" style="color:#dc3545;">{{ "%.2f"|format(m.expense) }} &euro;</td>
+                            <td class="text-end fw-bold" style="color:{{ '#28a745' if m.net > 0 else '#dc3545' }}">{{ "%.2f"|format(m.net) }} &euro;</td>
+                            <td class="text-end" style="color:#17a2b8;">{{ "%.2f"|format(m.cumulative) }} &euro;</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function submitEntry(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = Object.fromEntries(new FormData(form));
+    data.amount = parseFloat(data.amount);
+
+    const resp = await fetch('/api/accounting/entry', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    if (resp.ok) {
+        showToast('Kayit eklendi!', 'success');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        showToast('Hata!', 'error');
+    }
+}
+
+async function deleteEntry(id) {
+    if (!confirm('Bu kaydi silmek istediginizden emin misiniz?')) return;
+    await fetch('/api/accounting/entry/' + id, {method: 'DELETE'});
+    location.reload();
+}
+
+function loadEntries() {
+    const type = document.getElementById('filter-type').value;
+    const month = document.getElementById('filter-month').value;
+    const params = new URLSearchParams();
+    if (type) params.set('type', type);
+    if (month) params.set('month', month);
+    window.location.href = '/accounting?' + params.toString();
+}
+
+async function downloadEUeR() {
+    showToast('EUeR raporu hazirlaniyor...', 'info');
+    const resp = await fetch('/api/accounting/euer-export');
+    if (resp.ok) {
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'EUeR_{{ current_year }}.csv';
+        a.click();
+        showToast('EUeR indirildi!', 'success');
+    }
+}
+
+async function generateElster() {
+    showToast('ELSTER verileri hazirlaniyor...', 'info');
+    const resp = await fetch('/api/accounting/elster-data');
+    if (resp.ok) {
+        const data = await resp.json();
+        showToast('ELSTER verileri hazir! Konsola bakabilirsiniz.', 'success');
+        console.log('ELSTER Data:', data);
+    }
+}
+
+// Tarih alanini bugunle doldur
+document.addEventListener('DOMContentLoaded', () => {
+    const dateInput = document.querySelector('input[name="date"]');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% set active_page = "kurasyon" %}
+{% block title %}Kurasyon{% endblock %}
+{% block page_title %}<i class="fas fa-check-double me-2"></i>Kurasyon - Insan Onayli Yayin{% endblock %}
+
+{% block content %}
+<div class="alert" style="background:rgba(0,184,148,0.1);border:1px solid #00b894;color:var(--text-primary);">
+    <div class="d-flex align-items-center gap-2">
+        <i class="fas fa-eye text-success fa-lg"></i>
+        <div>
+            <strong>Nihai gorseli gorup karar ver.</strong> Asagidaki resimler cssberlin'e
+            gidecek olan <u>gercek 1200x1200 ciktilardir</u> - ham platform fotografi degil.
+            Begendigini onayla, kotu kesimi ele. Sadece onayladiklarin yayina cikar.
+        </div>
+    </div>
+</div>
+
+<!-- SAYIM + ISLEM CUBUGU -->
+<div class="card mb-3">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
+        <div class="d-flex gap-3">
+            <span class="badge bg-secondary fs-6">Bekleyen: {{ sayim.bekleyen or 0 }}</span>
+            <span class="badge bg-warning text-dark fs-6">Aday: {{ sayim.onay or 0 }}</span>
+            <span class="badge bg-danger fs-6">Elenen: {{ sayim.red or 0 }}</span>
+        </div>
+
+        <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
+            <select id="kategoriSec" class="form-select form-select-sm" style="width:auto;min-width:220px">
+                <option value="">-- Tum kategoriler --</option>
+                {% for k in kategoriler %}
+                <option value="{{ k.k }}" {% if k.k == secili_kategori %}selected{% endif %}>
+                    {{ k.k[:34] }} ({{ k.islenmis }}/{{ k.n }} islenmis)
+                </option>
+                {% endfor %}
+            </select>
+
+            <input id="adetSec" type="number" class="form-control form-control-sm"
+                   value="20" min="1" max="100" style="width:80px" title="Kac urun islensin">
+
+            <button class="btn btn-sm btn-primary" onclick="isleBatch()">
+                <i class="fas fa-magic me-1"></i> Gorselleri Isle
+            </button>
+
+            <a href="/yayin" class="btn btn-sm btn-warning">
+                <i class="fas fa-tags me-1"></i> Yayin Ekrani ({{ sayim.onay or 0 }})
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- DURUM SEKMELERI -->
+<ul class="nav nav-tabs mb-3">
+    {% for d, etiket in [('bekleyen','Karar Bekleyen'), ('onay','Aday'), ('red','Elenen')] %}
+    <li class="nav-item">
+        <a class="nav-link {% if secili_durum == d %}active{% endif %}"
+           href="/kurasyon?durum={{ d }}&kategori={{ secili_kategori }}">{{ etiket }}</a>
+    </li>
+    {% endfor %}
+</ul>
+
+<!-- IZGARA -->
+<div class="row g-3" id="izgara">
+    {% for p in urunler %}
+    {% set proc = (p.processed_images_json | default('[]') | fromjson) %}
+    <div class="col-6 col-md-4 col-lg-3" id="kart-{{ p.id }}">
+        <div class="card h-100">
+            <div style="background:#fff;border-radius:8px 8px 0 0;overflow:hidden">
+                {% if proc %}
+                <img src="{{ proc[0] }}" style="width:100%;aspect-ratio:1;object-fit:contain;display:block"
+                     onerror="this.src='/static/img/no-image.svg'">
+                {% endif %}
+            </div>
+            <div class="card-body p-2">
+                <a href="/product/{{ p.id }}" target="_blank" class="product-title-link small d-block"
+                   style="line-height:1.3;height:2.6em;overflow:hidden">{{ p.title[:60] }}</a>
+
+                <div class="small text-muted mt-1">
+                    {{ p.source_platform }} &middot; {{ proc|length }} gorsel
+                    {% if p.estimated_sell_price %}&middot; {{ '%.0f'|format(p.estimated_sell_price) }} EUR{% endif %}
+                </div>
+
+                {% if not p.seo_title or not p.seo_description %}
+                <div class="small text-warning mt-1"><i class="fas fa-exclamation-triangle"></i> SEO eksik</div>
+                {% endif %}
+
+                <div class="d-flex gap-1 mt-2">
+                    <button class="btn btn-sm btn-success flex-fill" onclick="karar('{{ p.id }}','onay')" title="Aday yap - yayin ekranina dusar"
+                            {% if p.curation_status == 'onay' %}disabled{% endif %}>
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger flex-fill" onclick="karar('{{ p.id }}','red')" title="Ele"
+                            {% if p.curation_status == 'red' %}disabled{% endif %}>
+                        <i class="fas fa-times"></i>
+                    </button>
+                    {% if p.curation_status %}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="karar('{{ p.id }}',null)" title="Karari geri al">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="card"><div class="card-body text-center text-muted py-5">
+            <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+            Bu filtrede urun yok. Once bir kategori secip <strong>Gorselleri Isle</strong>'ye bas.
+        </div></div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+async function karar(id, decision) {
+    const r = await fetch(`/api/curation/${id}/decide`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({decision})
+    });
+    if (r.ok) {
+        const kart = document.getElementById('kart-' + id);
+        if (kart) { kart.style.transition = 'opacity .2s'; kart.style.opacity = '0';
+                    setTimeout(() => kart.remove(), 200); }
+    } else {
+        alert('Karar kaydedilemedi');
+    }
+}
+
+async function isleBatch() {
+    const category = document.getElementById('kategoriSec').value;
+    const limit = parseInt(document.getElementById('adetSec').value) || 20;
+    const r = await fetch('/api/curation/process-batch', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({category, limit})
+    });
+    const d = await r.json();
+    alert(`${d.count} urun islemeye alindi. Her gorsel ~20-60 sn suruyor.\n` +
+          `Bittikce bu sayfayi yenile, izgarada belirecekler.`);
+}
+
+
+document.getElementById('kategoriSec').addEventListener('change', function() {
+    location.href = `/kurasyon?durum={{ secili_durum }}&kategori=${encodeURIComponent(this.value)}`;
+});
+</script>
+{% endblock %}

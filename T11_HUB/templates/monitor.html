@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% set active_page = "monitor" %}
+{% block title %}Canlilik Takip{% endblock %}
+{% block page_title %}<i class="fas fa-eye me-2"></i>Kaynak Canlilik Takip{% endblock %}
+
+{% block content %}
+<!-- ACTIONS -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="text-muted mb-0">Kazinan urunlerin kaynak platformda hala aktif olup olmadigini takip edin.</p>
+    <button class="btn btn-primary" onclick="checkAll()">
+        <i class="fas fa-sync me-1"></i> Tumunu Kontrol Et
+    </button>
+</div>
+
+<div class="row g-4">
+    <!-- Products to check -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Kontrol Bekleyen Urunler ({{ products|length }})</h6>
+            </div>
+            <div class="card-body p-0">
+                {% for p in products %}
+                <div class="source-status-card source-{{ p.source_status or 'unknown' }} mx-3 my-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="platform-badge {{ p.source_platform }}">{{ p.source_platform }}</span>
+                            <a href="/product/{{ p.id }}" class="product-title-link ms-2">{{ p.title[:50] }}</a>
+                            <div class="small text-muted mt-1">
+                                {{ "%.2f"|format(p.price or 0) }} &euro;
+                                {% if p.last_source_check %}
+                                | Son kontrol: {{ p.last_source_check[:16] }}
+                                {% else %}
+                                | <span class="text-warning">Henuz kontrol edilmedi</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="badge bg-{% if p.source_status == 'active' %}success{% elif p.source_status == 'sold' %}danger{% elif p.source_status == 'reserved' %}warning{% else %}secondary{% endif %}">
+                                {{ p.source_status or 'Bilinmiyor' }}
+                            </span>
+                            <button class="btn btn-sm btn-outline-warning" onclick="checkOne('{{ p.id }}')">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if not products %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                    <h5>Kontrol bekleyen urun yok</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Checks -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Son Kontroller</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr><th>Urun</th><th>Durum</th><th>HTTP</th><th>Tarih</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for c in recent_checks %}
+                            <tr>
+                                <td><a href="/product/{{ c.product_id }}" class="small">{{ c.product_id[:12] }}...</a></td>
+                                <td>
+                                    <span class="badge bg-{% if c.status == 'active' %}success{% elif c.status == 'sold' %}danger{% elif c.status == 'error' %}warning{% else %}secondary{% endif %}">
+                                        {{ c.status }}
+                                    </span>
+                                </td>
+                                <td><code class="small">{{ c.response_code }}</code></td>
+                                <td><small>{{ c.checked_at[:16] }}</small></td>
+                            </tr>
+                            {% endfor %}
+                            {% if not recent_checks %}
+                            <tr><td colspan="4" class="text-center text-muted py-3">Henuz kontrol yapilmadi</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="card mt-3">
+            <div class="card-header"><h6 class="mb-0">Durum Aciklamalari</h6></div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-success">active</span> Urun hala satista
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-danger">sold</span> Urun satilmis
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-warning text-dark">reserved</span> Urun rezerve edilmis
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-secondary">removed</span> Urun kaldirilmis
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-info">unknown</span> Durum belirlenemedi
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function checkOne(id) {
+    await fetch(`/api/product/${id}/check-source`, {method:'POST'});
+    showToast('Kontrol basladi', 'info');
+}
+
+async function checkAll() {
+    if (!confirm('Tum urunler kontrol edilsin mi? Bu islem uzun surebilir.')) return;
+    showToast('Toplu kontrol basladi...', 'info');
+
+    const cards = document.querySelectorAll('.source-status-card');
+    for (const card of cards) {
+        const btn = card.querySelector('button');
+        if (btn) {
+            const id = btn.getAttribute('onclick').match(/'(.+?)'/)?.[1];
+            if (id) {
+                await fetch(`/api/product/${id}/check-source`, {method:'POST'});
+                await new Promise(r => setTimeout(r, 1000)); // 1 sec delay
+            }
+        }
+    }
+    showToast('Toplu kontrol tamamlandi', 'success');
+    setTimeout(() => location.reload(), 3000);
+}
+</script>
+{% endblock %}

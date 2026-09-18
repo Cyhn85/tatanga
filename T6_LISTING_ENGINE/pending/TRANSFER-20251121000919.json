@@ -1,0 +1,40 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/huawei-p30-lite-128gb-top-zustand-ovp-kopfhoerer/3199177035-173-3435",
+    "scraped_at": "2025-11-21T00:09:03.504662",
+    "title": "Huawei P30 Lite 128GB – Top Zustand, OVP & Kopfhörer",
+    "price": 90,
+    "description": "Zum Verkauf steht ein Huawei P30 Lite mit 128GB Speicher in sehr gutem Zustand.\n\nOriginalverpackung (OVP) vorhanden\n\nOriginal-Kopfhörer inklusive\n\nKein Ladegerät enthalten\n\nDas Smartphone wurde immer sorgfältig genutzt und funktioniert einwandfrei.\nIdeal für alle, die ein zuverlässiges und leistungsstarkes Gerät zu einem fairen Preis suchen.\n\nPrivatverkauf, daher keine Garantie oder Rücknahme.",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/09/09a25d76-790d-4a82-9f45-14d71660e580?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/d7/d769ddba-5677-47bc-931e-673662236829?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/39/39af201b-c23f-44b7-8d4c-4387f458e76c?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/fb/fbc10d1a-8b58-4e58-869f-a8d18bfcadcf?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/84/846374ae-e012-4bbe-9212-37a3811ac7f9?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Huawei P30 Lite 128GB Top",
+    "description": "Huawei P30 Lite mit 128GB Speicher in sehr gutem Zustand. OVP und Original-Kopfhörer inklusive. Kein Ladegerät. Sorgfältig genutzt, einwandfrei funktionierend. Ideal für zuverlässige und leistungsstarke Geräte zu fairen Preisen.",
+    "suggested_price": 99,
+    "hashtags": [
+      "Huawei",
+      "P30Lite",
+      "Smartphone",
+      "128GB"
+    ],
+    "category_suggestion": "Elektronik & Technik"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD8_1_5def072b.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD8_2_0f5d8782.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD8_3_f45d34e1.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD8_4_df953870.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD8_5_e66ec48c.jpg"
+  ],
+  "id": "TRANSFER-20251121000919",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

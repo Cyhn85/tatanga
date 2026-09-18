@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+{% set active_page = "products" %}
+{% block title %}{{ product.title[:40] }} - Detay{% endblock %}
+{% block page_title %}Urun Detay{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- LEFT: Images -->
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <h6 class="mb-0"><i class="fas fa-images me-1"></i> Gorseller</h6>
+                {% if product.bg_removed == 1 %}
+                <span class="badge bg-success"><i class="fas fa-check"></i> BG Kaldirildi</span>
+                {% else %}
+                <button class="btn btn-sm btn-outline-success" onclick="removeBg('{{ product.id }}')">
+                    <i class="fas fa-magic me-1"></i> Arka Plan Kaldir
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <!-- Main Image -->
+                {% set images = (product.images_json | default('[]') | fromjson) %}
+                {% set processed = (product.processed_images_json | default('[]') | fromjson) %}
+                {% set display_images = processed if processed else images %}
+
+                {% if display_images %}
+                <div class="text-center mb-3">
+                    <img id="main-img" src="{{ display_images[0] }}"
+                         style="max-width:100%;max-height:400px;border-radius:12px;object-fit:contain;background:#1a1a2e;"
+                         onerror="this.style.display='none'">
+                </div>
+
+                <!-- Thumbnails -->
+                <div class="d-flex gap-2 flex-wrap justify-content-center">
+                    {% for img in display_images %}
+                    <img src="{{ img }}" class="thumb-img {% if loop.first %}active{% endif %}"
+                         style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid {% if loop.first %}#ffa500{% else %}transparent{% endif %};"
+                         onclick="document.getElementById('main-img').src=this.src; document.querySelectorAll('.thumb-img').forEach(t=>t.style.borderColor='transparent'); this.style.borderColor='#ffa500';"
+                         onerror="this.style.display='none'">
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-image fa-3x mb-2 d-block"></i>
+                    <small>Gorsel bulunamadi</small>
+                </div>
+                {% endif %}
+
+                <!-- Processed vs Original Toggle -->
+                {% if processed and images %}
+                <div class="mt-3 text-center">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-info active" onclick="toggleImages('processed')">
+                            <i class="fas fa-check-circle"></i> Islenmis
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="toggleImages('original')">
+                            <i class="fas fa-image"></i> Orijinal
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Source Status -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <h6 class="mb-0"><i class="fas fa-satellite-dish me-1"></i> Kaynak Durum</h6>
+                <button class="btn btn-sm btn-outline-warning" onclick="checkSrc()">
+                    <i class="fas fa-sync me-1"></i> Kontrol
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge fs-6
+                        {% if product.source_status == 'active' %}bg-success
+                        {% elif product.source_status == 'sold' %}bg-danger
+                        {% elif product.source_status == 'reserved' %}bg-warning text-dark
+                        {% else %}bg-secondary{% endif %}">
+                        {% if product.source_status == 'active' %}<i class="fas fa-check-circle"></i> Aktif
+                        {% elif product.source_status == 'sold' %}<i class="fas fa-ban"></i> Satildi
+                        {% elif product.source_status == 'reserved' %}<i class="fas fa-clock"></i> Rezerve
+                        {% else %}<i class="fas fa-question-circle"></i> {{ product.source_status or 'Bilinmiyor' }}
+                        {% endif %}
+                    </span>
+                    {% if product.last_source_check %}
+                    <small class="text-muted">{{ product.last_source_check[:16] }}</small>
+                    {% endif %}
+                </div>
+
+                {% if source_checks %}
+                <div style="max-height:150px;overflow-y:auto;">
+                    <table class="table table-sm mb-0" style="font-size:0.7rem;">
+                        <thead><tr><th>Tarih</th><th>Durum</th><th>HTTP</th></tr></thead>
+                        <tbody>
+                            {% for c in source_checks[:5] %}
+                            <tr>
+                                <td>{{ c.checked_at[:16] }}</td>
+                                <td><span class="badge bg-{% if c.status == 'active' %}success{% elif c.status == 'sold' %}danger{% else %}secondary{% endif %}">{{ c.status }}</span></td>
+                                <td><code>{{ c.response_code }}</code></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Info + Actions -->
+    <div class="col-lg-7">
+        <!-- Product Info Card -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="platform-badge {{ product.source_platform }}">{{ product.source_platform }}</span>
+                    <span class="badge bg-{% if product.status == 'published' %}primary{% elif product.status == 'scraped' %}info{% elif product.status == 'approved' %}success{% else %}secondary{% endif %}">
+                        {% if product.status == 'published' %}Yayinda
+                        {% elif product.status == 'scraped' %}Kazinmis
+                        {% elif product.status == 'approved' %}Onaylanmis
+                        {% else %}{{ product.status }}{% endif %}
+                    </span>
+                    {% if product.recommendation == 'buy' %}
+                    <span class="badge bg-success"><i class="fas fa-thumbs-up"></i> AL</span>
+                    {% elif product.recommendation == 'watch' %}
+                    <span class="badge bg-warning text-dark"><i class="fas fa-eye"></i> IZLE</span>
+                    {% endif %}
+                </div>
+                {% if product.source_url %}
+                <a href="{{ product.source_url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                    <i class="fas fa-external-link-alt me-1"></i> Kaynak
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <h4 class="mb-2">{{ product.title }}</h4>
+                {% if product.description %}
+                <p class="text-muted small">{{ product.description[:300] }}</p>
+                {% endif %}
+
+                <div class="row mt-3 g-2">
+                    <div class="col-6 col-md-4">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Alis Fiyati</small>
+                            <strong class="text-info">{{ "%.2f"|format(product.price or 0) }} EUR</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Kargo</small>
+                            <strong class="text-warning">{{ "%.2f"|format(product.shipping_cost or 0) }} EUR</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Toplam Maliyet</small>
+                            <strong class="text-danger">{{ "%.2f"|format(product.total_cost or 0) }} EUR</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Marka</small>
+                            <strong>{{ product.brand or '-' }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Beden</small>
+                            <strong>{{ product.size or '-' }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Renk</small>
+                            <strong>{{ product.color or '-' }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03);">
+                            <small class="text-muted d-block">Durum</small>
+                            <strong>{{ product.condition or '-' }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Arbitrage Analysis -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Platform Bazli Arbitraj</h6>
+            </div>
+            <div class="card-body">
+                {% set arb = (product.arbitrage_json | default('[]') | fromjson) %}
+                {% if arb %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0" style="font-size:0.75rem;">
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Tahmini Satis</th>
+                                <th>Kargo (Cikis)</th>
+                                <th>Komisyon</th>
+                                <th>Net Kar</th>
+                                <th>Marj</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in arb %}
+                            <tr class="{% if a.platform == product.best_sell_platform %}table-success{% endif %}"
+                                style="{% if a.platform == product.best_sell_platform %}background:rgba(40,167,69,0.15);{% endif %}">
+                                <td>
+                                    <span class="platform-badge {{ a.platform }}" style="font-size:0.6rem;">{{ a.platform }}</span>
+                                    {% if a.platform == product.best_sell_platform %}
+                                    <i class="fas fa-crown text-warning ms-1" title="En karli"></i>
+                                    {% endif %}
+                                </td>
+                                <td>{{ "%.2f"|format(a.est_sell_price or 0) }} EUR</td>
+                                <td class="text-muted" style="font-size:0.7rem;">{{ "%.2f"|format(a.outbound_shipping or 0) }} EUR</td>
+                                <td class="text-warning">{{ "%.2f"|format(a.sell_fee or 0) }} EUR <small>({{ "%.0f"|format((a.sell_fee_rate or 0) * 100) }}%)</small></td>
+                                <td class="{% if (a.net_profit or 0) >= 8 %}text-success fw-bold{% elif (a.net_profit or 0) >= 4 %}text-info{% elif (a.net_profit or 0) > 0 %}text-warning{% else %}text-danger{% endif %}">
+                                    {{ "%.2f"|format(a.net_profit or 0) }} EUR
+                                    {% if (a.net_profit or 0) >= 8 %}<i class="fas fa-thumbs-up ms-1" style="font-size:0.7rem;"></i>{% endif %}
+                                </td>
+                                <td>{{ "%.1f"|format(a.margin or 0) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.3);border-radius:8px;">
+                                <small class="text-muted d-block">Tahmini Satis</small>
+                                <strong class="text-success">{{ "%.2f"|format(product.estimated_sell_price or 0) }} EUR</strong>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.3);border-radius:8px;">
+                                <small class="text-muted d-block">Net Kar</small>
+                                <strong class="text-success">{{ "%.2f"|format(product.profit_euro or 0) }} EUR</strong>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.3);border-radius:8px;">
+                                <small class="text-muted d-block">Kar Marji</small>
+                                <strong class="text-success">{{ "%.1f"|format(product.profit_margin or 0) }}%</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- SEO Content -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <h6 class="mb-0"><i class="fas fa-search me-2"></i>SEO Icerik</h6>
+                <button class="btn btn-sm btn-outline-info" onclick="generateSEO()" id="btn-seo">
+                    <i class="fas fa-robot me-1"></i> AI ile Olustur
+                </button>
+            </div>
+            <div class="card-body">
+                {% if product.seo_title %}
+                <div class="mb-2">
+                    <label class="small text-muted">SEO Baslik</label>
+                    <div class="fw-bold" id="seo-title">{{ product.seo_title }}</div>
+                </div>
+                {% endif %}
+                {% if product.seo_description %}
+                <div class="mb-2">
+                    <label class="small text-muted">SEO Aciklama</label>
+                    <div class="small" id="seo-desc">{{ product.seo_description }}</div>
+                </div>
+                {% endif %}
+                {% if not product.seo_title and not product.seo_description %}
+                <div class="text-center text-muted py-2" id="seo-empty">
+                    <small>SEO icerigi henuz olusturulmadi. "AI ile Olustur" butonuna tikla.</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- PUBLISH TO CSSBERLIN - ANA AKSIYON -->
+        <!-- ========================================== -->
+        <div class="card mb-3" style="border:2px solid rgba(40,167,69,0.5);">
+            <div class="card-header" style="background:rgba(40,167,69,0.1);">
+                <h6 class="mb-0"><i class="fas fa-rocket me-2 text-success"></i>cssberlin.de'ye Yayinla</h6>
+            </div>
+            <div class="card-body">
+                {% if product.status == 'published' %}
+                <div class="text-center py-3">
+                    <div class="mb-2">
+                        <i class="fas fa-check-circle text-success fa-3x"></i>
+                    </div>
+                    <h5 class="text-success">Bu urun zaten yayinda!</h5>
+                    {% if product.cssberlin_id %}
+                    <a href="https://cssberlin.de/items/{{ product.cssberlin_id }}" target="_blank"
+                       class="btn btn-outline-success mt-2">
+                        <i class="fas fa-external-link-alt me-1"></i> cssberlin.de'de Gor
+                    </a>
+                    {% endif %}
+                </div>
+                {% else %}
+                <!-- Publish Checklist -->
+                <div class="mb-3">
+                    <h6 class="small fw-bold mb-2">Yayin Kontrol Listesi:</h6>
+                    <div class="d-flex flex-column gap-1" style="font-size:0.8rem;">
+                        <div class="d-flex align-items-center gap-2">
+                            {% set has_images = (product.images_json | default('[]') | fromjson) | length > 0 %}
+                            <i class="fas fa-{% if has_images %}check-circle text-success{% else %}times-circle text-danger{% endif %}"></i>
+                            <span>Gorseller mevcut</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-{% if product.bg_removed == 1 %}check-circle text-success{% else %}exclamation-circle text-warning{% endif %}"></i>
+                            <span>Arka plan {% if product.bg_removed == 1 %}kaldirildi{% else %}kaldirilmadi (opsiyonel){% endif %}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-{% if product.seo_title %}check-circle text-success{% else %}exclamation-circle text-warning{% endif %}"></i>
+                            <span>SEO icerik {% if product.seo_title %}hazir{% else %}henuz yok (opsiyonel){% endif %}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-{% if product.source_status == 'active' %}check-circle text-success{% else %}exclamation-circle text-warning{% endif %}"></i>
+                            <span>Kaynak durumu: {{ product.source_status or 'kontrol edilmedi' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Publish Form -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small">Satis Fiyati (EUR)</label>
+                        <input type="number" class="form-control" id="pub-price"
+                               value="{{ "%.2f"|format(product.estimated_sell_price or ((product.price or 0) * 1.5)) }}"
+                               step="0.01" min="1">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Kategori</label>
+                        <select class="form-select" id="pub-category">
+                            <option value="damen" {% if 'damen' in (product.category or '').lower() or 'dame' in (product.title or '').lower() or 'kleid' in (product.title or '').lower() %}selected{% endif %}>Damen</option>
+                            <option value="herren" {% if 'herren' in (product.category or '').lower() or 'herr' in (product.title or '').lower() %}selected{% endif %}>Herren</option>
+                            <option value="schuhe" {% if 'schuh' in (product.category or '').lower() or 'schuh' in (product.title or '').lower() or 'shoe' in (product.title or '').lower() %}selected{% endif %}>Schuhe</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Durum</label>
+                        <select class="form-select" id="pub-condition">
+                            <option value="good" selected>Gut (Iyi)</option>
+                            <option value="very_good">Sehr Gut (Cok Iyi)</option>
+                            <option value="new_without_tags">Neu ohne Etikett</option>
+                            <option value="new_with_tags">Neu mit Etikett</option>
+                            <option value="satisfactory">Akzeptabel</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Kullanilacak Gorseller</label>
+                        <select class="form-select" id="pub-images">
+                            {% if processed %}
+                            <option value="processed" selected>Islenmis Gorseller ({{ processed | length }})</option>
+                            {% endif %}
+                            <option value="original" {% if not processed %}selected{% endif %}>Orijinal Gorseller ({{ images | length }})</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="pub-result" style="display:none;" class="mb-3"></div>
+
+                <button class="btn btn-success btn-lg w-100" onclick="publishToCSS()" id="btn-publish">
+                    <i class="fas fa-rocket me-2"></i> cssberlin.de'ye Yayinla
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-body d-flex gap-2 flex-wrap">
+                <a href="/products" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Urunlere Don
+                </a>
+                <button class="btn btn-outline-success btn-sm" onclick="removeBg('{{ product.id }}')">
+                    <i class="fas fa-magic me-1"></i> Arka Plan Kaldir
+                </button>
+                <button class="btn btn-outline-info btn-sm" onclick="generateSEO()">
+                    <i class="fas fa-robot me-1"></i> SEO Olustur
+                </button>
+                <button class="btn btn-outline-warning btn-sm" onclick="addToWatchlist()">
+                    <i class="fas fa-heart me-1"></i> Takip Listesi
+                </button>
+                {% if product.source_url %}
+                <a href="{{ product.source_url }}" target="_blank" class="btn btn-outline-info btn-sm">
+                    <i class="fas fa-external-link-alt me-1"></i> Kaynak
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PRODUCT_ID = '{{ product.id }}';
+const origImages = {{ product.images_json | default('[]') | safe }};
+const procImages = {{ product.processed_images_json | default('[]') | safe }};
+
+// Image toggle
+function toggleImages(type) {
+    const imgs = type === 'processed' ? procImages : origImages;
+    if (imgs.length > 0) {
+        document.getElementById('main-img').src = imgs[0];
+    }
+}
+
+// Source check
+async function checkSrc() {
+    await fetch('/api/product/' + PRODUCT_ID + '/check-source', {method:'POST'});
+    showToast('Kaynak kontrol basladi...', 'info');
+    setTimeout(() => location.reload(), 4000);
+}
+
+// Background removal
+async function removeBg(id) {
+    const resp = await fetch('/api/product/' + id + '/remove-bg', {method:'POST'});
+    showToast('Arka plan kaldirma basladi (1-2 dk surebilir)', 'info');
+}
+
+// SEO Generation
+async function generateSEO() {
+    const btn = document.getElementById('btn-seo');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Olusturuluyor...';
+
+    try {
+        const resp = await fetch('/api/product/' + PRODUCT_ID + '/generate-seo', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({platform: 'cssberlin'})
+        });
+        const data = await resp.json();
+        showToast('SEO icerigi olusturuldu! Sayfa yenileniyor...', 'success');
+        setTimeout(() => location.reload(), 3000);
+    } catch(e) {
+        showToast('SEO olusturma hatasi: ' + e.message, 'danger');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-robot me-1"></i> AI ile Olustur';
+}
+
+// Watchlist
+async function addToWatchlist() {
+    const resp = await fetch('/api/watchlist/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({product_id: PRODUCT_ID})
+    });
+    const data = await resp.json();
+    if (data.status === 'added') {
+        showToast('Takip listesine eklendi!', 'success');
+    } else if (data.status === 'already_watching') {
+        showToast('Zaten takipte', 'warning');
+    }
+}
+
+// ========================================
+// PUBLISH TO CSSBERLIN.DE
+// ========================================
+async function publishToCSS() {
+    const btn = document.getElementById('btn-publish');
+    const result = document.getElementById('pub-result');
+
+    const price = parseFloat(document.getElementById('pub-price').value);
+    const category = document.getElementById('pub-category').value;
+    const condition = document.getElementById('pub-condition').value;
+    const imageType = document.getElementById('pub-images').value;
+
+    if (!price || price <= 0) {
+        showToast('Gecerli bir fiyat girin', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Yayinlaniyor...';
+    result.style.display = 'block';
+    result.innerHTML = '<div class="text-info"><i class="fas fa-spinner fa-spin"></i> cssberlin.de\'ye gonderiliyor...</div>';
+
+    try {
+        const resp = await fetch('/api/product/' + PRODUCT_ID + '/publish', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                target: 'cssberlin',
+                sell_price: price,
+                category_slug: category,
+                condition: condition,
+                image_type: imageType
+            })
+        });
+        const data = await resp.json();
+
+        if (data.status === 'published' && data.cssberlin_id) {
+            result.innerHTML = `
+                <div class="p-3" style="background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.3);border-radius:8px;">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="fas fa-check-circle text-success fa-2x"></i>
+                        <div>
+                            <div class="fw-bold text-success">Basariyla Yayinlandi!</div>
+                            <small class="text-muted">CSSberlin ID: ${data.cssberlin_id}</small>
+                        </div>
+                    </div>
+                    <a href="https://cssberlin.de/items/${data.cssberlin_id}" target="_blank"
+                       class="btn btn-sm btn-success w-100">
+                        <i class="fas fa-external-link-alt me-1"></i> cssberlin.de'de Gor
+                    </a>
+                </div>
+            `;
+            showToast('Urun cssberlin.de\'ye yayinlandi!', 'success');
+            setTimeout(() => location.reload(), 3000);
+        } else if (data.duplicate) {
+            result.innerHTML = `
+                <div class="p-2" style="background:rgba(255,165,0,0.1);border:1px solid rgba(255,165,0,0.3);border-radius:8px;">
+                    <i class="fas fa-exclamation-triangle text-warning"></i> Bu urun zaten cssberlin.de'de mevcut (ID: ${data.cssberlin_id})
+                </div>
+            `;
+            showToast('Bu urun zaten yayinda', 'warning');
+        } else {
+            result.innerHTML = `<div class="text-danger"><i class="fas fa-times"></i> ${data.error || 'Yayin hatasi'}</div>`;
+            showToast('Yayin hatasi: ' + (data.error || 'Bilinmeyen hata'), 'danger');
+        }
+    } catch(e) {
+        result.innerHTML = `<div class="text-danger"><i class="fas fa-times"></i> Baglanti hatasi: ${e.message}</div>`;
+        showToast('Baglanti hatasi', 'danger');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-rocket me-2"></i> cssberlin.de\'ye Yayinla';
+}
+</script>
+{% endblock %}

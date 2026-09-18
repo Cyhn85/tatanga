@@ -1,0 +1,45 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/cesare-paciotti-4us-damenjeans-gr-m-38-it-42-stretch/3243020961-154-3435",
+    "scraped_at": "2025-11-20T23:56:31.108920",
+    "title": "Cesare Paciotti 4US Damenjeans Gr. M (38) / IT 42 | Stretch",
+    "price": 25,
+    "description": "Hallo,\n\nich verkaufe diese neue und ungetragene Damenjeans der italienischen Edelmarke Cesare Paciotti 4US.\n\n* **Marke:** Cesare Paciotti 4US\n* **Zustand:** NEU und ungetragen!\n* **Art.-Nr:** POA5106\n\n---\n**GRÖSSE (WICHTIG):**\n* **Deutsche Größe:** M (passend für Gr. 38)\n* **Italienische Größe (im Etikett):** Tg. 42\n---\n\n* **Passform:** Skinny Fit / Schmale Passform (sehr dehnbar dank 2% Elastan)\n* **Farbe:** Blau (Used-Look Waschung mit leichten Destroyed-Details)\n* **Material:** 98% Baumwolle, 2% Elastan\n* **Details:** Coole Logo-Details an Knöpfen (Dolch) und goldene 4US Plakette.\n\nDie Jeans stammt aus einem gepflegten, tierfreien Nichtraucherhaushalt.\n\n---\n**Abholung & Versand:**\n\n* **Abholung:** Gerne in Berlin Spandau.\n* **Versand:** Versicherter Versand ist möglich (z.B. 4,95 € mit Hermes oder 5,49 € mit DHL).\n\n---\n**Bezahlung:**\n\n* Barzahlung bei Abholung\n* Die \"Sicher Bezahlen\" Funktion von Kleinanzeigen\n* PayPal\n* Banküberweisung\n\n---\n**Rechtliches:**\nPrivatverkauf. Ich schließe jegliche Sachmängelhaftung (Garantie oder Rückgabe) aus.\n\nBei Fragen einfach gerne melden!",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a0/a0391828-d081-4fbb-b90f-6845f55cb89b?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/ce/ce8dcd03-d5c8-4624-8b4e-14606c210965?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/4d/4d227522-9e26-4dff-8a24-032d0fd469af?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/ea/eaaa0fb5-92bb-4796-aff2-8924518047ae?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/9f/9f14326c-8f55-4b45-a905-2be77d82ada6?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/23/230f5d9d-4124-4ab2-badd-fdc869a6f552?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/84/84d29563-5578-4ded-b6d9-739df56973a0?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Cesare Paciotti 4US Damenjeans M 38",
+    "description": "Neue, ungetragene Cesare Paciotti 4US Damenjeans in Gr. M (38) / IT 42. Stretch-Material, Skinny Fit, Blau, 98% Baumwolle, 2% Elastan. Coole Logo-Details. Abholung in Berlin Spandau oder versicherter Versand möglich.",
+    "suggested_price": 28.75,
+    "hashtags": [
+      "CesarePaciotti",
+      "Damenjeans",
+      "SkinnyFit",
+      "StretchJeans",
+      "UsedLook"
+    ],
+    "category_suggestion": "Damen > Hosen & Jeans > Skinny Jeans"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD5_1_a90ffdd1.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD5_2_23b96846.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD5_3_b079c3ee.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD5_4_6b32845b.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD5_5_867cbf7d.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD5_6_28d691e1.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD5_7_f54f9fdf.jpg"
+  ],
+  "id": "TRANSFER-20251120235649",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TATANGA">
+    <meta name="theme-color" content="#0a0a1a">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/img/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+    <title>{% block title %}TATANGA Hub{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/hub.css" rel="stylesheet">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- SIDEBAR -->
+    <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-bolt"></i>
+                <span>TATANGA</span>
+            </div>
+            <small class="text-muted">Komuta Merkezi v1.0</small>
+        </div>
+
+        <ul class="sidebar-nav">
+            <li class="{% if active_page == 'dashboard' %}active{% endif %}">
+                <a href="/"><i class="fas fa-chart-line"></i> Dashboard</a>
+            </li>
+            <li class="{% if active_page == 'scraper' %}active{% endif %}">
+                <a href="/scraper"><i class="fas fa-spider"></i> Kazima</a>
+            </li>
+            <li class="{% if active_page == 'products' %}active{% endif %}">
+                <a href="/products"><i class="fas fa-box-open"></i> Urunler</a>
+            </li>
+            <li class="{% if active_page == 'watchlist' %}active{% endif %}">
+                <a href="/watchlist"><i class="fas fa-heart"></i> Favoriler</a>
+            </li>
+            <li class="{% if active_page == 'images' %}active{% endif %}">
+                <a href="/images"><i class="fas fa-image"></i> Gorsel Isleme</a>
+            </li>
+            <li class="{% if active_page == 'kurasyon' %}active{% endif %}">
+                <a href="/kurasyon"><i class="fas fa-check-double"></i> Kurasyon</a>
+            </li>
+            <li class="{% if active_page == 'yayin' %}active{% endif %}">
+                <a href="/yayin"><i class="fas fa-tags"></i> Yayin</a>
+            </li>
+            <li class="{% if active_page == 'published' %}active{% endif %}">
+                <a href="/published"><i class="fas fa-rocket"></i> Yayinlanan</a>
+            </li>
+            {# Muhasebe nav'dan gizlendi: muhasebe Buchhalter'da tutuluyor.
+               /accounting route'u ve verileri silinmedi, sadece menuden cikarildi. #}
+            <li class="{% if active_page == 'settings' %}active{% endif %}">
+                <a href="/settings"><i class="fas fa-cog"></i> Ayarlar</a>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <div class="status-indicator" id="ws-status">
+                <span class="dot offline"></span>
+                <small>Baglanti bekleniyor...</small>
+            </div>
+        </div>
+    </nav>
+
+    <!-- SIDEBAR BACKDROP (mobile) -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+    <!-- MAIN CONTENT -->
+    <main id="main-content">
+        <!-- TOP BAR -->
+        <div class="topbar">
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-sm btn-outline-secondary d-md-none" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h5 class="mb-0">{% block page_title %}Dashboard{% endblock %}</h5>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <div class="live-stats">
+                    <span class="badge bg-success" id="stat-active-jobs">0 Aktif Is</span>
+                    <span class="badge bg-primary" id="stat-total">0 Urun</span>
+                </div>
+                <div class="notification-bell" id="notification-bell">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-count" id="notif-count" style="display:none">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- NOTIFICATIONS TOAST AREA -->
+        <div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999"></div>
+
+        <!-- PAGE CONTENT -->
+        <div class="page-content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/hub.js"></script>
+    <script>
+    // PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/sw.js').then(reg => {
+            console.log('[PWA] Service Worker registered');
+        }).catch(err => console.log('[PWA] SW registration failed'));
+    }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

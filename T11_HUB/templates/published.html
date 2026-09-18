@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+{% set active_page = "published" %}
+
+{% block title %}Yayınlanan Ürünler - TATANGA Hub{% endblock %}
+{% block page_title %}<i class="fas fa-rocket me-2 text-primary"></i>Yayınlanan Ürünler{% endblock %}
+
+{% block content %}
+<!-- İSTATİSTİK KARTLARI -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary-soft"><i class="fas fa-rocket text-primary"></i></div>
+            <div class="stat-value">{{ stats.published }}</div>
+            <div class="stat-label">Yayında</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-danger-soft"><i class="fas fa-shopping-cart text-danger"></i></div>
+            <div class="stat-value">{{ stats.sold }}</div>
+            <div class="stat-label">Satılan</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success-soft"><i class="fas fa-euro-sign text-success"></i></div>
+            <div class="stat-value">
+                {% set total_value = published_products | sum(attribute='estimated_sell_price') %}
+                {{ '%.0f'|format(total_value or 0) }}&euro;
+            </div>
+            <div class="stat-label">Toplam Değer</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning-soft"><i class="fas fa-eye text-warning"></i></div>
+            <div class="stat-value">{{ monitor_products|length }}</div>
+            <div class="stat-label">Takip Edilecek</div>
+        </div>
+    </div>
+</div>
+
+<!-- SEKMELER -->
+<ul class="nav nav-tabs mb-3" id="publishedTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-published" data-bs-toggle="tab"
+                data-bs-target="#tab-published-pane" type="button" role="tab">
+            <i class="fas fa-rocket me-1"></i> Yayındaki Ürünler
+            <span class="badge bg-primary ms-1">{{ stats.published }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-monitor" data-bs-toggle="tab"
+                data-bs-target="#tab-monitor-pane" type="button" role="tab">
+            <i class="fas fa-eye me-1"></i> Kaynak Canlılık
+            <span class="badge bg-secondary ms-1">{{ monitor_products|length }}</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="publishedTabContent">
+
+    <!-- SEKME 1: Yayındaki Ürünler -->
+    <div class="tab-pane fade show active" id="tab-published-pane" role="tabpanel">
+        {% if published_products %}
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" style="font-size:0.85rem;">
+                        <thead>
+                            <tr>
+                                <th class="ps-3" style="width:60px;">Görsel</th>
+                                <th>Başlık</th>
+                                <th style="width:100px;">Kategori</th>
+                                <th style="width:180px;">Satış Fiyatı</th>
+                                <th style="width:90px;">Durum</th>
+                                <th style="width:120px;">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in published_products %}
+                            {% set images = p.images_json|fromjson if p.images_json else [] %}
+                            {% set proc_images = p.processed_images_json|fromjson if p.processed_images_json else [] %}
+                            {% set img_src = (proc_images[0] if proc_images else (images[0] if images else '/static/img/no-image.svg')) %}
+                            <tr id="pub-row-{{ p.id }}">
+                                <td class="ps-3">
+                                    <img src="{{ img_src }}" alt=""
+                                         style="width:48px;height:48px;object-fit:cover;border-radius:6px;"
+                                         onerror="this.src='/static/img/no-image.svg'">
+                                </td>
+                                <td>
+                                    <a href="/product/{{ p.id }}" class="text-decoration-none fw-600">
+                                        {{ (p.title or 'İsimsiz')[:55] }}{% if p.title and p.title|length > 55 %}...{% endif %}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">
+                                        <span class="platform-badge {{ p.source_platform }}" style="font-size:0.6rem;">{{ p.source_platform }}</span>
+                                        {% if p.brand %}&nbsp;·&nbsp;{{ p.brand }}{% endif %}
+                                        {% if p.cssberlin_id %}&nbsp;·&nbsp;<code style="font-size:0.6rem;">ID: {{ p.cssberlin_id[:8] }}</code>{% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary" style="font-size:0.7rem;">
+                                        {{ (p.published_to or '[]')|fromjson|first if p.published_to else 'cssberlin' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <!-- Inline fiyat güncelleme -->
+                                    <div class="d-flex align-items-center gap-1">
+                                        <input type="number"
+                                               class="form-control form-control-sm price-input"
+                                               id="price-{{ p.id }}"
+                                               value="{{ '%.2f'|format(p.estimated_sell_price or 0) }}"
+                                               step="0.5" min="1"
+                                               style="width:90px;"
+                                               oninput="markPriceChanged('{{ p.id }}')">
+                                        <span class="text-muted" style="font-size:0.8rem;">&euro;</span>
+                                        <button class="btn btn-success btn-sm" id="savebtn-{{ p.id }}"
+                                                style="display:none;font-size:0.7rem;padding:2px 7px;"
+                                                onclick="savePrice('{{ p.id }}')">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if p.source_status == 'active' or not p.source_status %}
+                                    <span class="badge bg-success"><i class="fas fa-circle me-1" style="font-size:0.5rem;"></i>Aktif</span>
+                                    {% elif p.source_status == 'sold' %}
+                                    <span class="badge bg-danger">Satıldı</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ p.source_status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        {% if p.cssberlin_id %}
+                                        <a href="http://localhost:3000/product/{{ p.cssberlin_id }}"
+                                           target="_blank" class="btn btn-outline-primary btn-sm"
+                                           title="cssberlin.de'de Gör" style="font-size:0.7rem;padding:3px 7px;">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                        {% endif %}
+                                        <button class="btn btn-outline-danger btn-sm"
+                                                title="Yayından Kaldır" style="font-size:0.7rem;padding:3px 7px;"
+                                                onclick="unpublishProduct('{{ p.id }}', '{{ (p.title or '')[:30] }}')">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-rocket fa-4x text-muted mb-3 d-block"></i>
+            <h5 class="text-muted">Henüz yayında ürün yok</h5>
+            <p class="text-muted">Favoriler sayfasından ürünleri yayına alabilirsiniz.</p>
+            <a href="/watchlist" class="btn btn-primary"><i class="fas fa-heart me-1"></i> Favorilere Git</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- SEKME 2: Kaynak Canlılık Takip -->
+    <div class="tab-pane fade" id="tab-monitor-pane" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <p class="text-muted mb-0 small">Kazınan ürünlerin kaynak platformda hala aktif olup olmadığını takip edin.</p>
+            <button class="btn btn-sm btn-primary" onclick="checkAllSources()">
+                <i class="fas fa-sync me-1"></i> Tümünü Kontrol Et
+            </button>
+        </div>
+
+        <div class="row g-3">
+            <!-- Kontrol Bekleyen -->
+            <div class="col-lg-7">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Kontrol Bekleyen Ürünler ({{ monitor_products|length }})</h6>
+                    </div>
+                    <div class="card-body p-0" style="max-height:500px;overflow-y:auto;">
+                        {% for p in monitor_products %}
+                        <div class="source-status-card source-{{ p.source_status or 'unknown' }} mx-3 my-2"
+                             style="padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="platform-badge {{ p.source_platform }}" style="font-size:0.6rem;">{{ p.source_platform }}</span>
+                                    <a href="/product/{{ p.id }}" class="ms-2 text-decoration-none" style="font-size:0.8rem;">
+                                        {{ (p.title or 'İsimsiz')[:50] }}
+                                    </a>
+                                    <div class="text-muted mt-1" style="font-size:0.7rem;">
+                                        {{ '%.2f'|format(p.price or 0) }}&euro;
+                                        {% if p.last_source_check %}
+                                        &nbsp;·&nbsp; Son: {{ p.last_source_check[:16] }}
+                                        {% else %}
+                                        &nbsp;·&nbsp; <span class="text-warning">Hiç kontrol edilmedi</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-1 align-items-center">
+                                    <span class="badge bg-{% if p.source_status == 'active' %}success{% elif p.source_status == 'sold' %}danger{% elif p.source_status == 'reserved' %}warning{% else %}secondary{% endif %}"
+                                          style="font-size:0.65rem;">
+                                        {{ p.source_status or 'bilinmiyor' }}
+                                    </span>
+                                    <button class="btn btn-sm btn-outline-warning" style="font-size:0.65rem;padding:2px 7px;"
+                                            onclick="checkOneSource('{{ p.id }}')">
+                                        <i class="fas fa-sync"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if not monitor_products %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-check-circle fa-3x mb-3 d-block text-success"></i>
+                            <p>Kontrol bekleyen ürün yok</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Son Kontroller + Legend -->
+            <div class="col-lg-5">
+                <div class="card mb-3">
+                    <div class="card-header"><h6 class="mb-0">Son Kontroller</h6></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0" style="font-size:0.78rem;">
+                                <thead><tr><th>Ürün</th><th>Durum</th><th>HTTP</th><th>Tarih</th></tr></thead>
+                                <tbody>
+                                    {% for c in recent_checks %}
+                                    <tr>
+                                        <td>
+                                            <a href="/product/{{ c.product_id }}" class="text-decoration-none" style="font-size:0.75rem;">
+                                                {% if c.title %}{{ c.title[:20] }}{% else %}{{ c.product_id[:12] }}...{% endif %}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if c.status == 'active' %}success{% elif c.status == 'sold' %}danger{% elif c.status == 'error' %}warning{% else %}secondary{% endif %}"
+                                                  style="font-size:0.6rem;">
+                                                {{ c.status }}
+                                            </span>
+                                        </td>
+                                        <td><code style="font-size:0.7rem;">{{ c.response_code }}</code></td>
+                                        <td><small class="text-muted">{{ (c.checked_at or '')[:16] }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not recent_checks %}
+                                    <tr><td colspan="4" class="text-center text-muted py-3">Henüz kontrol yapılmadı</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h6 class="mb-0">Durum Açıklamaları</h6></div>
+                    <div class="card-body" style="font-size:0.8rem;">
+                        <div class="d-flex gap-2 align-items-center mb-2"><span class="badge bg-success">active</span> Ürün hala satışta</div>
+                        <div class="d-flex gap-2 align-items-center mb-2"><span class="badge bg-danger">sold</span> Ürün satılmış</div>
+                        <div class="d-flex gap-2 align-items-center mb-2"><span class="badge bg-warning text-dark">reserved</span> Ürün rezerve edilmiş</div>
+                        <div class="d-flex gap-2 align-items-center mb-2"><span class="badge bg-dark">removed</span> Ürün kaldırılmış</div>
+                        <div class="d-flex gap-2 align-items-center"><span class="badge bg-info">unknown</span> Durum belirlenemedi</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /tab-content -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Fiyat değiştiğinde kaydet butonunu göster
+function markPriceChanged(productId) {
+    const btn = document.getElementById('savebtn-' + productId);
+    if (btn) btn.style.display = 'inline-block';
+}
+
+// Fiyat kaydet
+async function savePrice(productId) {
+    const input = document.getElementById('price-' + productId);
+    const btn = document.getElementById('savebtn-' + productId);
+    const price = parseFloat(input.value);
+
+    if (!price || price <= 0) { showToast('Geçerli bir fiyat girin', 'warning'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+        const resp = await fetch('/api/product/' + productId + '/update-price', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ price: price })
+        });
+        const data = await resp.json();
+
+        if (data.status === 'updated') {
+            btn.style.display = 'none';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            const syncMsg = data.cssberlin_synced ? ' + cssberlin.de güncellendi' : '';
+            showToast('Fiyat güncellendi: ' + price + '€' + syncMsg, 'success');
+        } else {
+            showToast('Güncelleme başarısız: ' + (data.error || ''), 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+        }
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+    }
+}
+
+// Yayından kaldır
+async function unpublishProduct(productId, title) {
+    if (!confirm('"' + title + '" ürününü yayından kaldırmak istediğinize emin misiniz?\n\ncssberlin.de\'den de silinecek.')) return;
+
+    const row = document.getElementById('pub-row-' + productId);
+    if (row) row.style.opacity = '0.5';
+
+    try {
+        const resp = await fetch('/api/product/' + productId + '/unpublish', {method: 'POST'});
+        const data = await resp.json();
+
+        if (data.status === 'unpublished') {
+            if (row) {
+                row.style.transition = 'opacity 0.4s';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 400);
+            }
+            showToast('Ürün yayından kaldırıldı', 'success');
+        } else {
+            if (row) row.style.opacity = '1';
+            showToast('İşlem başarısız', 'danger');
+        }
+    } catch(e) {
+        if (row) row.style.opacity = '1';
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+
+// Kaynak Canlılık — tek ürün kontrol
+async function checkOneSource(productId) {
+    try {
+        await fetch('/api/product/' + productId + '/check-source', {method: 'POST'});
+        showToast('Kontrol başlatıldı', 'info');
+    } catch(e) {
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+
+// Tümünü kontrol et
+async function checkAllSources() {
+    if (!confirm('Tüm ürünler kontrol edilsin mi? Bu işlem uzun sürebilir.')) return;
+    showToast('Toplu kontrol başlatıldı...', 'info');
+
+    const cards = document.querySelectorAll('.source-status-card');
+    for (const card of cards) {
+        const btn = card.querySelector('button[onclick^="checkOneSource"]');
+        if (btn) {
+            const id = btn.getAttribute('onclick').match(/'(.+?)'/)?.[1];
+            if (id) {
+                await fetch('/api/product/' + id + '/check-source', {method: 'POST'});
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+    }
+    showToast('Toplu kontrol tamamlandı', 'success');
+    setTimeout(() => location.reload(), 3000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,7 @@
+{
+  "successful_selectors": {
+    "vinted_cookie_accept": "#onetrust-accept-btn-handler"
+  },
+  "failed_selectors": {},
+  "user_actions": []
+}

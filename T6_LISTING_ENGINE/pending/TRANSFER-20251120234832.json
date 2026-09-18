@@ -1,0 +1,40 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/calvin-klein-brillenfassung-ckj23648-lila-transparent-gr-54-16/3243046030-156-3435",
+    "scraped_at": "2025-11-20T23:47:55.523300",
+    "title": "Kleinanzeigen Berlin",
+    "price": 99,
+    "description": "",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/8c/8c493606-3546-4664-bf45-223dc0964d0e?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/5f/5f1f349a-c1d6-4cbb-81ac-4c4c324f8897?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/82/82882659-f0ef-4e65-9c3c-756d147deb73?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/fe/fe213a03-1830-4579-a864-5530485af19f?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/2a/2ae95d13-1858-4b39-bfa5-cf0686d57ebc?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "Gebrauchte Kleidung Berlin M",
+    "description": "Gebrauchte Kleidung in gutem Zustand. Maße: 40-42, Material: Baumwolle, Eigenschaften: langärmlig, dunkelblau. Ideal für den Alltag.",
+    "suggested_price": 114.85,
+    "hashtags": [
+      "Kleidung",
+      "Berlin",
+      "Gebraucht",
+      "Damenkleidung"
+    ],
+    "category_suggestion": "Damenkleidung"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD3_1_7a22a41e.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD3_2_93fa478c.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD3_3_6657bb0b.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD3_4_6b60ca60.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD3_5_41c1a0c0.jpg"
+  ],
+  "id": "TRANSFER-20251120234832",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

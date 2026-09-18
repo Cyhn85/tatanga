@@ -1,0 +1,36 @@
+{
+  "original": {
+    "source_url": "https://www.kleinanzeigen.de/s-anzeige/zara-herren-schuhe-gr-45-neuwertig-/3242797049-158-3435",
+    "scraped_at": "2025-11-20T23:39:46.656419",
+    "title": "Kleinanzeigen Berlin",
+    "price": 99,
+    "description": "",
+    "images": [
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/bc/bc0c73dc-394b-4f5f-9d36-0ed46c8fd77e?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/6f/6f2f1ad8-9802-476b-b744-cef1ce8e2e9b?rule=$_59.AUTO",
+      "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a7/a730f429-1053-4820-ab7f-66669283fe03?rule=$_59.AUTO"
+    ]
+  },
+  "optimized": {
+    "title": "H&M Jeans 32",
+    "description": "Gebrauchte H&M Jeans, Größe 32, aus Stretch-Denim, sehr guter Zustand, 75cm Umfang, 90cm Länge",
+    "suggested_price": 114.85,
+    "hashtags": [
+      "H&M",
+      "Jeans",
+      "Größe 32",
+      "Stretch-Denim"
+    ],
+    "category_suggestion": "Hosen"
+  },
+  "images": [
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD1_1_e9b23706.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD1_2_0e5fd615.jpg",
+    "C:\\Users\\cyhnsrgc\\Desktop\\TATANGA\\T6_LISTING_ENGINE\\temp\\processed\\PROD1_3_b48234a5.jpg"
+  ],
+  "id": "TRANSFER-20251120234021",
+  "target_platform": "vinted",
+  "target_account": "cssberlin@hotmail.com",
+  "status": "pending_upload",
+  "error": "login_failed"
+}

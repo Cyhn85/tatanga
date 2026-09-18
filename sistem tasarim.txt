@@ -1,0 +1,1058 @@
+TATANGA - Tam Sistem Tasarımı
+VİZYON ÖZETİ
+TATANGA = 2. el ürün arbitraj ve satış otomasyon sistemi Ana Hedef:
+Düşük fiyatlı ürün bul → Al → Kar koyup sat
+Veya direkt arbitraj: Satıcıya alıcı bilgisi ver, komisyon al
+Benzersiz Avantaj:
+2. el ürün arbitrajı yapan otomatik sistem YOK
+Bunu satışa çıkarabiliriz
+MEVCUT VARLIKLAR
+Hesaplar (Sizden Tam Bilgi Bekliyorum)
+Vinted.de: Cyhn85 (member/293217988)
+Kleinanzeigen.de: ?
+eBay.de: ?
+Willhaben.at: ?
+API'ler
+Telegram Bot: 8222444116:AAG5D2xc7-7EOGYIX1s0Tx0jM2m5nOWG1dw
+Groq AI: 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
+Gemini: AIzaSyBwA4VQVEUROtcK9XZ228bAoCvRuHQ2LoE
+eBay Production: CeyhunSa-CSSBerli-PRD-60ddfec83-a7ea6bd2
+Tradera: App ID 5535
+Proxy: 100.64.0.2:8080 (css:berlin123)
+Altyapı
+Hetzner Sunucu: ? (SSH bilgisi gerekli)
+WhatsApp Business: +49 163 263 4020
+Lokasyon: Berlin, Almanya
+TATANGA SİSTEM MİMARİSİ
+ANA KLASÖR YAPISI
+C:\Users\cyhnsrgc\Desktop\TATANGA\
+│
+├── T1_TREND_HUNTER/          # Trend ürün keşfi
+├── T2_PRICE_SCANNER/         # Siteler arası fiyat tarama
+├── T3_ARBITRAGE_ENGINE/      # Arbitraj fırsatları
+├── T4_STOCK_MANAGER/         # Stoklu ürün yönetimi
+├── T5_IMAGE_PROCESSOR/       # Resim işleme
+├── T6_LISTING_ENGINE/        # İlan oluşturma & yükleme
+├── T7_STORE_MONITOR/         # Mağaza takibi
+├── T8_MESSAGE_CENTER/        # Mesajlaşma & pazarlık
+├── T9_SHIPPING_HUB/          # Kargo yönetimi
+├── T10_ANALYTICS/            # Analitik & raporlar
+│
+├── shared/
+│   ├── database/             # SQLite veritabanları
+│   ├── config/               # Tüm API anahtarları
+│   └── utils/                # Ortak fonksiyonlar
+│
+├── telegram_bot/             # Ana Telegram bot
+├── activepieces/             # Otomasyon akışları
+└── logs/                     # Genel loglar
+T1: TREND HUNTER - Trend Ürün Keşif Sistemi
+Amaç
+Tüm kategorileri tarayarak en çok favori/etkileşim alan ürünleri tespit et.
+Klasör Yapısı
+T1_TREND_HUNTER/
+├── scanners/
+│   ├── vinted_trend_scanner.py
+│   ├── kleinanzeigen_trend_scanner.py
+│   ├── ebay_trend_scanner.py
+│   └── google_trends_scanner.py
+├── analyzers/
+│   ├── engagement_analyzer.py    # Favori/görüntülenme analizi
+│   ├── velocity_analyzer.py      # Ne kadar hızlı satılıyor
+│   └── competition_analyzer.py   # Kaç satıcı var
+├── categories/
+│   ├── vinted_categories.json
+│   ├── kleinanzeigen_categories.json
+│   └── ebay_categories.json
+├── output/
+│   ├── trending_products.json
+│   └── trend_reports/
+└── logs/
+Nasıl Çalışır
+Adım 1: Kategori Tarama (Derin Arama)
+def deep_scan_all_categories():
+    """
+    Tüm ana kategorileri ve alt kategorileri tara
+    Her kategoriden en çok favori alan ürünleri bul
+    """
+    
+    # Vinted kategorileri
+    vinted_categories = [
+        "Damen/Kleider", "Damen/Oberteile", "Damen/Schuhe",
+        "Herren/Hemden", "Herren/Hosen", "Herren/Jacken",
+        "Kinder/Jungen", "Kinder/Mädchen",
+        "Accessoires/Uhren", "Accessoires/Taschen",
+        # ... tüm alt kategoriler
+    ]
+    
+    for category in vinted_categories:
+        # Sırala: En çok favori
+        products = scan_category(
+            category=category,
+            sort_by="favorites",
+            limit=100
+        )
+        
+        for product in products:
+            if product.favorites >= 10:  # Min 10 favori
+                save_to_trending(product)
+Adım 2: Etkileşim Skoru Hesaplama
+def calculate_trend_score(product):
+    """
+    Her ürün için trend skoru hesapla
+    """
+    
+    score = 0
+    
+    # Favori sayısı (ağırlık: %40)
+    score += product.favorites * 4
+    
+    # Görüntülenme sayısı (ağırlık: %20)
+    score += product.views * 0.2
+    
+    # Satış hızı (ağırlık: %30)
+    # Son 7 günde kaç benzer ürün satılmış
+    similar_sold = count_similar_sold(product, days=7)
+    score += similar_sold * 3
+    
+    # Rekabet durumu (ağırlık: %10)
+    # Az satıcı = yüksek puan
+    competitors = count_competitors(product)
+    if competitors < 5:
+        score += 50
+    elif competitors < 10:
+        score += 30
+    
+    return score
+Adım 3: Trend Raporu
+def generate_trend_report():
+    """
+    Günlük/haftalık trend raporu oluştur
+    """
+    
+    report = {
+        "date": today(),
+        "top_trending": [
+            {
+                "category": "Herren/Hemden",
+                "brand": "Tommy Hilfiger",
+                "avg_favorites": 25,
+                "avg_price": 35,
+                "competition": "low",
+                "recommendation": "BUY"
+            },
+            # ...
+        ],
+        "rising_trends": [...],
+        "declining_trends": [...],
+    }
+    
+    # Telegram'a gönder
+    send_telegram(
+        channel="#trendler",
+        text=format_trend_report(report)
+    )
+Ücretsiz Trend Kaynakları
+Kendi Kazıma Verilerimiz
+En değerli kaynak
+Favori/görüntülenme direkt platformdan
+Google Trends (pytrends)
+from pytrends.request import TrendReq
+
+pytrends = TrendReq()
+pytrends.build_payload(
+    ["Tommy Hilfiger Hemd", "Nike Sneaker"],
+    geo="DE",
+    timeframe="today 3-m"
+)
+trend_data = pytrends.interest_over_time()
+eBay Terapeak (eBay Basic Store ile ücretsiz)
+Son 90 gün satış verileri
+En çok satan kategoriler
+TikTok Creative Center (ücretsiz)
+Bölgeye göre trend ürünler
+T2: PRICE SCANNER - Fiyat Tarama Sistemi
+Amaç
+Aynı/benzer ürünü tüm platformlarda tara, fiyat farklarını bul.
+Klasör Yapısı
+T2_PRICE_SCANNER/
+├── scanners/
+│   ├── vinted_scanner.py
+│   ├── kleinanzeigen_scanner.py
+│   ├── ebay_scanner.py
+│   └── willhaben_scanner.py
+├── matchers/
+│   ├── product_matcher.py      # Aynı ürünü eşleştir
+│   └── similarity_engine.py    # Benzerlik hesapla
+├── output/
+│   ├── price_comparisons.json
+│   └── arbitrage_opportunities.json
+└── logs/
+Platform-Spesifik Arama Stratejileri
+Vinted.de
+VINTED_SEARCH_CONFIG = {
+    "pagination": {
+        "type": "offset",
+        "per_page": 96,
+        "max_pages": 10,  # 10 sayfa limit
+    },
+    "filters": {
+        # Filtreleri kullanarak sonuç çoğalt
+        "color": ["Schwarz", "Weiß", "Blau", "Grau"],
+        "condition": ["Neu", "Sehr gut", "Gut"],
+        "size": ["S", "M", "L", "XL"],
+    },
+    "rate_limit": {
+        "min_delay": 60,
+        "max_delay": 120,
+        "requests_per_session": 10,
+    },
+    "proxy": "required",
+}
+Kleinanzeigen.de
+KLEINANZEIGEN_SEARCH_CONFIG = {
+    "pagination": {
+        "type": "page",
+        "per_page": 25,
+        "max_pages": 50,
+    },
+    "location_strategy": [
+        # Şehir bazlı arama ile sonuç çoğalt
+        "Berlin", "Hamburg", "München", "Köln", 
+        "Frankfurt", "Stuttgart", "Düsseldorf"
+    ],
+    "rate_limit": {
+        "min_delay": 30,
+        "max_delay": 60,
+        "requests_per_session": 30,
+    },
+}
+eBay.de (API)
+EBAY_API_CONFIG = {
+    "method": "Browse API",
+    "calls_per_day": 5000,
+    "rate_limit": {
+        "delay": 1,  # API limiti düşük
+    },
+    "proxy": "not_required",
+}
+Ürün Eşleştirme Algoritması
+def match_products_across_platforms(search_term):
+    """
+    Aynı ürünü farklı platformlarda bul
+    """
+    
+    results = {
+        "vinted": [],
+        "kleinanzeigen": [],
+        "ebay": [],
+        "willhaben": [],
+    }
+    
+    # Her platformdan ara
+    for platform in results.keys():
+        products = scan_platform(platform, search_term)
+        results[platform] = products
+    
+    # Eşleştir
+    matches = []
+    for v_product in results["vinted"]:
+        for k_product in results["kleinanzeigen"]:
+            similarity = calculate_similarity(v_product, k_product)
+            
+            if similarity > 0.85:  # %85 benzerlik
+                price_diff = k_product.price - v_product.price
+                
+                if price_diff >= 5:  # Min 5€ fark
+                    matches.append({
+                        "buy_from": "vinted",
+                        "buy_price": v_product.price,
+                        "sell_on": "kleinanzeigen",
+                        "sell_price": k_product.price,
+                        "profit": price_diff,
+                        "vinted_url": v_product.url,
+                        "klein_url": k_product.url,
+                    })
+    
+    return matches
+T3: ARBITRAGE ENGINE - Arbitraj Motoru
+Amaç
+Fiyat farklarından kar fırsatları tespit et, otomatik işlem başlat.
+Klasör Yapısı
+T3_ARBITRAGE_ENGINE/
+├── opportunity_finder.py       # Fırsat bulucu
+├── profit_calculator.py        # Kar hesaplayıcı
+├── seller_analyzer.py          # Satıcı analizi
+├── auto_messenger.py           # Otomatik mesaj
+├── decision_engine.py          # Karar motoru
+├── output/
+│   ├── opportunities.json
+│   └── actions_taken.json
+└── logs/
+Kar Hesaplama (Kargo Dahil)
+def calculate_real_profit(opportunity):
+    """
+    Gerçek kar hesapla - kargo dahil
+    """
+    
+    buy_price = opportunity.buy_price
+    sell_price = opportunity.sell_price
+    
+    # Kargo maliyetleri
+    if opportunity.buy_platform == "vinted":
+        # Vinted anlaşmalı kargo
+        buy_shipping = get_vinted_shipping_cost(
+            from_location=opportunity.seller_location,
+            to_location="Berlin"
+        )
+    else:
+        buy_shipping = estimate_shipping(
+            opportunity.buy_platform,
+            opportunity.seller_location
+        )
+    
+    # Satış kargo maliyeti
+    if opportunity.sell_platform == "kleinanzeigen":
+        # Alıcıya direkt gönderim seçeneği
+        sell_shipping = 0  # Alıcı öder
+    else:
+        sell_shipping = estimate_shipping(
+            opportunity.sell_platform,
+            "Berlin"
+        )
+    
+    # Platform komisyonları
+    platform_fees = calculate_platform_fees(
+        opportunity.sell_platform,
+        sell_price
+    )
+    
+    # Net kar
+    net_profit = sell_price - buy_price - buy_shipping - sell_shipping - platform_fees
+    
+    return {
+        "gross_profit": sell_price - buy_price,
+        "buy_shipping": buy_shipping,
+        "sell_shipping": sell_shipping,
+        "platform_fees": platform_fees,
+        "net_profit": net_profit,
+        "roi": (net_profit / buy_price) * 100,
+    }
+Satıcı Analizi (Mesaj Atma Öncesi)
+def analyze_seller(seller_profile):
+    """
+    Satıcıyı analiz et:
+    - Cevap verme hızı
+    - Pazarlık yapıyor mu
+    - Güvenilir mi
+    """
+    
+    analysis = {
+        "response_rate": seller_profile.response_rate,  # Vinted'den
+        "response_time": seller_profile.avg_response_time,
+        "rating": seller_profile.rating,
+        "total_sales": seller_profile.sold_items,
+        "active_listings": seller_profile.active_items,
+    }
+    
+    # İndirim potansiyeli
+    if seller_profile.active_items > 20:
+        analysis["discount_potential"] = "high"  # Çok ürünü var, indirim yapar
+    elif seller_profile.last_login > 7:  # 7 gündür girmemiş
+        analysis["discount_potential"] = "medium"  # Acele edebilir
+    else:
+        analysis["discount_potential"] = "low"
+    
+    return analysis
+Otomatik Mesaj Sistemi
+def send_inquiry_message(opportunity, seller_analysis):
+    """
+    Satıcıya mesaj at:
+    1. Ürün hala mevcut mu?
+    2. İndirim yapabilir mi?
+    """
+    
+    # Groq ile mesaj oluştur
+    message = generate_message(
+        product=opportunity.product,
+        seller_analysis=seller_analysis,
+        target_discount=10,  # %10 indirim iste
+        tone="friendly",
+        language="de"
+    )
+    
+    # Örnek mesaj:
+    # "Hallo! Ich interessiere mich für Ihr Tommy Hilfiger Hemd. 
+    #  Ist es noch verfügbar? Wären Sie bereit, beim Preis 
+    #  etwas entgegenzukommen? Ich würde es sofort kaufen. 
+    #  Vielen Dank!"
+    
+    # Telegram'a onay için gönder
+    send_telegram(
+        channel="#arbitraj",
+        text=f"📨 Mesaj Gönderilecek:\n\n"
+             f"Platform: {opportunity.buy_platform}\n"
+             f"Ürün: {opportunity.product.title}\n"
+             f"Satıcı: {opportunity.seller}\n"
+             f"Fiyat: {opportunity.buy_price}€\n"
+             f"Tahmini Kar: {opportunity.net_profit}€\n\n"
+             f"Mesaj:\n{message}",
+        buttons=[
+            ["✅ Gönder", f"send_msg:{opportunity.id}"],
+            ["✏️ Düzenle", f"edit_msg:{opportunity.id}"],
+            ["❌ İptal", f"cancel:{opportunity.id}"],
+        ]
+    )
+Direkt Arbitraj (Dropshipping Tarzı)
+def direct_arbitrage(opportunity, buyer_order):
+    """
+    Ürünü kendimize almadan direkt alıcıya gönder
+    """
+    
+    # 1. Alıcıdan sipariş geldi (Kleinanzeigen/eBay)
+    buyer_address = buyer_order.shipping_address
+    
+    # 2. Satıcıya (Vinted) alıcının adresini ver
+    seller_message = f"""
+    Hallo! Ich möchte das Produkt kaufen.
+    
+    Bitte senden Sie es direkt an diese Adresse:
+    
+    {buyer_address.name}
+    {buyer_address.street}
+    {buyer_address.zip} {buyer_address.city}
+    {buyer_address.country}
+    
+    Ich bezahle sofort!
+    """
+    
+    # 3. Ödemeyi yap
+    pay_for_product(opportunity.buy_platform, opportunity.product_id)
+    
+    # 4. Kargo takip numarasını al ve alıcıya ilet
+    tracking = await wait_for_tracking(opportunity.order_id)
+    
+    send_to_buyer(buyer_order.id, f"""
+    Ihre Bestellung wurde versandt!
+    
+    Sendungsnummer: {tracking}
+    Lieferzeit: 3-5 Werktage
+    """)
+T4: STOCK MANAGER - Stoklu Ürün Yönetimi
+Amaç
+Kendi stoğunuzdaki ürünleri sisteme aktar.
+Klasör Yapısı
+T4_STOCK_MANAGER/
+├── inbox/                    # Yeni ürünler buraya
+│   └── urun_001/
+│       ├── foto1.jpg
+│       ├── foto2.jpg
+│       └── aciklama.png
+├── processor.py
+├── ai_extractor.py          # Screenshot'tan veri çıkar
+├── output/
+│   └── stock_products.json
+└── logs/
+Screenshot'tan Veri Çıkarma
+def extract_from_screenshot(image_path):
+    """
+    Groq Vision ile screenshot analizi
+    """
+    
+    prompt = """
+    Bu Almanca ürün açıklaması screenshot'ından bilgileri çıkar:
+    
+    {
+        "brand": "marka adı",
+        "type": "ürün türü (Hemd, Hose, Jacke, vb.)",
+        "size": "beden",
+        "condition": "durum (Neu, Sehr gut, Gut, Akzeptabel)",
+        "color": "renk",
+        "material": "kumaş",
+        "gender": "Herren/Damen/Kinder",
+        "description_de": "Almanca açıklama metni",
+        "suggested_price": "önerilen fiyat EUR"
+    }
+    """
+    
+    response = groq_vision_analyze(image_path, prompt)
+    return json.loads(response)
+T5: IMAGE PROCESSOR - Resim İşleme
+Amaç
+Her platform için farklı resim varyantları oluştur.
+Klasör Yapısı
+T5_IMAGE_PROCESSOR/
+├── processors/
+│   ├── angle_modifier.py      # Açı değiştir
+│   ├── zoom_adjuster.py       # Zoom out (vitrin için)
+│   ├── metadata_cleaner.py    # EXIF sil
+│   └── watermark_detector.py  # Watermark tespit
+├── input/
+├── output/
+│   ├── cssberlin/
+│   ├── ebay/
+│   ├── vinted_shop1/
+│   ├── vinted_shop2/
+│   ├── kleinanzeigen/
+│   └── willhaben/
+└── logs/
+Resim Varyant Oluşturma
+def create_platform_variants(original_image, product_id):
+    """
+    Her platform için benzersiz resim oluştur
+    """
+    
+    variants = {
+        "cssberlin": {
+            "rotation": 0,
+            "crop": (1, 1, 1, 1),  # %1 her yönden
+            "zoom_out": 5,  # %5 uzaklaştır
+        },
+        "ebay": {
+            "rotation": 1.5,
+            "perspective": 2,
+            "zoom_out": 3,
+        },
+        "vinted_shop1": {
+            "rotation": -1,
+            "crop": (2, 1, 2, 1),
+            "zoom_out": 4,
+        },
+        "vinted_shop2": {
+            "rotation": 2,
+            "perspective": -1,
+            "zoom_out": 6,
+        },
+        "kleinanzeigen": {
+            "rotation": -2,
+            "flip_h": 0.01,  # Çok hafif yatay
+            "zoom_out": 5,
+        },
+        "willhaben": {
+            "rotation": 1,
+            "crop": (3, 2, 3, 2),
+            "zoom_out": 4,
+        },
+    }
+    
+    for platform, transforms in variants.items():
+        processed = apply_transforms(original_image, transforms)
+        clean_metadata(processed)
+        save_image(processed, f"output/{platform}/{product_id}.jpg")
+T6: LISTING ENGINE - İlan Oluşturma & Yükleme
+Amaç
+Ürünleri platformlara yükle.
+Klasör Yapısı
+T6_LISTING_ENGINE/
+├── uploaders/
+│   ├── ebay_mip_uploader.py      # Otomatik (MIP XML)
+│   ├── cssberlin_uploader.py     # Otomatik (GitHub API)
+│   ├── vinted_uploader.py        # Yarı-otomatik/Bot
+│   ├── kleinanzeigen_uploader.py # Yarı-otomatik/Bot
+│   └── willhaben_uploader.py     # Yarı-otomatik
+├── bots/
+│   ├── vinted_bot.py             # Selenium bot
+│   └── kleinanzeigen_bot.py      # Selenium bot
+├── templates/
+├── queue/
+├── completed/
+└── logs/
+Platform Yükleme Stratejileri
+Strateji 1: Tam Otomatik (eBay + cssberlin)
+# eBay MIP XML
+def upload_to_ebay_auto(product):
+    xml = generate_mip_xml(product)
+    upload_to_mip_ftp(xml)
+    log_success(product.id, "ebay")
+
+# cssberlin.de
+def upload_to_cssberlin_auto(product):
+    products_json = load_github_products()
+    products_json.append(product.to_dict())
+    commit_to_github(products_json)
+    log_success(product.id, "cssberlin")
+Strateji 2: Bot ile Otomatik (Vinted, Kleinanzeigen)
+DİKKAT: Ban riski var ama yönetilebilir
+class VintedBot:
+    def __init__(self, account):
+        self.driver = setup_selenium_with_proxy()
+        self.account = account
+        
+    def upload_product(self, product):
+        # 1. Login (session cookie ile)
+        self.login()
+        
+        # 2. Yeni ilan sayfasına git
+        self.driver.get("https://www.vinted.de/items/new")
+        
+        # 3. Resimleri yükle
+        for img in product.images:
+            upload_image(img)
+            random_delay(2, 5)  # İnsan gibi bekle
+        
+        # 4. Bilgileri doldur
+        fill_field("title", product.title)
+        random_delay(1, 3)
+        
+        fill_field("description", product.description_de)
+        random_delay(2, 4)
+        
+        select_category(product.category_path)
+        select_brand(product.brand)
+        select_size(product.size)
+        select_condition(product.condition)
+        set_price(product.price)
+        
+        # 5. Yayınla
+        random_delay(3, 7)
+        click_publish()
+        
+        # 6. Doğrula
+        listing_url = get_new_listing_url()
+        log_success(product.id, "vinted", listing_url)
+Ban Riski Azaltma:
+Günde max 5-10 ilan
+Rastgele bekleme süreleri
+Proxy rotasyonu
+Farklı saatlerde işlem
+İnsan benzeri mouse hareketleri
+Strateji 3: Yarı-Otomatik (Kopyala-Yapıştır)
+def prepare_for_manual_listing(product):
+    """
+    Telegram'a hazır veri gönder
+    """
+    
+    prepared = {
+        "title": product.title,
+        "description": product.description_de,
+        "price": product.price,
+        "brand": product.brand,
+        "size": product.size,
+        "category": product.category_path,
+    }
+    
+    # Telegram mesajı
+    send_telegram(
+        channel="#listeleme",
+        text=f"📝 Manuel Listeleme\n\n"
+             f"Platform: Vinted\n"
+             f"━━━━━━━━━━━━━━━━\n"
+             f"**Başlık:**\n`{prepared['title']}`\n\n"
+             f"**Açıklama:**\n`{prepared['description']}`\n\n"
+             f"**Fiyat:** {prepared['price']}€\n"
+             f"**Marka:** {prepared['brand']}\n"
+             f"**Beden:** {prepared['size']}",
+        buttons=[
+            ["📋 Başlığı Kopyala", f"copy:{product.id}:title"],
+            ["📋 Açıklamayı Kopyala", f"copy:{product.id}:desc"],
+            ["🖼️ Resimleri Aç", f"open_images:{product.id}"],
+            ["🌐 Vinted'i Aç", "url:https://www.vinted.de/items/new"],
+        ]
+    )
+Öneri: Hibrit Yaklaşım
+Ana hesaplar (değerli) → Yarı-otomatik
+Yan hesaplar (harcanabilir) → Bot ile otomatik
+eBay + cssberlin → Tam otomatik
+T7: STORE MONITOR - Mağaza Takibi
+Amaç
+Tüm mağazaları izle, değişiklikleri bildir.
+Klasör Yapısı
+T7_STORE_MONITOR/
+├── monitors/
+│   ├── vinted_monitor.py
+│   ├── kleinanzeigen_monitor.py
+│   ├── ebay_monitor.py
+│   └── cssberlin_monitor.py
+├── checkers/
+│   ├── link_checker.py         # İlan aktif mi
+│   ├── message_checker.py      # Yeni mesaj var mı
+│   └── sale_checker.py         # Satış oldu mu
+├── output/
+│   └── store_status.json
+└── logs/
+15 Dakikada Bir Kontrol
+async def periodic_check():
+    """
+    Her 15 dakikada bir çalışır
+    """
+    
+    while True:
+        # Tüm mağazaları kontrol et
+        for store in get_all_stores():
+            # Mesajları kontrol et
+            new_messages = await check_messages(store)
+            for msg in new_messages:
+                await process_new_message(msg)
+            
+            # Satışları kontrol et
+            new_sales = await check_sales(store)
+            for sale in new_sales:
+                await process_new_sale(sale)
+            
+            # Linkleri kontrol et
+            broken_links = await check_listing_links(store)
+            for link in broken_links:
+                await notify_broken_link(link)
+        
+        # 15 dakika bekle
+        await asyncio.sleep(900)
+T8: MESSAGE CENTER - Mesajlaşma & Pazarlık
+Amaç
+Mağaza mesajlarını yönet, otomatik pazarlık yap.
+Klasör Yapısı
+T8_MESSAGE_CENTER/
+├── handlers/
+│   ├── message_classifier.py    # Mesaj türü tespit
+│   ├── auto_responder.py        # Otomatik cevap
+│   ├── negotiation_engine.py    # Pazarlık motoru
+│   └── urgency_detector.py      # Aciliyet tespit
+├── templates/
+│   ├── responses_de/
+│   └── responses_en/
+└── logs/
+Mesaj Sınıflandırma
+def classify_message(message):
+    """
+    Groq ile mesaj türünü tespit et
+    """
+    
+    prompt = f"""
+    Bu mesajın türünü belirle:
+    
+    "{message.text}"
+    
+    Türler:
+    - PRICE_OFFER: Fiyat teklifi
+    - QUESTION: Ürün hakkında soru
+    - AVAILABILITY: Hala mevcut mu
+    - SHIPPING: Kargo sorusu
+    - NEGOTIATION: Pazarlık
+    - SPAM: Spam
+    - OTHER: Diğer
+    
+    Sadece tür adını döndür.
+    """
+    
+    return groq_classify(prompt)
+Otomatik Pazarlık
+def handle_price_offer(offer):
+    """
+    Fiyat teklifini değerlendir ve karşılık ver
+    """
+    
+    product = get_product(offer.product_id)
+    
+    # Minimum fiyat kontrolü
+    min_acceptable = product.price * 0.85  # %15 max indirim
+    
+    if offer.amount >= product.price:
+        # Tam fiyat veya üstü - hemen kabul
+        action = "accept"
+        
+    elif offer.amount >= min_acceptable:
+        # Kabul edilebilir - küçük karşı teklif
+        counter = product.price * 0.95
+        action = f"counter:{counter}"
+        
+    elif offer.amount >= product.price * 0.75:
+        # Düşük ama pazarlık yapılabilir
+        counter = product.price * 0.90
+        action = f"counter:{counter}"
+        
+    else:
+        # Çok düşük - reddet
+        action = "reject"
+    
+    # Platform'a göre işlem
+    if offer.platform == "vinted":
+        # Vinted buton ile
+        execute_vinted_offer_action(offer.id, action)
+    elif offer.platform == "ebay":
+        # eBay Preisvorschlag
+        execute_ebay_offer_action(offer.id, action)
+    elif offer.platform == "kleinanzeigen":
+        # Mesaj ile
+        send_negotiation_message(offer.conversation_id, action)
+    
+    # Telegram'a bildir
+    send_telegram(
+        channel="#pazarlik",
+        text=f"💰 Pazarlık İşlendi\n\n"
+             f"Ürün: {product.title}\n"
+             f"Fiyat: {product.price}€\n"
+             f"Teklif: {offer.amount}€\n"
+             f"Aksiyon: {action}"
+    )
+Kleinanzeigen Hızlı Cevap (ÖNEMLİ!)
+def handle_kleinanzeigen_message(msg):
+    """
+    Kleinanzeigen mesajlarına hızlı cevap ver
+    Geç cevap = düşük puan!
+    """
+    
+    # Aciliyet kontrolü
+    if msg.age_minutes < 30:
+        urgency = "🔴 ACİL"
+        priority = "high"
+    elif msg.age_minutes < 60:
+        urgency = "🟡 ÖNEMLİ"
+        priority = "medium"
+    else:
+        urgency = "🟢 Normal"
+        priority = "low"
+    
+    # AI ile cevap öner
+    suggested = generate_response(
+        message=msg.text,
+        product=msg.product,
+        tone="professional",
+        language="de"
+    )
+    
+    send_telegram(
+        channel="#mesajlar",
+        text=f"{urgency} Kleinanzeigen Mesaj!\n\n"
+             f"⏰ {msg.age_minutes} dakika önce\n"
+             f"Ürün: {msg.product.title}\n\n"
+             f"**Mesaj:**\n{msg.text}\n\n"
+             f"**Önerilen Cevap:**\n{suggested}",
+        buttons=[
+            ["✅ Gönder", f"send_reply:{msg.id}"],
+            ["✏️ Düzenle", f"edit_reply:{msg.id}"],
+        ]
+    )
+T9: SHIPPING HUB - Kargo Yönetimi
+Amaç
+Kargo süreçlerini yönet, takip bilgilerini işle.
+Klasör Yapısı
+T9_SHIPPING_HUB/
+├── providers/
+│   ├── vinted_shipping.py      # Vinted anlaşmalı
+│   ├── dhl.py
+│   ├── hermes.py
+│   └── dpd.py
+├── calculators/
+│   ├── shipping_cost.py
+│   └── delivery_time.py
+├── formatters/
+│   └── label_formatter.py
+└── logs/
+Platform Kargo Bilgileri
+SHIPPING_INFO = {
+    "vinted": {
+        "providers": {
+            "DE": ["DHL", "Hermes", "DPD"],
+            "AT": ["DHL", "Post"],
+            "CH": ["DHL Express"],
+        },
+        "label_provided": True,  # Vinted etiket veriyor
+        "tracking_provided": True,
+    },
+    "ebay": {
+        "providers": {
+            "DE": ["DHL", "Hermes", "DPD", "GLS"],
+            "AT": ["DHL"],
+        },
+        "label_provided": True,  # eBay etiket veriyor
+        "tracking_provided": True,
+    },
+    "kleinanzeigen": {
+        "providers": {
+            "DE": ["DHL", "Hermes", "DPD"],
+        },
+        "label_provided": False,  # Kendin al
+        "tracking_provided": False,  # Manuel gir
+    },
+    "willhaben": {
+        "providers": {
+            "AT": ["Post", "DHL"],
+            "CH": ["DHL Express"],
+            "IT": ["DHL"],
+            "BE": ["DHL"],
+            "NL": ["DHL"],
+        },
+        "label_provided": False,
+        "tracking_provided": False,
+    },
+}
+Telegram Kargo Güncelleme
+# Kullanıcı #kargo odasına yazar:
+# "CSS-001 DHL 123456789"
+
+def handle_shipping_command(message):
+    """
+    Kargo bilgisi güncelle
+    """
+    
+    parts = message.text.split()
+    product_id = parts[0]   # CSS-001
+    carrier = parts[1]      # DHL
+    tracking = parts[2]     # 123456789
+    
+    # Veritabanı güncelle
+    product = get_product(product_id)
+    product.shipping = {
+        "carrier": carrier,
+        "tracking": tracking,
+        "status": "shipped",
+        "shipped_at": now(),
+    }
+    save_product(product)
+    
+    # Alıcıya bildir (platform'a göre)
+    if product.sold_on == "kleinanzeigen":
+        # Mesaj ile
+        send_kleinanzeigen_message(
+            conversation_id=product.sale.conversation_id,
+            text=f"Ihr Paket wurde versandt!\n"
+                 f"Sendungsnummer: {tracking}\n"
+                 f"Verfolgen: https://www.dhl.de/tracking?nummer={tracking}"
+        )
+    elif product.sold_on == "ebay":
+        # API ile
+        update_ebay_tracking(product.sale.order_id, carrier, tracking)
+    
+    # Onay
+    reply(f"✅ Kargo bilgisi güncellendi\n"
+          f"📦 {carrier}: {tracking}")
+T10: ANALYTICS - Analitik & Raporlar
+Amaç
+Tüm verileri analiz et, raporla.
+Klasör Yapısı
+T10_ANALYTICS/
+├── reporters/
+│   ├── daily_report.py
+│   ├── weekly_report.py
+│   └── profit_analyzer.py
+├── dashboards/
+│   └── web_dashboard/
+└── output/
+    └── reports/
+Günlük Rapor
+def generate_daily_report():
+    """
+    Günlük özet raporu
+    """
+    
+    today = date.today()
+    
+    report = {
+        "date": today,
+        "sales": {
+            "total": count_sales(today),
+            "revenue": sum_revenue(today),
+            "profit": sum_profit(today),
+            "by_platform": {
+                "vinted": count_sales(today, "vinted"),
+                "ebay": count_sales(today, "ebay"),
+                "kleinanzeigen": count_sales(today, "kleinanzeigen"),
+            }
+        },
+        "listings": {
+            "new": count_new_listings(today),
+            "active": count_active_listings(),
+            "removed": count_removed(today),
+        },
+        "messages": {
+            "received": count_messages(today),
+            "responded": count_responses(today),
+            "avg_response_time": avg_response_time(today),
+        },
+        "arbitrage": {
+            "opportunities_found": count_opportunities(today),
+            "acted_on": count_actions(today),
+            "profit": sum_arbitrage_profit(today),
+        },
+        "trending": get_top_trending(limit=5),
+    }
+    
+    send_telegram(
+        channel="#raporlar",
+        text=format_daily_report(report)
+    )
+TELEGRAM BOT YAPISI
+Kanal/Oda Yapısı
+TATANGA Bot (@CSSBerlinBot)
+│
+├── #trendler          → Trend ürün bildirimleri
+├── #arbitraj          → Arbitraj fırsatları
+├── #listeleme         → Yeni ilan bildirimleri
+├── #satislar          → Satış bildirimleri
+├── #mesajlar          → Mağaza mesajları
+├── #pazarlik          → Pazarlık bildirimleri
+├── #kargo             → Kargo takip
+├── #sistem            → Hata/uyarı
+└── #raporlar          → Günlük/haftalık raporlar
+Bot Komutları
+COMMANDS = {
+    "/start": "Bot'u başlat",
+    "/status": "Sistem durumu",
+    "/search": "Ürün ara",
+    "/list": "Aktif ilanlar",
+    "/sales": "Satış özeti",
+    "/trends": "Güncel trendler",
+    "/help": "Yardım",
+}
+İnteraktif Butonlar
+def create_action_keyboard(action_type, data):
+    """
+    İnteraktif butonlar oluştur
+    """
+    
+    if action_type == "sale_notification":
+        return [
+            [Button("📦 Kargo Hazırla", f"prepare_shipping:{data.id}")],
+            [Button("📋 Etiketi İndir", f"download_label:{data.id}")],
+            [Button("✅ Gönderildi", f"mark_shipped:{data.id}")],
+        ]
+    
+    elif action_type == "message_response":
+        return [
+            [Button("✅ Gönder", f"send:{data.id}")],
+            [Button("✏️ Düzenle", f"edit:{data.id}")],
+            [Button("❌ İptal", f"cancel:{data.id}")],
+        ]
+    
+    elif action_type == "arbitrage_opportunity":
+        return [
+            [Button("💰 Satın Al", f"buy:{data.id}")],
+            [Button("📨 Mesaj At", f"message:{data.id}")],
+            [Button("❌ Geç", f"skip:{data.id}")],
+        ]
+ACTIVEPIECES ENTEGRASYONU
+Self-Hosted (Hetzner'de)
+# Docker ile kurulum
+docker run -d \
+  --name activepieces \
+  -p 8080:80 \
+  -v activepieces_data:/data \
+  activepieces/activepieces:latest
+Ana Flow'lar
+Yeni Stoklu Ürün → İşle → Resim → Listele
+Arbitraj Fırsatı → Mesaj → Satın Al → Listele
+Periyodik Kontrol → Mesaj/Satış/Link
+Satış Sonrası → Kargo → Stok Güncelle
+SONRAKİ ADIMLAR
+Sizden İhtiyacım Olan Bilgiler
+Tüm Hesap Bilgileri:
+Kleinanzeigen kullanıcı adı/şifre
+eBay mağaza bilgileri
+Willhaben hesap bilgileri
+Varsa ek Vinted hesapları
+Hetzner Sunucu:
+SSH erişim bilgileri (IP, kullanıcı, şifre/key)
+Karar: Bot mu Yarı-Otomatik mi?
+Ana hesaplar için hangi yöntem?
+Ban riski toleransınız?
+WhatsApp mı Telegram mı?
+Sadece Telegram yeterli mi?
+WhatsApp Business da eklensin mi?
+Onay Bekleyen Kararlar
+Vinted/Kleinanzeigen için tam bot mu kullanacağız?
+Evet: Günde 5-10 ilan, ban riski var
+Hayır: Yarı-otomatik, kopyala-yapıştır
+Direkt arbitraj (dropshipping) yapacak mıyız?
+Ürünü kendimize almadan alıcıya gönder
+TATANGA klasör yapısı uygun mu?
+Değişiklik istiyor musunuz?
+Hesap bilgilerini paylaşın ve yukarıdaki kararları verin, hemen kodlamaya başlayacağım.

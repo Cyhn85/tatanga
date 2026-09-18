@@ -1,0 +1,9 @@
+
+# Sosyal medya OAuth belirtecleri (SIR) — asla depoya girmez
+data/social_tokens.json
+
+# Piper ses modelleri (290MB, yeniden indirilebilir)
+data/voices/
+
+# Sirlar — asla depoya girmez
+.env

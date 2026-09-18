@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% set active_page = "images" %}
+{% block title %}Gorsel Isleme{% endblock %}
+{% block page_title %}<i class="fas fa-image me-2"></i>Gorsel Isleme - Arka Plan Kaldirma{% endblock %}
+
+{% block content %}
+<!-- INFO BANNER -->
+<div class="alert" style="background:rgba(108,92,231,0.1);border:1px solid var(--accent);color:var(--text-primary);">
+    <div class="d-flex align-items-center gap-2">
+        <i class="fas fa-info-circle text-info fa-lg"></i>
+        <div>
+            <strong>Arka Plan Kaldirma</strong> - rembg modulu ile urun gorsellerinin arka plani kaldirilir ve beyaz zemin eklenir.
+            Urunun anlam bozukluguna ugramadan temiz bir kesim yapilir.
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- PENDING -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <h6 class="mb-0"><i class="fas fa-hourglass-half me-2 text-warning"></i>Islenmemis ({{ pending|length }})</h6>
+                <button class="btn btn-sm btn-primary" onclick="processAll()">
+                    <i class="fas fa-magic me-1"></i> Tumunu Isle
+                </button>
+            </div>
+            <div class="card-body">
+                {% for p in pending %}
+                <div class="d-flex gap-3 mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+                    <div>
+                        {% set imgs = (p.images_json | default('[]') | fromjson) %}
+                        {% if imgs %}
+                        <img src="{{ imgs[0] }}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--border)" onerror="this.src='/static/img/no-image.svg'">
+                        {% endif %}
+                    </div>
+                    <div class="flex-fill">
+                        <a href="/product/{{ p.id }}" class="product-title-link">{{ p.title[:40] }}</a>
+                        <div class="small text-muted">{{ p.source_platform }} | {{ (p.images_json | default('[]') | fromjson)|length }} gorsel</div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-success align-self-center" onclick="removeBg('{{ p.id }}')">
+                        <i class="fas fa-magic"></i>
+                    </button>
+                </div>
+                {% endfor %}
+                {% if not pending %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                    <p>Tum gorseller islenmis</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- PROCESSED -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-check-circle me-2 text-success"></i>Islenmis ({{ processed|length }})</h6>
+            </div>
+            <div class="card-body">
+                {% for p in processed %}
+                <div class="d-flex gap-3 mb-3 pb-3" style="border-bottom:1px solid var(--border)">
+                    <div class="d-flex gap-2">
+                        {% set orig = (p.images_json | default('[]') | fromjson) %}
+                        {% set proc = (p.processed_images_json | default('[]') | fromjson) %}
+                        {% if orig %}
+                        <div class="text-center">
+                            <img src="{{ orig[0] }}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:2px solid var(--border)" onerror="this.style.display='none'">
+                            <div class="small text-muted">Once</div>
+                        </div>
+                        {% endif %}
+                        {% if proc %}
+                        <div class="text-center">
+                            <img src="{{ proc[0] }}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:2px solid var(--success)" onerror="this.style.display='none'">
+                            <div class="small text-success">Sonra</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex-fill">
+                        <a href="/product/{{ p.id }}" class="product-title-link">{{ p.title[:40] }}</a>
+                        <div class="small text-muted">{{ p.source_platform }} | Islendi</div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if not processed %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-image fa-2x mb-2"></i>
+                    <p>Henuz islenmis gorsel yok</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function removeBg(id) {
+    await fetch(`/api/product/${id}/remove-bg`, {method:'POST'});
+    showToast('Arka plan kaldirma basladi', 'info');
+}
+
+async function processAll() {
+    if (!confirm('Tum islenmemis gorseller islensin mi?')) return;
+    showToast('Toplu gorsel isleme basladi...', 'info');
+
+    const pending = document.querySelectorAll('[onclick^="removeBg"]');
+    for (const btn of pending) {
+        const id = btn.getAttribute('onclick').match(/'(.+?)'/)?.[1];
+        if (id) {
+            await fetch(`/api/product/${id}/remove-bg`, {method:'POST'});
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }
+    showToast('Tum gorseller isleniyor', 'success');
+}
+</script>
+{% endblock %}

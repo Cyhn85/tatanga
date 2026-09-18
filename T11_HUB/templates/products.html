@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+{% set active_page = "products" %}
+{% block title %}Urunler{% endblock %}
+{% block page_title %}<i class="fas fa-box-open me-2"></i>Urunler{% endblock %}
+
+{% block content %}
+<!-- FILTERS -->
+<div class="filter-bar mb-3">
+    <select class="form-select" id="f-status" onchange="applyFilters()">
+        <option value="">Tum Durumlar</option>
+        <option value="scraped" {% if filters.status == 'scraped' %}selected{% endif %}>Kazinan</option>
+        <option value="favorite" {% if filters.status == 'favorite' %}selected{% endif %}>Favoriler</option>
+        <option value="published" {% if filters.status == 'published' %}selected{% endif %}>Yayinda</option>
+        <option value="local_only" {% if filters.status == 'local_only' %}selected{% endif %}>Yayin basarisiz (CSSberlin kapali)</option>
+        <option value="sold" {% if filters.status == 'sold' %}selected{% endif %}>Satilan</option>
+    </select>
+    <select class="form-select" id="f-platform" onchange="applyFilters()">
+        <option value="">Tum Platformlar</option>
+        <option value="vinted" {% if filters.platform == 'vinted' %}selected{% endif %}>Vinted</option>
+        <option value="kleinanzeigen" {% if filters.platform == 'kleinanzeigen' %}selected{% endif %}>Kleinanzeigen</option>
+        <option value="ebay" {% if filters.platform == 'ebay' %}selected{% endif %}>eBay</option>
+        <option value="sellpy" {% if filters.platform == 'sellpy' %}selected{% endif %}>Sellpy</option>
+        <option value="willhaben" {% if filters.platform == 'willhaben' %}selected{% endif %}>Willhaben</option>
+        <option value="tradera" {% if filters.platform == 'tradera' %}selected{% endif %}>Tradera</option>
+        <option value="leboncoin" {% if filters.platform == 'leboncoin' %}selected{% endif %}>Leboncoin</option>
+    </select>
+    <select class="form-select" id="f-rec" onchange="applyFilters()">
+        <option value="">Tum Oneriler</option>
+        <option value="buy" {% if filters.recommendation == 'buy' %}selected{% endif %}>AL</option>
+        <option value="watch" {% if filters.recommendation == 'watch' %}selected{% endif %}>IZLE</option>
+        <option value="skip" {% if filters.recommendation == 'skip' %}selected{% endif %}>GEC</option>
+    </select>
+    <select class="form-select" id="f-category" onchange="applyFilters()">
+        <option value="">Tum Kategoriler</option>
+        {% for key, label in category_list %}
+        <option value="{{ key }}" {% if filters.category == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <select class="form-select" id="f-gender" onchange="applyFilters()">
+        <option value="">Tum Cinsiyetler</option>
+        {% for key, label in gender_list %}
+        <option value="{{ key }}" {% if filters.gender == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <!-- FİYAT ARALIĞI -->
+    <div class="d-flex align-items-center gap-1" style="min-width:180px;">
+        <input type="number" id="f-price-min" class="form-control form-control-sm"
+               placeholder="Min €" min="0" step="1"
+               value="{{ filters.price_min }}"
+               onchange="applyFilters()" style="width:75px;">
+        <span class="text-muted small">—</span>
+        <input type="number" id="f-price-max" class="form-control form-control-sm"
+               placeholder="Max €" min="0" step="1"
+               value="{{ filters.price_max }}"
+               onchange="applyFilters()" style="width:75px;">
+    </div>
+    <!-- SIRALAMA: kompakt buton, acilinca gruplu akilli menu -->
+    <div class="dropdown">
+        <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-2"
+                type="button" data-bs-toggle="dropdown" data-bs-auto-close="true"
+                aria-expanded="false" style="border-color:rgba(255,255,255,.18);">
+            <i class="fas fa-arrow-down-wide-short" style="color:#ffa500;"></i>
+            <span class="d-none d-sm-inline" style="font-size:.8rem;">
+                {{ sort_labels.get(filters.sort, 'Sırala') }}
+            </span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow"
+            style="background:#1b1f24;border:1px solid rgba(255,255,255,.1);min-width:250px;">
+            {% for grup, secenekler in sort_groups %}
+            <li><h6 class="dropdown-header" style="color:#7a8794;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;">{{ grup }}</h6></li>
+            {% for deger, etiket, ipucu in secenekler %}
+            <li>
+                <a class="dropdown-item d-flex align-items-center justify-content-between
+                          {% if filters.sort == deger %}active{% endif %}"
+                   href="#" onclick="setSort('{{ deger }}');return false;"
+                   title="{{ ipucu }}"
+                   style="color:{% if filters.sort == deger %}#fff{% else %}#c8d0d8{% endif %};font-size:.82rem;padding:.34rem .9rem;
+                          {% if filters.sort == deger %}background:rgba(255,165,0,.16);{% endif %}">
+                    <span>{{ etiket }}</span>
+                    {% if filters.sort == deger %}<i class="fas fa-check" style="color:#ffa500;font-size:.7rem;"></i>{% endif %}
+                </a>
+            </li>
+            {% endfor %}
+            {% if not loop.last %}<li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.08);margin:.3rem 0;"></li>{% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+
+    <span class="badge bg-info align-self-center">
+        {{ pagination.total }} ürün
+        {% if pagination.total_pages > 1 %}&nbsp;·&nbsp; s.{{ pagination.page }}/{{ pagination.total_pages }}{% endif %}
+    </span>
+    <!-- ARAÇ BUTONLARI -->
+    <div class="d-flex gap-1 ms-auto flex-wrap">
+        <button class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1"
+                onclick="cleanEmpty()" title="Bos baslik/fiyat=0 urunleri temizle">
+            <i class="fas fa-broom"></i>
+            <span class="d-none d-md-inline">Boşları Temizle</span>
+        </button>
+        <button class="btn btn-outline-info btn-sm d-flex align-items-center gap-1"
+                onclick="reanalyzeProfit()" title="Tum urunleri yeni formul ile yeniden hesapla">
+            <i class="fas fa-sync-alt"></i>
+            <span class="d-none d-md-inline">Karı Yeniden Hesapla</span>
+        </button>
+        <button class="btn btn-danger btn-sm d-flex align-items-center gap-1"
+                onclick="deleteNonFavorites()"
+                title="Favori olmayan tum urunleri veritabanindan sil">
+            <i class="fas fa-trash-alt"></i>
+            <span class="d-none d-md-inline">Favoriler Disindakileri Sil</span>
+        </button>
+    </div>
+</div>
+
+<!-- PRODUCT GRID -->
+<div class="row g-3">
+    {% for p in products %}
+    <div class="col-sm-6 col-md-4 col-lg-3">
+        <div class="card h-100 product-card" id="card-{{ p.id }}">
+            <!-- Image -->
+            <div style="position:relative; height:200px; overflow:hidden; border-radius:12px 12px 0 0; background:#1a1a2e;">
+                {% if p.processed_images_json and p.processed_images_json != '[]' %}
+                    <img src="{{ (p.processed_images_json | fromjson)[0] }}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='/static/img/no-image.svg'">
+                    <span class="badge bg-success" style="position:absolute;top:8px;left:8px;font-size:0.6rem"><i class="fas fa-check"></i> BG</span>
+                {% elif p.images_json and p.images_json != '[]' %}
+                    <img src="{{ (p.images_json | fromjson)[0] }}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='/static/img/no-image.svg'">
+                {% else %}
+                    <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                        <i class="fas fa-image fa-2x"></i>
+                    </div>
+                {% endif %}
+
+                <!-- Platform badge -->
+                <span class="badge" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);font-size:0.65rem;">
+                    {{ p.source_platform }}
+                </span>
+
+                <!-- Ayni ilan birden fazla kez acilmis: tek kartta toplandi -->
+                {% if (p.duplicate_count or 1) > 1 %}
+                <span class="badge" style="position:absolute;top:8px;left:8px;background:rgba(255,165,0,0.9);color:#111;font-size:0.6rem;font-weight:700;"
+                      title="Ayni fotograf {{ p.duplicate_count }} ilanda bulundu: {{ (p.duplicate_platforms or []) | join(', ') }}. Vinted'in .de/.fr/.be/.pl/.co.uk alan adlari AYNI pazaryeri oldugu icin ayni urun birden fazla domainde gorunur. Tek kartta toplandi — tek firsattir.">
+                    <i class="fas fa-layer-group"></i>
+                    {{ p.duplicate_count }}x
+                    {% if (p.duplicate_platforms or []) | length > 1 %}
+                    <span style="font-weight:500;">{{ (p.duplicate_platforms or []) | length }} domain</span>
+                    {% endif %}
+                </span>
+                {% endif %}
+
+                <!-- Recommendation badge -->
+                {% if p.recommendation == 'buy' %}
+                <span class="badge bg-success" style="position:absolute;bottom:8px;left:8px"><i class="fas fa-fire"></i> KARLI</span>
+                {% elif p.recommendation == 'watch' %}
+                <span class="badge bg-warning text-dark" style="position:absolute;bottom:8px;left:8px"><i class="fas fa-eye"></i> IZLE</span>
+                {% endif %}
+
+                <!-- Source status -->
+                {% if p.source_status and p.source_status != 'active' %}
+                <span class="badge bg-danger" style="position:absolute;bottom:8px;right:8px;font-size:0.6rem">
+                    {{ p.source_status|upper }}
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="card-body p-2">
+                <!-- Title -->
+                <a href="/product/{{ p.id }}" class="text-light text-decoration-none small d-block" style="line-height:1.2;min-height:32px;">
+                    {{ p.title[:55] }}{% if p.title and p.title|length > 55 %}...{% endif %}
+                </a>
+
+                {% if p.brand %}
+                <div style="font-size:0.65rem;" class="text-muted mt-1">{{ p.brand }}{% if p.size %} | {{ p.size }}{% endif %}</div>
+                {% endif %}
+
+                <!-- FIYAT BLOGU: ilan YEREL para biriminde, EUR karsiligi ayrica.
+                     Eskiden ham fiyata sabit "€" konuyordu; GBP/PLN ilanlarda bu
+                     maliyeti oldugundan dusuk gosteriyordu. -->
+                <div class="mt-2 p-2" style="background:rgba(255,255,255,0.05);border-radius:8px;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div style="font-size:1.15rem;font-weight:700;color:#fff;">
+                                {{ "%.2f"|format(p.price or 0) }}
+                                <span style="font-size:0.8rem;color:#bbb;">{{ p.display_currency or 'EUR' }}</span>
+                            </div>
+                            {% if (p.display_currency or 'EUR') != 'EUR' and p.price_eur %}
+                            <div style="font-size:0.7rem;color:#7fd1a0;">= {{ "%.2f"|format(p.price_eur) }} &euro;</div>
+                            {% endif %}
+                            <div style="font-size:0.65rem;color:#888;">
+                                + {{ "%.2f"|format(p.shipping_cost or 0) }} &euro; kargo
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div style="font-size:0.65rem;color:#888;">Toplam Maliyet</div>
+                            <div style="font-size:0.9rem;font-weight:600;color:#ffa500;">
+                                {# total_cost sunucuda GERCEK kurla hesaplanir; sablon
+                                   kendi aritmetigini YAPMAZ. #}
+                                {{ "%.2f"|format(p.total_cost or ((p.price_eur or p.price or 0) + (p.shipping_cost or 0))) }} &euro;
+                            </div>
+                            <div style="font-size:0.55rem;color:#666;">alis + gelen kargo</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ARBITRAJ BLOGU: En iyi satis platformu -->
+                {% if p.best_sell_platform and p.profit_euro and p.profit_euro > 0 %}
+                <div class="mt-1 p-2" style="background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.3);border-radius:8px;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div style="font-size:0.6rem;color:#28a745;">EN KARLI PLATFORM</div>
+                            <div style="font-size:0.8rem;font-weight:600;color:#fff;">
+                                <i class="fas fa-store" style="color:#28a745;"></i> {{ p.best_sell_platform }}
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div style="font-size:1rem;font-weight:700;color:#28a745;">
+                                +{{ "%.2f"|format(p.profit_euro) }} &euro;
+                            </div>
+                            <div style="font-size:0.6rem;color:#888;">%{{ "%.0f"|format(p.profit_margin or 0) }} marj</div>
+                        </div>
+                    </div>
+                    <!-- Mini arbitraj bari -->
+                    {% if p.arbitrage_json and p.arbitrage_json != '[]' %}
+                    <div class="mt-1" style="font-size:0.55rem;color:#666;">
+                        {% for arb in (p.arbitrage_json | fromjson)[:3] %}
+                        <span style="{% if arb.net_profit > 0 %}color:#28a745{% else %}color:#dc3545{% endif %}">
+                            {{ arb.platform }}: {{ "%.0f"|format(arb.net_profit) }}&euro;
+                        </span>
+                        {% if not loop.last %} | {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% elif p.profit_euro and p.profit_euro <= 0 %}
+                <div class="mt-1 p-1 text-center" style="font-size:0.65rem;color:#dc3545;">
+                    <i class="fas fa-minus-circle"></i> Karli degil
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="card-footer p-1 d-flex gap-1" style="border-top:1px solid rgba(255,255,255,0.05);">
+                <a href="/product/{{ p.id }}" class="btn btn-sm btn-outline-primary flex-fill" title="Detay"><i class="fas fa-eye"></i></a>
+                <button class="btn btn-sm flex-fill fav-btn {% if p.is_favorite %}btn-danger active{% else %}btn-outline-danger{% endif %}"
+                        id="fav-{{ p.id }}" data-fav="{{ 1 if p.is_favorite else 0 }}"
+                        onclick="toggleFavorite('{{ p.id }}')"
+                        title="{% if p.is_favorite %}Favorilerden cikar{% else %}Favorilere ekle{% endif %}">
+                    <i class="{% if p.is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-success flex-fill" onclick="removeBg('{{ p.id }}')" title="BG Kaldir + Watermark"><i class="fas fa-magic"></i></button>
+                <button class="btn btn-sm btn-outline-warning flex-fill" onclick="checkSource('{{ p.id }}')" title="Kaynak Kontrol"><i class="fas fa-link"></i></button>
+                {% if p.source_url %}
+                <a href="{{ p.source_url }}" target="_blank" class="btn btn-sm btn-outline-info flex-fill" title="Kaynaga Git"><i class="fas fa-external-link-alt"></i></a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not products %}
+    <div class="col-12 text-center py-5 text-muted">
+        <i class="fas fa-box-open fa-3x mb-3"></i>
+        <h5>Urun bulunamadi</h5>
+        <p>Filtrelerinizi degistirin veya yeni kazima baslatin</p>
+        <a href="/scraper" class="btn btn-primary"><i class="fas fa-spider me-1"></i> Kazima Merkezi</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if pagination.total_pages > 1 %}
+<nav class="d-flex justify-content-center align-items-center gap-2 mt-4 pb-4 flex-wrap">
+    {% if pagination.page > 1 %}
+    <a href="?{{ current_params }}{% if current_params %}&{% endif %}page={{ pagination.page - 1 }}"
+       class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-chevron-left"></i> Önceki
+    </a>
+    {% endif %}
+
+    {% set start_p = [pagination.page - 3, 1]|max %}
+    {% set end_p   = [start_p + 6, pagination.total_pages]|min %}
+    {% for p in range(start_p, end_p + 1) %}
+    <a href="?{{ current_params }}{% if current_params %}&{% endif %}page={{ p }}"
+       class="btn btn-sm {% if p == pagination.page %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ p }}
+    </a>
+    {% endfor %}
+
+    {% if pagination.page < pagination.total_pages %}
+    <a href="?{{ current_params }}{% if current_params %}&{% endif %}page={{ pagination.page + 1 }}"
+       class="btn btn-outline-secondary btn-sm">
+        Sonraki <i class="fas fa-chevron-right"></i>
+    </a>
+    {% endif %}
+
+    <span class="text-muted small ms-2">
+        {{ (pagination.page - 1) * pagination.per_page + 1 }}–{{ [pagination.page * pagination.per_page, pagination.total]|min }} / {{ pagination.total }}
+    </span>
+</nav>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function applyFilters() {
+    const status = document.getElementById('f-status').value;
+    const platform = document.getElementById('f-platform').value;
+    const rec = document.getElementById('f-rec').value;
+    const category = document.getElementById('f-category').value;
+    const gender = document.getElementById('f-gender').value;
+    const priceMin = document.getElementById('f-price-min').value;
+    const priceMax = document.getElementById('f-price-max').value;
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (platform) params.set('platform', platform);
+    if (rec) params.set('recommendation', rec);
+    if (category) params.set('category', category);
+    if (gender) params.set('gender', gender);
+    if (priceMin) params.set('price_min', priceMin);
+    if (priceMax) params.set('price_max', priceMax);
+    const sort = new URLSearchParams(location.search).get('sort');
+    if (sort) params.set('sort', sort);
+    window.location.href = '/products?' + params.toString();
+}
+
+// Siralama: mevcut filtreleri koruyarak sadece sort'u degistirir.
+function setSort(value) {
+    const params = new URLSearchParams(location.search);
+    if (value) { params.set('sort', value); } else { params.delete('sort'); }
+    params.delete('page');          // yeni siralamada 1. sayfaya don
+    window.location.href = '/products?' + params.toString();
+}
+
+async function removeBg(id) {
+    await fetch(`/api/product/${id}/remove-bg`, {method:'POST'});
+    showToast('Arka plan kaldirma + watermark basladi', 'info');
+}
+
+async function checkSource(id) {
+    await fetch(`/api/product/${id}/check-source`, {method:'POST'});
+    showToast('Kaynak kontrol basladi', 'info');
+}
+
+// Favori ac/kapa — buton ANINDA durumunu degistirir (dolu kalp = favoride).
+// Eskiden sadece bildirim cikiyordu ve kartta hicbir iz kalmiyordu; sayfa
+// yenilenince hangi urunun favoride oldugu gorulmuyordu.
+async function toggleFavorite(id) {
+    const btn = document.getElementById('fav-' + id);
+    if (!btn) return;
+    const suAnFavori = btn.dataset.fav === '1';
+    const uc = suAnFavori ? '/api/watchlist/remove' : '/api/watchlist/add';
+
+    btn.disabled = true;
+    // Iyimser guncelleme: tiklama ANINDA gorunur olsun.
+    setFavUI(btn, !suAnFavori);
+    try {
+        const resp = await fetch(uc, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({product_id: id})
+        });
+        const data = await resp.json();
+        if (data.status === 'added' || data.status === 'already_watching') {
+            setFavUI(btn, true);
+            showToast(data.status === 'added' ? 'Favorilere eklendi' : 'Zaten favorilerde', 'success');
+        } else if (data.status === 'removed' || data.status === 'not_found') {
+            setFavUI(btn, false);
+            showToast('Favorilerden cikarildi', 'info');
+        } else {
+            setFavUI(btn, suAnFavori);   // bilinmeyen yanit -> eski hale don
+            showToast(data.error || 'Islem yapilamadi', 'error');
+        }
+    } catch(e) {
+        setFavUI(btn, suAnFavori);       // ag hatasi -> geri al, yalan gosterme
+        showToast('Hata: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function setFavUI(btn, favori) {
+    btn.dataset.fav = favori ? '1' : '0';
+    btn.classList.toggle('btn-danger', favori);
+    btn.classList.toggle('active', favori);
+    btn.classList.toggle('btn-outline-danger', !favori);
+    btn.title = favori ? 'Favorilerden cikar' : 'Favorilere ekle';
+    const ikon = btn.querySelector('i');
+    if (ikon) {
+        ikon.classList.toggle('fas', favori);
+        ikon.classList.toggle('far', !favori);
+    }
+}
+
+// Eski cagri adi baska sablonlarda kullaniliyor olabilir — kirilmasin.
+const addToWatchlist = toggleFavorite;
+
+// Bos/fiyatsiz urunleri temizle
+async function cleanEmpty() {
+    const resp = await fetch('/api/products/clean-empty', {method: 'POST'});
+    const data = await resp.json();
+    showToast(data.message, data.deleted > 0 ? 'success' : 'info');
+    if (data.deleted > 0) setTimeout(() => window.location.reload(), 1500);
+}
+
+// Tum urunleri yeni gercekci formul ile yeniden hesapla
+async function reanalyzeProfit() {
+    if (!confirm('Tum urunlerin kar/marj hesabi yeni formul ile yeniden yapilacak.\nBu islem arka planda calisir, birkaç dakika surebilir.\nDevam?')) return;
+    const resp = await fetch('/api/products/reanalyze-profit', {method: 'POST'});
+    const data = await resp.json();
+    showToast('Yeniden analiz basladi: ' + data.total + ' urun hesaplanacak', 'info');
+}
+
+async function deleteNonFavorites() {
+    const btn = document.querySelector('[onclick="deleteNonFavorites()"]');
+
+    // 1. ADIM: Once preview al — tam olarak ne silinecek, ne korunacak
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-search"></i> Hesaplaniyor...'; }
+    let preview;
+    try {
+        const previewResp = await fetch('/api/products/delete-non-favorites/preview');
+        preview = await previewResp.json();
+    } catch(e) {
+        showToast('Baglanti hatasi: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash-alt"></i> Favoriler Disindakileri Sil'; }
+        return;
+    }
+
+    // 2. ADIM: Onay penceresi — tam sayilarla
+    const confirmed = confirm(
+        '⚠️ SİLME ÖNİZLEMESİ\n\n' +
+        '📦 Toplam ürün: ' + preview.total_products + '\n' +
+        '❤️  Korunacak (watchlist + favori + yayinda): ' + preview.will_keep + '\n' +
+        '🗑️  Silinecek: ' + preview.will_delete + '\n\n' +
+        'Kalp ikonuyla watchliste eklediğiniz ürünler KORUNUR.\n' +
+        'Bu işlem GERİ ALINAMAZ!\n\n' +
+        'Devam edilsin mi?'
+    );
+
+    if (!confirmed) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash-alt"></i> Favoriler Disindakileri Sil'; }
+        return;
+    }
+
+    // 3. ADIM: Gercek silme
+    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Siliniyor...'; }
+    try {
+        const resp = await fetch('/api/products/delete-non-favorites', {method: 'POST'});
+        const data = await resp.json();
+        if (data.status === 'ok') {
+            showToast('✅ ' + data.message, 'success');
+            setTimeout(() => window.location.reload(), 1800);
+        } else {
+            showToast('Hata: ' + JSON.stringify(data), 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash-alt"></i> Favoriler Disindakileri Sil'; }
+        }
+    } catch(e) {
+        showToast('Baglanti hatasi: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash-alt"></i> Favoriler Disindakileri Sil'; }
+    }
+}
+</script>
+{% endblock %}
