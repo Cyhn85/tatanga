@@ -222,8 +222,17 @@ class Fetcher:
         meta_set(self.conn, "paused_until", iso(until))
         log(f"ENGEL KORUMASI: {hours} saat duraklatildi ({iso(until)})")
 
+    def error_rate(self) -> float:
+        row = self.conn.execute("SELECT requests, errors FROM budget WHERE day=?", (self._today(),)).fetchone()
+        if not row or row["requests"] < 20:
+            return 0.0
+        return row["errors"] / row["requests"]
+
     def _throttle(self) -> None:
-        wait = float(self.cfg["min_interval_seconds"]) + random.uniform(0, float(self.cfg.get("jitter", 3)))
+        # Kendi kendini ayarlar: hata orani yukseldikce yavaslar (insan mudahalesi gerekmez)
+        rate = self.error_rate()
+        factor = 4.0 if rate > 0.2 else 2.0 if rate > 0.05 else 1.0
+        wait = factor * float(self.cfg["min_interval_seconds"]) + random.uniform(0, float(self.cfg.get("jitter", 3)))
         elapsed = time.time() - self.last_request
         if elapsed < wait:
             time.sleep(wait - elapsed)
@@ -297,6 +306,11 @@ class BudgetExhausted(Exception):
 
 class Paused(Exception):
     pass
+
+
+def _norm_brand(name: str) -> str:
+    """Levi's / Levis / LEVI`S ayni markadir: karsilastirma icin sadelestirir."""
+    return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
 def seller_hash(owner_id: str) -> str:
@@ -377,7 +391,7 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
     # Ilk turda bulunanlarin yasi bilinmiyor (bizden once yayindaydilar) -> 'baseline'.
     # Satis hizi istatistikleri yalnizca 'fresh' kohorttan hesaplanir.
     cohort = "baseline" if not meta_get(conn, f"disc:{cell['id']}") else "fresh"
-    brand_key = cell["brand"].lower()
+    brand_key = _norm_brand(cell["brand"])
     quota = int(cell.get("daily_new", 40))
     today = now().strftime("%Y-%m-%d")
     added_today = conn.execute(
@@ -389,7 +403,7 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
     for item in items:
         if room <= 0:
             break
-        if brand_key not in (item["brand"] or "").lower():
+        if brand_key not in _norm_brand(item["brand"] or ""):
             continue  # arama gurultusu: baska markanin ilani
         if _CHILD_SIZE_RE.search(item["size"] or ""):
             continue  # cocuk bedeni: ayri pazar, fiyat bandi bizim disimizda
@@ -489,10 +503,15 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
 
 
 def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
-    stats = {"discovered": 0, "found": 0, "checked": 0, "sold": 0, "gone": 0, "cells": 0}
+    stats = {"discovered": 0, "found": 0, "checked": 0, "sold": 0, "gone": 0, "cells": 0, "takipte": 0}
     reserve = int(cfg["budget"].get("reserve_for_checks", 0.7) * cfg["budget"]["max_requests_per_day"])
+    # Takip yuku kapasiteyi asarsa yeni ilan almayi kendiliginden durdurur:
+    # yarim takip edilen cok ilan yerine, tam takip edilen daha az ilan.
+    tracked = conn.execute("SELECT COUNT(*) c FROM listings WHERE state='active'").fetchone()["c"]
+    discovery_open = tracked < int(cfg["budget"].get("max_tracked", 2500))
+    stats["takipte"] = tracked
     try:
-        for cell in build_cells(cfg):
+        for cell in (build_cells(cfg) if discovery_open else []):
             # kesif ancak kontrol payi korunuyorsa yapilir: takip veriyi, kesif hammaddeyi uretir
             if fetcher.budget_left() <= reserve:
                 break

@@ -2,12 +2,13 @@
   "_aciklama": "Hucre = marka x kategori x ulke. tier: core (alim adayi), watch (veri biriksin), luxury (sadece potansiyel olcumu, alim yok). Kondisyonlar: 6=Neu mit Preisschild, 1=Neu ohne Preisschild, 2=Sehr gut. Kusurlu urun alinmaz.",
   "conditions": ["6", "1", "2"],
   "budget": {
-    "max_requests_per_day": 1500,
-    "min_interval_seconds": 12,
-    "jitter": 6,
+    "max_requests_per_day": 3000,
+    "min_interval_seconds": 10,
+    "jitter": 5,
     "cycle_minutes": 30,
-    "checks_per_cycle": 60,
-    "reserve_for_checks": 0.7
+    "checks_per_cycle": 80,
+    "reserve_for_checks": 0.7,
+    "max_tracked": 2500
   },
   "tracking": {
     "day1_7": 2,
@@ -39,7 +40,7 @@
                "Saint Laurent", "Armani", "Fendi", "Givenchy", "Dolce & Gabbana",
                "Bottega Veneta", "Alexander McQueen", "Balmain", "Tom Ford", "Ferre"]
   },
-  "enabled_tiers": ["core"],
+  "enabled_tiers": ["core", "watch", "luxury"],
   "enabled_markets": ["DE", "FR"],
   "category": "jacken"
 }
