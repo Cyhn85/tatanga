@@ -1,0 +1,28 @@
+[Unit]
+Description=TATANGA pazar gozlemcisi (salt gozlem: karar vermez, yayin yapmaz)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tatanga-observer
+ExecStart=/opt/tatanga-observer/venv/bin/python /opt/tatanga-observer/observer.py
+Restart=always
+RestartSec=60
+
+# cssberlin.de ayni sunucuda: gozlemci kaza ile kaynaklari yiyemesin
+MemoryMax=400M
+CPUQuota=25%
+
+# Yalnizca kendi klasorune yazabilir: hub.db ve senkron veritabani erisim disi
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/tatanga-observer
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

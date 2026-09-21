@@ -1,0 +1,45 @@
+{
+  "_aciklama": "Hucre = marka x kategori x ulke. tier: core (alim adayi), watch (veri biriksin), luxury (sadece potansiyel olcumu, alim yok). Kondisyonlar: 6=Neu mit Preisschild, 1=Neu ohne Preisschild, 2=Sehr gut. Kusurlu urun alinmaz.",
+  "conditions": ["6", "1", "2"],
+  "budget": {
+    "max_requests_per_day": 1500,
+    "min_interval_seconds": 12,
+    "jitter": 6,
+    "cycle_minutes": 30,
+    "checks_per_cycle": 60,
+    "reserve_for_checks": 0.7
+  },
+  "tracking": {
+    "day1_7": 2,
+    "day8_30": 4,
+    "day31_90": 10,
+    "max_days": 90
+  },
+  "discovery_hours": {
+    "core": 8,
+    "watch": 12,
+    "luxury": 24
+  },
+  "daily_new": {
+    "core": 3,
+    "watch": 2,
+    "luxury": 1
+  },
+  "markets": {
+    "DE": {"domain": "vinted.de", "keyword": "jacke"},
+    "FR": {"domain": "vinted.fr", "keyword": "veste"}
+  },
+  "brands": {
+    "core": ["Columbia", "The North Face", "Jack Wolfskin", "Patagonia", "Timberland",
+             "Lacoste", "Tommy Hilfiger", "Levi's", "Adidas", "New Balance", "Diesel",
+             "Paul & Shark", "Hugo Boss", "Ralph Lauren", "Nike", "Carhartt"],
+    "watch": ["Moncler", "Burberry", "Versace", "Valentino", "Michael Kors", "Coach",
+              "Calvin Klein", "Icepeak", "Stone Island", "Napapijri", "Peuterey", "Bogner"],
+    "luxury": ["Louis Vuitton", "Gucci", "Chanel", "Hermes", "Dior", "Prada", "Balenciaga",
+               "Saint Laurent", "Armani", "Fendi", "Givenchy", "Dolce & Gabbana",
+               "Bottega Veneta", "Alexander McQueen", "Balmain", "Tom Ford", "Ferre"]
+  },
+  "enabled_tiers": ["core"],
+  "enabled_markets": ["DE", "FR"],
+  "category": "jacken"
+}
