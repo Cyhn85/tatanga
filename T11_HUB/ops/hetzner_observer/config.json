@@ -2,13 +2,13 @@
   "_aciklama": "Hucre = marka x kategori x ulke. tier: core (alim adayi), watch (veri biriksin), luxury (sadece potansiyel olcumu, alim yok). Kondisyonlar: 6=Neu mit Preisschild, 1=Neu ohne Preisschild, 2=Sehr gut. Kusurlu urun alinmaz.",
   "conditions": ["6", "1", "2"],
   "budget": {
-    "max_requests_per_day": 3000,
+    "max_requests_per_day": 5000,
     "min_interval_seconds": 10,
     "jitter": 5,
     "cycle_minutes": 30,
-    "checks_per_cycle": 80,
+    "checks_per_cycle": 120,
     "reserve_for_checks": 0.7,
-    "max_tracked": 2500
+    "max_tracked": 4000
   },
   "tracking": {
     "day1_7": 2,
@@ -17,18 +17,22 @@
     "max_days": 90
   },
   "discovery_hours": {
-    "core": 8,
-    "watch": 12,
+    "core": 12,
+    "watch": 24,
     "luxury": 24
   },
   "daily_new": {
-    "core": 3,
-    "watch": 2,
+    "core": 2,
+    "watch": 1,
     "luxury": 1
   },
   "markets": {
     "DE": {"domain": "vinted.de", "keyword": "jacke"},
-    "FR": {"domain": "vinted.fr", "keyword": "veste"}
+    "AT": {"domain": "vinted.at", "keyword": "jacke"},
+    "FR": {"domain": "vinted.fr", "keyword": "veste"},
+    "BE": {"domain": "vinted.be", "keyword": "veste"},
+    "NL": {"domain": "vinted.nl", "keyword": "jas"},
+    "IT": {"domain": "vinted.it", "keyword": "giacca"}
   },
   "brands": {
     "core": ["Columbia", "The North Face", "Jack Wolfskin", "Patagonia", "Timberland",
@@ -41,6 +45,6 @@
                "Bottega Veneta", "Alexander McQueen", "Balmain", "Tom Ford", "Ferre"]
   },
   "enabled_tiers": ["core", "watch", "luxury"],
-  "enabled_markets": ["DE", "FR"],
+  "enabled_markets": ["DE", "AT", "FR", "BE", "NL", "IT"],
   "category": "jacken"
 }
