@@ -588,8 +588,18 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
     discovery_open = tracked < int(cfg["budget"].get("max_tracked", 2500))
     stats["takipte"] = tracked
     try:
+        # Once takip (kural 29): vadesi gelen kontroller ertelenirse satis anini kaciririz.
+        limit = min(fetcher.budget_left(), int(cfg["budget"].get("checks_per_cycle", 200)))
+        for row in due_listings(conn, cfg, limit):
+            state = check_listing(conn, fetcher, row)
+            stats["checked"] += 1
+            if state == "sold":
+                stats["sold"] += 1
+            elif state == "gone":
+                stats["gone"] += 1
+
+        # Sonra kesif, yalnizca kontrol payi korunuyorsa
         for cell in (build_cells(cfg) if discovery_open else []):
-            # kesif ancak kontrol payi korunuyorsa yapilir: takip veriyi, kesif hammaddeyi uretir
             if fetcher.budget_left() <= reserve:
                 break
             last = meta_get(conn, f"disc:{cell['id']}")
@@ -602,15 +612,6 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
             stats["found"] += res["found"]
             stats["discovered"] += res["new"]
             stats["cells"] += 1
-
-        limit = min(fetcher.budget_left(), int(cfg["budget"].get("checks_per_cycle", 200)))
-        for row in due_listings(conn, cfg, limit):
-            state = check_listing(conn, fetcher, row)
-            stats["checked"] += 1
-            if state == "sold":
-                stats["sold"] += 1
-            elif state == "gone":
-                stats["gone"] += 1
     except BudgetExhausted:
         log("gunluk istek butcesi doldu")
     except Paused:
