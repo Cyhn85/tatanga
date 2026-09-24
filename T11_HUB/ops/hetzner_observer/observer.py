@@ -33,7 +33,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "observe.db")
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 
-ITEM_PAGE_SCAN_LIMIT = 400_000   # JSON-LD blogu ~110 KB'de; bulunca indirme kesilir
+# JSON-LD blogunun yeri sabit degil: bazen ~120 KB'de, bazen sayfanin sonunda.
+# Bulununca indirme kesilir; bulunamazsa sayfa sonuna kadar okunur.
+ITEM_PAGE_SCAN_LIMIT = 2_400_000
 CATALOG_MAX_BYTES = 12_000_000
 SELLER_SALT = "tatanga-observer-v1"
 
@@ -42,6 +44,7 @@ _ITEM_RE = re.compile(
     r'\\"id\\":(?P<id>\d+),\\"productItem\\":\{.*?\\"url\\":\\"(?P<url>/items/[^\\]*)\\".*?'
     r'\\"favouriteCount\\":(?P<fav>\d+).*?\\"price\\":\{\\"amount\\":\\"(?P<price>[\d.]+)\\".*?'
     r'\\"totalItemPrice\\":\{\\"amount\\":\\"(?P<total>[\d.]+)\\".*?'
+    r'\\"thumbnailUrl\\":\\"(?P<thumb>https://[^\\]*)\\".*?'
     r'\\"firstLine\\":\\"(?P<brand>[^\\]*)\\",\\"secondLine\\":\\"(?P<second>[^\\]*)\\"',
     re.DOTALL,
 )
@@ -125,7 +128,10 @@ def init_db(conn: sqlite3.Connection) -> None:
             last_check  TEXT,
             checks      INTEGER DEFAULT 0,
             cohort      TEXT NOT NULL DEFAULT 'fresh',   -- baseline: biz baslamadan once vardi
-            state       TEXT NOT NULL DEFAULT 'active',  -- active/sold/gone/unknown/expired
+            photo_sig   TEXT,                            -- gorselin parmak izi (gorsel saklanmaz)
+            relist_of   INTEGER,                         -- ayni fotograf: onceki ilanin kimligi
+            avail_raw   TEXT,                            -- platformun son bildirdigi ham durum
+            state       TEXT NOT NULL DEFAULT 'active',  -- active/sold/gone/relisted/unknown/expired
             final_price REAL,
             closed_at   TEXT,
             days_to_close REAL
@@ -164,6 +170,11 @@ def init_db(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         """
     )
+    have = {r[1] for r in conn.execute("PRAGMA table_info(listings)")}
+    for col, decl in (("photo_sig", "TEXT"), ("relist_of", "INTEGER"), ("avail_raw", "TEXT")):
+        if col not in have:
+            conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {decl}")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_sig ON listings(photo_sig)")
     conn.commit()
 
 
@@ -291,6 +302,19 @@ class Fetcher:
         self.consecutive_errors = 0
         return text
 
+    def get_bytes(self, url: str, max_bytes: int = 120_000) -> bytes | None:
+        """Kucuk onizleme gorseli: parmak izi icin indirilir, diske yazilmaz."""
+        if self.budget_left() <= 0 or self.paused_until():
+            return None
+        self._throttle()
+        try:
+            resp = self.session.get(url, timeout=30)
+            self._count()
+            return resp.content[:max_bytes] if resp.status_code == 200 else None
+        except Exception:
+            self._count(error=True)
+            return None
+
     def _handle_bad(self, status: int) -> None:
         self._count(error=True)
         self.consecutive_errors += 1
@@ -306,6 +330,28 @@ class BudgetExhausted(Exception):
 
 class Paused(Exception):
     pass
+
+
+def photo_signature(image_bytes: bytes) -> str | None:
+    """
+    Gorselin 64 bitlik parmak izi (fark karsilastirmasi). Gorsel SAKLANMAZ, sadece bu iz.
+    Ayni fotograf yeni bir ilanda cikarsa, o ilan 'tekrar yayin'dir ve yeni satis sayilmaz.
+    """
+    try:
+        from io import BytesIO
+
+        from PIL import Image
+
+        img = Image.open(BytesIO(image_bytes)).convert("L").resize((9, 8), Image.LANCZOS)
+        px = list(img.getdata())
+        bits = 0
+        for row in range(8):
+            for col in range(8):
+                left, right = px[row * 9 + col], px[row * 9 + col + 1]
+                bits = (bits << 1) | (1 if left > right else 0)
+        return f"{bits:016x}"
+    except Exception:
+        return None
 
 
 def _norm_brand(name: str) -> str:
@@ -335,6 +381,7 @@ def parse_catalog(html: str) -> list[dict]:
             "size": size.strip(),
             "condition": condition.strip() or second.strip(),
             "seller_hash": seller_hash(owner.group(1)) if owner else None,
+            "thumb": m.group("thumb"),
         })
     return out
 
@@ -410,14 +457,33 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
         exists = conn.execute("SELECT 1 FROM listings WHERE item_id=?", (item["item_id"],)).fetchone()
         if exists:
             continue
+        sig = relist_of = None
+        if item.get("thumb"):
+            blob = fetcher.get_bytes(item["thumb"])
+            sig = photo_signature(blob) if blob else None
+        if sig:
+            prev = conn.execute(
+                "SELECT item_id, state FROM listings WHERE photo_sig=? AND seller_hash IS ? "
+                "ORDER BY first_seen DESC LIMIT 1",
+                (sig, item["seller_hash"]),
+            ).fetchone()
+            if prev:
+                # Ayni satici, ayni fotograf: onceki ilan satilmadi, yeniden yayinlandi
+                relist_of = prev["item_id"]
+                conn.execute(
+                    "UPDATE listings SET state='relisted' WHERE item_id=? AND state IN ('gone','sold','active')",
+                    (prev["item_id"],),
+                )
+                add_event(conn, prev["item_id"], "relisted")
         conn.execute(
             """INSERT INTO listings (item_id, market, country, cell, brand, title, size, condition,
-                   url, price, total_price, favourites, seller_hash, first_seen, cohort, state)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active')""",
+                   url, price, total_price, favourites, seller_hash, first_seen, cohort,
+                   photo_sig, relist_of, state)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active')""",
             (item["item_id"], market, cell["country"], cell["id"], item["brand"], None,
              item["size"], item["condition"], f"https://www.{market}{item['url']}",
              item["price"], item["total_price"], item["favourites"], item["seller_hash"],
-             iso(now()), cohort),
+             iso(now()), cohort, sig, relist_of),
         )
         add_event(conn, item["item_id"], "discovered", item["price"], item["favourites"])
         new += 1
@@ -489,14 +555,18 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
         days = round((now() - first).total_seconds() / 86400, 2)
         conn.execute(
             "UPDATE listings SET state='sold', final_price=?, closed_at=?, days_to_close=?, "
-            "last_check=?, checks=checks+1 WHERE item_id=?",
-            (price if price is not None else row["price"], ts, days, ts, row["item_id"]),
+            "last_check=?, checks=checks+1, avail_raw=? WHERE item_id=?",
+            (price if price is not None else row["price"], ts, days, ts,
+             info["availability"], row["item_id"]),
         )
         add_event(conn, row["item_id"], "sold", price)
     else:
+        if new_state == "unknown":
+            # Tanimadigimiz durum degeri: tahmin yurutmuyoruz, ham degeri kaydedip isaretliyoruz
+            add_event(conn, row["item_id"], f"unknown:{info['availability'][:40]}")
         conn.execute(
-            "UPDATE listings SET last_check=?, checks=checks+1, state=? WHERE item_id=?",
-            (ts, "active" if new_state == "active" else row["state"], row["item_id"]),
+            "UPDATE listings SET last_check=?, checks=checks+1, state=?, avail_raw=? WHERE item_id=?",
+            (ts, "active" if new_state == "active" else row["state"], info["availability"], row["item_id"]),
         )
     conn.commit()
     return new_state
@@ -541,20 +611,36 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
     return stats
 
 
+SOLD_VERIFY_THRESHOLD = 20
+
+
 def print_stats(conn: sqlite3.Connection) -> None:
+    avail = conn.execute(
+        "SELECT avail_raw, COUNT(*) c FROM listings WHERE avail_raw IS NOT NULL GROUP BY 1 ORDER BY c DESC"
+    ).fetchall()
+    sold = conn.execute("SELECT COUNT(*) c FROM listings WHERE state='sold'").fetchone()["c"]
+    relisted = conn.execute("SELECT COUNT(*) c FROM listings WHERE state='relisted'").fetchone()["c"]
+    print("platformun bildirdigi durumlar:", ", ".join(f"{r['avail_raw']}={r['c']}" for r in avail) or "-")
+    print(f"dogrulanmis satis: {sold} | tekrar yayin (satis sayilmadi): {relisted}")
+    if sold < SOLD_VERIFY_THRESHOLD:
+        print(f"UYARI: satis hizi rakamlari {SOLD_VERIFY_THRESHOLD} dogrulanmis satistan once "
+              f"kullanilmaz (kural 33).")
+    print()
     rows = conn.execute(
         """SELECT cell,
                   COUNT(*) total,
                   SUM(state='active') aktif,
                   SUM(state='sold') satildi,
                   SUM(state='gone') kalkti,
+                  SUM(state='relisted') tekrar,
                   ROUND(AVG(CASE WHEN state='sold' THEN days_to_close END), 1) ort_gun,
                   ROUND(AVG(CASE WHEN state='sold' THEN final_price END), 2) ort_fiyat
              FROM listings WHERE cohort='fresh' GROUP BY cell ORDER BY total DESC"""
     ).fetchall()
-    print(f"{'hucre':34} {'toplam':>7} {'aktif':>6} {'satildi':>8} {'kalkti':>7} {'ort.gun':>8} {'ort.fiyat':>10}")
+    print(f"{'hucre':34} {'toplam':>7} {'aktif':>6} {'satildi':>8} {'kalkti':>7} {'tekrar':>7} "
+          f"{'ort.gun':>8} {'ort.fiyat':>10}")
     for r in rows:
-        print(f"{r['cell']:34} {r['total']:7} {r['aktif']:6} {r['satildi']:8} {r['kalkti']:7} "
+        print(f"{r['cell']:34} {r['total']:7} {r['aktif']:6} {r['satildi']:8} {r['kalkti']:7} {r['tekrar']:7} "
               f"{r['ort_gun'] if r['ort_gun'] is not None else '-':>8} "
               f"{r['ort_fiyat'] if r['ort_fiyat'] is not None else '-':>10}")
     b = conn.execute("SELECT * FROM budget ORDER BY day DESC LIMIT 3").fetchall()
