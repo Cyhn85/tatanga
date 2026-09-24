@@ -39,15 +39,17 @@ ITEM_PAGE_SCAN_LIMIT = 2_400_000
 CATALOG_MAX_BYTES = 12_000_000
 SELLER_SALT = "tatanga-observer-v1"
 
-# Katalog sayfasindaki RSC blogundan tek ilan blogu
-_ITEM_RE = re.compile(
-    r'\\"id\\":(?P<id>\d+),\\"productItem\\":\{.*?\\"url\\":\\"(?P<url>/items/[^\\]*)\\".*?'
-    r'\\"favouriteCount\\":(?P<fav>\d+).*?\\"price\\":\{\\"amount\\":\\"(?P<price>[\d.]+)\\".*?'
-    r'\\"totalItemPrice\\":\{\\"amount\\":\\"(?P<total>[\d.]+)\\".*?'
-    r'\\"thumbnailUrl\\":\\"(?P<thumb>https://[^\\]*)\\".*?'
-    r'\\"firstLine\\":\\"(?P<brand>[^\\]*)\\",\\"secondLine\\":\\"(?P<second>[^\\]*)\\"',
-    re.DOTALL,
-)
+# Katalog sayfasi 7 MB. Tek buyuk desenle taramak islemciyi saatlerce mesgul ediyordu;
+# bunun yerine sayfa ilan bloklarina bolunup her blogun basi kisa desenlerle okunur.
+_ITEM_SPLIT = '\\"productItem\\":'
+_ITEM_WINDOW = 4000
+_F_ID = re.compile(r'\\"id\\":(\d+)')
+_F_URL = re.compile(r'\\"url\\":\\"(/items/[^\\]*)')
+_F_FAV = re.compile(r'\\"favouriteCount\\":(\d+)')
+_F_PRICE = re.compile(r'\\"price\\":\{\\"amount\\":\\"([\d.]+)')
+_F_TOTAL = re.compile(r'\\"totalItemPrice\\":\{\\"amount\\":\\"([\d.]+)')
+_F_THUMB = re.compile(r'\\"thumbnailUrl\\":\\"(https://[^\\]*)')
+_F_LINES = re.compile(r'\\"firstLine\\":\\"([^\\]*)\\",\\"secondLine\\":\\"([^\\]*)')
 _OWNER_RE = re.compile(r'\\"ownerId\\":(\d+)')
 _TOTAL_RE = re.compile(r'\\"total_entries\\":(\d+)')
 _PAGES_RE = re.compile(r'\\"total_pages\\":(\d+)')
@@ -343,7 +345,7 @@ def photo_signature(image_bytes: bytes) -> str | None:
         from PIL import Image
 
         img = Image.open(BytesIO(image_bytes)).convert("L").resize((9, 8), Image.LANCZOS)
-        px = list(img.getdata())
+        px = img.tobytes()
         bits = 0
         for row in range(8):
             for col in range(8):
@@ -366,22 +368,27 @@ def seller_hash(owner_id: str) -> str:
 def parse_catalog(html: str) -> list[dict]:
     """Katalog sayfasindaki RSC blogundan ilanlari cikarir."""
     out: list[dict] = []
-    for m in _ITEM_RE.finditer(html):
-        second = m.group("second")
+    for block in html.split(_ITEM_SPLIT)[1:]:
+        seg = block[:_ITEM_WINDOW]
+        fields = [r.search(seg) for r in (_F_ID, _F_URL, _F_FAV, _F_PRICE, _F_TOTAL, _F_LINES)]
+        if not all(fields):
+            continue
+        ident, url, fav, price, total, lines = fields
+        thumb = _F_THUMB.search(seg)
+        owner = _OWNER_RE.search(seg)
+        second = lines.group(2)
         size, _, condition = second.partition(" · ")
-        tail = html[m.end():m.end() + 2000]
-        owner = _OWNER_RE.search(tail)
         out.append({
-            "item_id": int(m.group("id")),
-            "url": m.group("url"),
-            "favourites": int(m.group("fav")),
-            "price": float(m.group("price")),
-            "total_price": float(m.group("total")),
-            "brand": m.group("brand"),
+            "item_id": int(ident.group(1)),
+            "url": url.group(1),
+            "favourites": int(fav.group(1)),
+            "price": float(price.group(1)),
+            "total_price": float(total.group(1)),
+            "brand": lines.group(1),
             "size": size.strip(),
             "condition": condition.strip() or second.strip(),
             "seller_hash": seller_hash(owner.group(1)) if owner else None,
-            "thumb": m.group("thumb"),
+            "thumb": thumb.group(1) if thumb else None,
         })
     return out
 
