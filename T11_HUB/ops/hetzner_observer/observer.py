@@ -47,6 +47,7 @@ _ITEM_SPLIT = '\\"productItem\\":'
 _ITEM_WINDOW = 4000
 _F_ID = re.compile(r'\\"id\\":(\d+)')
 _F_URL = re.compile(r'\\"url\\":\\"(/items/[^\\]*)')
+_F_TITLE = re.compile(r'\\"title\\":\\"([^\\]{0,160})')
 _F_FAV = re.compile(r'\\"favouriteCount\\":(\d+)')
 _F_PRICE = re.compile(r'\\"price\\":\{\\"amount\\":\\"([\d.]+)')
 _F_TOTAL = re.compile(r'\\"totalItemPrice\\":\{\\"amount\\":\\"([\d.]+)')
@@ -388,6 +389,7 @@ def parse_catalog(html: str) -> list[dict]:
         ident, url, fav, price, total, lines = fields
         thumb = _F_THUMB.search(seg)
         owner = _OWNER_RE.search(seg)
+        title = _F_TITLE.search(seg)
         second = lines.group(2)
         size, _, condition = second.partition(" · ")
         out.append({
@@ -401,6 +403,7 @@ def parse_catalog(html: str) -> list[dict]:
             "condition": condition.strip() or second.strip(),
             "seller_hash": seller_hash(owner.group(1)) if owner else None,
             "thumb": thumb.group(1) if thumb else None,
+            "title": title.group(1) if title else None,   # model cikarimi bunun uzerinden yapilacak
         })
     return out
 
@@ -499,7 +502,7 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
                    url, price, total_price, favourites, seller_hash, first_seen, cohort,
                    photo_sig, relist_of, state)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active')""",
-            (item["item_id"], market, cell["country"], cell["id"], item["brand"], None,
+            (item["item_id"], market, cell["country"], cell["id"], item["brand"], item.get("title"),
              item["size"], item["condition"], f"https://www.{market}{item['url']}",
              item["price"], item["total_price"], item["favourites"], item["seller_hash"],
              iso(now()), cohort, sig, relist_of),
