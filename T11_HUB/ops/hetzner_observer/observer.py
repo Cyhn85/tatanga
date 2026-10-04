@@ -36,6 +36,8 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 # JSON-LD blogunun yeri sabit degil: bazen ~120 KB'de, bazen sayfanin sonunda.
 # Bulununca indirme kesilir; bulunamazsa sayfa sonuna kadar okunur.
 ITEM_PAGE_SCAN_LIMIT = 2_400_000
+# Durum blogu bu kadar kez ust uste okunamazsa ilan 'bilinmiyor' olur (tahmin yurutulmez)
+UNRESOLVED_LIMIT = 6
 CATALOG_MAX_BYTES = 12_000_000
 SELLER_SALT = "tatanga-observer-v1"
 
@@ -173,7 +175,8 @@ def init_db(conn: sqlite3.Connection) -> None:
         """
     )
     have = {r[1] for r in conn.execute("PRAGMA table_info(listings)")}
-    for col, decl in (("photo_sig", "TEXT"), ("relist_of", "INTEGER"), ("avail_raw", "TEXT")):
+    for col, decl in (("photo_sig", "TEXT"), ("relist_of", "INTEGER"), ("avail_raw", "TEXT"),
+                      ("unresolved", "INTEGER DEFAULT 0")):
         if col not in have:
             conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {decl}")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_sig ON listings(photo_sig)")
@@ -204,6 +207,7 @@ class Fetcher:
         self.last_request = 0.0
         self.consecutive_errors = 0
         self.warm_market: str | None = None
+        self.last_status: int | None = None
 
     def _today(self) -> str:
         return now().strftime("%Y-%m-%d")
@@ -267,6 +271,7 @@ class Fetcher:
         if self.paused_until():
             raise Paused()
         self._throttle()
+        self.last_status = None
         try:
             if scan_limit:
                 # Sayfa 2 MB; aradigimiz schema.org blogu ~110 KB'de. Bulunca indirmeyi keseriz.
@@ -302,6 +307,7 @@ class Fetcher:
             return None
         self._count()
         self.consecutive_errors = 0
+        self.last_status = 200
         return text
 
     def get_bytes(self, url: str, max_bytes: int = 120_000) -> bytes | None:
@@ -318,6 +324,12 @@ class Fetcher:
             return None
 
     def _handle_bad(self, status: int) -> None:
+        self.last_status = status
+        if status in (404, 410):
+            # Silinmis ilan: normal bir sonuc, hata degil. Engel korumasini tetiklemez.
+            self._count()
+            self.consecutive_errors = 0
+            return None
         self._count(error=True)
         self.consecutive_errors += 1
         log(f"HTTP {status} (ust uste {self.consecutive_errors})")
@@ -534,22 +546,37 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
     fetcher.warm(row["market"])
     html = fetcher.get(row["url"], scan_limit=ITEM_PAGE_SCAN_LIMIT)
     ts = iso(now())
+
+    # SADECE 404/410 "kalkti" demektir. Sayfanin yuklenmemesi ya da durum blogunun
+    # o gelisde bulunmamasi ilanin kalktigini GOSTERMEZ (bu varsayim 1397 yanlis kayda
+    # yol acmisti). Cozulemeyen kontrol durumu degistirmez, sadece yeniden denenir.
     if html is None:
+        if fetcher.last_status in (404, 410):
+            first = datetime.strptime(row["first_seen"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            days = round((now() - first).total_seconds() / 86400, 2)
+            conn.execute(
+                "UPDATE listings SET state='gone', closed_at=?, days_to_close=?, last_check=?, "
+                "checks=checks+1 WHERE item_id=?", (ts, days, ts, row["item_id"]),
+            )
+            add_event(conn, row["item_id"], "gone")
+            conn.commit()
+            return "gone"
         conn.execute("UPDATE listings SET last_check=?, checks=checks+1 WHERE item_id=?", (ts, row["item_id"]))
         conn.commit()
         return "error"
+
     info = parse_item_state(html)
     if info is None:
-        # sayfa yok / erisilemiyor -> ilan kaldirilmis (satildigi KESIN DEGIL)
-        first = datetime.strptime(row["first_seen"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-        days = round((now() - first).total_seconds() / 86400, 2)
+        unresolved = (row["unresolved"] or 0) + 1
+        state = "unknown" if unresolved >= UNRESOLVED_LIMIT else row["state"]
         conn.execute(
-            "UPDATE listings SET state='gone', closed_at=?, days_to_close=?, last_check=?, checks=checks+1 "
-            "WHERE item_id=?", (ts, days, ts, row["item_id"]),
+            "UPDATE listings SET unresolved=?, state=?, last_check=?, checks=checks+1 WHERE item_id=?",
+            (unresolved, state, ts, row["item_id"]),
         )
-        add_event(conn, row["item_id"], "gone")
+        if state == "unknown":
+            add_event(conn, row["item_id"], "unresolved")
         conn.commit()
-        return "gone"
+        return "unresolved"
 
     new_state = info["state"]
     price = info["price"]
@@ -572,7 +599,8 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
             # Tanimadigimiz durum degeri: tahmin yurutmuyoruz, ham degeri kaydedip isaretliyoruz
             add_event(conn, row["item_id"], f"unknown:{info['availability'][:40]}")
         conn.execute(
-            "UPDATE listings SET last_check=?, checks=checks+1, state=?, avail_raw=? WHERE item_id=?",
+            "UPDATE listings SET last_check=?, checks=checks+1, state=?, avail_raw=?, unresolved=0 "
+            "WHERE item_id=?",
             (ts, "active" if new_state == "active" else row["state"], info["availability"], row["item_id"]),
         )
     conn.commit()
