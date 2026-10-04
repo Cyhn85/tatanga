@@ -17,6 +17,7 @@ import argparse
 import re
 import sqlite3
 import statistics
+import unicodedata
 from collections import Counter, defaultdict
 
 DB_FILE = "/opt/tatanga-observer/observe.db"
@@ -37,18 +38,32 @@ REFERENCE_MARKET = "DE"
 
 # Model adayi olamayacak kelimeler: renk, beden, kondisyon, genel giysi sozcukleri
 STOP = set("""
-jacke jacken mantel veste vestes giacca jas jassen winterjacke sommerjacke regenjacke
-herren damen homme femme uomo donna heren dames kinder enfant unisex
+jacke jacken mantel veste vestes giacca giubbotto giubbino cappotto piumino jas jassen
+winterjacke sommerjacke regenjacke uebergangsjacke übergangsjacke donsjas blouson manteau
+herren damen homme femme uomo donna heren dames kinder enfant unisex mens womens boys girls
 schwarz weiss weiß blau rot grun grün grau beige braun rosa gelb navy noir blanc bleu rouge
-vert gris nero bianco blu verde zwart wit blauw groen rood
+vert gris nero bianco blu verde zwart wit blauw groen rood black white blue red green grey
 neu neuf nuovo nieuw gut gute guter sehr très bon etat état top zustand condition
-gr gre grosse größe taille taglia maat size xs s m l xl xxl xxxl
-mit und ohne avec sans con senza met zonder the and de la le les il of
-vintage original echt selten rare neuwertig getragen wie super schön schoen nice
-jacket coat parka bomber daunenjacke steppjacke fleecejacke softshell windbreaker
+gr gre grosse größe taille taglia maat size xs xl xxl xxxl
+mit und ohne avec sans con senza met zonder the and de la le les il of du des pour
+vintage original originals echt selten rare neuwertig getragen wie super schön schoen nice
+jacket coat parka bomber daunenjacke steppjacke fleecejacke softshell windbreaker windjacke
+hoodie sweat sweatshirt pullover fleece puffer winter sommer herbst hiver inverno
+kapuze capuche cappuccio hood warm leicht light sport sportjacke trainingsjacke track
+veste capuche doudoune coupe coup vent impermeable waterproof outdoor casual
+y2k retro rar neuwertiger zustand tolle schone schicke damenjacke herrenjacke
+chaqueta felpa pile impermeable imperm manche manches poche poches zip zipp full
+survetement surv tement nouvel nouveau noire chinois giubbotto taglia etat tat
+capuchon cerniera cappuccio maglia abrigo talla hombre mujer stile modello nieuwe
 """.split())
 
 _WORD = re.compile(r"[a-z0-9][a-z0-9\-\.]{1,}")
+MIN_MARKETS = 2   # gercek model adi birden cok dilde gecer; genel kelime tek pazarda kalir
+
+
+def strip_accents(text: str) -> str:
+    """'état' -> 'etat': aksan ayristirmasi kelimeleri bolup sahte model uretiyordu."""
+    return "".join(c for c in unicodedata.normalize("NFD", text) if not unicodedata.combining(c))
 
 
 def connect() -> sqlite3.Connection:
@@ -72,7 +87,7 @@ def size_group(raw: str | None) -> str | None:
 
 def samples(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
-        "SELECT brand, title, size, condition, price, country FROM catalog_samples "
+        "SELECT cell, title, size, condition, price, country FROM catalog_samples "
         "WHERE is_child=0 AND price > 0"
     ).fetchall()
     out = []
@@ -81,8 +96,10 @@ def samples(conn: sqlite3.Connection) -> list[dict]:
         if not cond:
             continue
         out.append({
-            "brand": (r["brand"] or "").strip().lower(),
-            "title": (r["title"] or "").lower(),
+            # Marka, ilanin serbest metninden degil kendi marka evrenimizden gelir:
+            # "adidas Originals", "ADIDAS", "adidas performance" hepsi tek markadir
+            "brand": r["cell"].split("|")[0].lower(),
+            "title": strip_accents((r["title"] or "").lower()),
             "cond": cond,
             "market": r["country"],
             "size": size_group(r["size"]),
@@ -112,18 +129,45 @@ def ratio_factor(data: list[dict], key: str, reference: str) -> dict[str, float]
     return {v: round(statistics.median(r), 3) for v, r in ratios.items() if len(r) >= 2}
 
 
-def model_candidates(data: list[dict], brand: str, top: int = 15) -> list[tuple[str, int]]:
+MAX_DISPERSION = 0.8   # bundan genis dagilim model degil, genel kelimedir
+
+
+def model_candidates(data: list[dict], brand: str, top: int = 40) -> list[tuple[str, int]]:
     """Marka basliklarinda sik tekrarlayan kelime/ikili: model adayi."""
     counts: Counter = Counter()
-    brand_words = set(_WORD.findall(brand))
+    markets: dict[str, set[str]] = defaultdict(set)
+    brand_words = set(_WORD.findall(strip_accents(brand)))
     for d in data:
         if d["brand"] != brand or not d["title"]:
             continue
         words = [w for w in _WORD.findall(d["title"])
                  if w not in STOP and w not in brand_words and not w.isdigit() and len(w) > 2]
-        counts.update(set(words))
-        counts.update({f"{a} {b}" for a, b in zip(words, words[1:])})
-    return [(w, c) for w, c in counts.most_common(top) if c >= 3]
+        terms = set(words) | {f"{a} {b}" for a, b in zip(words, words[1:])}
+        counts.update(terms)
+        for t in terms:
+            markets[t].add(d["market"])
+    return [(w, c) for w, c in counts.most_common(top)
+            if c >= 3 and len(markets[w]) >= MIN_MARKETS]
+
+
+def ranked_models(data: list[dict], brand: str, cond_f, market_f, size_f) -> list[tuple[str, dict]]:
+    """
+    Gercek model adi fiyatlari DAR bir banda toplar; "running", "winter" gibi genel
+    kelimeler toplamaz. Bu yuzden adaylar sayiya gore degil, dagilim darligina gore siralanir.
+    """
+    scored = []
+    for model, _ in model_candidates(data, brand):
+        base = model_base(data, brand, model, cond_f, market_f, size_f)
+        if base and base["dagilim"] <= MAX_DISPERSION:
+            scored.append((model, base))
+    scored.sort(key=lambda x: x[1]["dagilim"])
+    # "tech fleece" varken "tech" ve "fleece" tek tek listelenmesin
+    kept: list[tuple[str, dict]] = []
+    for model, base in scored:
+        if any(model != other and model in other.split() for other, _ in kept):
+            continue
+        kept.append((model, base))
+    return kept
 
 
 def model_base(data: list[dict], brand: str, model: str, cond_f, market_f, size_f) -> dict | None:
@@ -174,14 +218,14 @@ def main() -> None:
     brands = [args.brand.lower()] if args.brand else [
         b for b, c in Counter(d["brand"] for d in data).most_common(8)]
     for brand in brands:
-        print(f"\n=== {brand.upper()} model adaylari")
-        for model, count in model_candidates(data, brand):
-            base = model_base(data, brand, model, cond_f, market_f, size_f)
-            if base:
-                print(f"   {model:26} n={base['n']:3}  taban={base['taban']:7} €  "
-                      f"P25={base['p25']:6} P75={base['p75']:6}  dagilim={base['dagilim']}")
-            else:
-                print(f"   {model:26} gecen={count:3}  (taban icin yetersiz veri)")
+        n_brand = sum(1 for d in data if d["brand"] == brand)
+        models = ranked_models(data, brand, cond_f, market_f, size_f)
+        print(f"\n=== {brand.upper()}  ({n_brand} ilan, {len(models)} model tabani)")
+        for model, base in models[:10]:
+            print(f"   {model:24} n={base['n']:3}  taban={base['taban']:7} €  "
+                  f"P25={base['p25']:6} P75={base['p75']:6}  dagilim={base['dagilim']}")
+        if not models:
+            print("   (henuz model tabani cikaracak kadar yogun veri yok)")
 
 
 if __name__ == "__main__":
