@@ -167,6 +167,24 @@ def init_db(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_snap_cell ON cell_snapshots(cell, ts);
 
+        -- Katalog sayfasindan gecen HER ilan (takibe alinmasa bile). Ek istek maliyeti yok:
+        -- sayfa zaten indirildi. Model sozlugu ve kondisyon/pazar/beden carpanlari bundan cikar.
+        CREATE TABLE IF NOT EXISTS catalog_samples (
+            item_id     INTEGER PRIMARY KEY,
+            ts          TEXT NOT NULL,
+            cell        TEXT NOT NULL,
+            country     TEXT NOT NULL,
+            brand       TEXT,
+            title       TEXT,
+            size        TEXT,
+            condition   TEXT,
+            price       REAL,
+            total_price REAL,
+            favourites  INTEGER,
+            is_child    INTEGER DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_samples_brand ON catalog_samples(brand, condition);
+
         CREATE TABLE IF NOT EXISTS budget (
             day TEXT PRIMARY KEY,
             requests INTEGER DEFAULT 0,
@@ -461,6 +479,17 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
     # Satis hizi istatistikleri yalnizca 'fresh' kohorttan hesaplanir.
     cohort = "baseline" if not meta_get(conn, f"disc:{cell['id']}") else "fresh"
     brand_key = _norm_brand(cell["brand"])
+
+    # Sayfadaki butun ilanlar ornek havuzuna girer (takip kotasindan bagimsiz, bedava veri)
+    conn.executemany(
+        "INSERT OR IGNORE INTO catalog_samples (item_id, ts, cell, country, brand, title, size, "
+        "condition, price, total_price, favourites, is_child) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        [(i["item_id"], iso(now()), cell["id"], cell["country"], i["brand"], i.get("title"),
+          i["size"], i["condition"], i["price"], i["total_price"], i["favourites"],
+          1 if _CHILD_SIZE_RE.search(i["size"] or "") else 0)
+         for i in items if brand_key in _norm_brand(i["brand"] or "")],
+    )
+    conn.commit()
     quota = int(cell.get("daily_new", 40))
     today = now().strftime("%Y-%m-%d")
     added_today = conn.execute(
@@ -691,6 +720,8 @@ def main() -> None:
     ap.add_argument("--once", action="store_true", help="tek tur calis ve cik")
     ap.add_argument("--stats", action="store_true", help="istatistikleri yazdir ve cik")
     ap.add_argument("--probe", action="store_true", help="tek hucrede kazima testi, veri yazmaz")
+    ap.add_argument("--harvest", action="store_true",
+                    help="tum hucreleri bir kez gez: ornek havuzunu doldurur (carpan olcumu icin)")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -719,6 +750,25 @@ def main() -> None:
             fetcher.warm(cell["market"])
             page = fetcher.get(f"https://www.{cell['market']}{items[0]['url']}", scan_limit=ITEM_PAGE_SCAN_LIMIT)
             print("ilan sayfasi:", round(len(page or "") / 1024), "KB ->", parse_item_state(page or ""))
+        return
+
+    if args.harvest:
+        # Her hucre bir kez taranir; sayfadaki 95 ilanin hepsi ornek havuzuna girer.
+        # Servis durdurulmus olmali, yoksa iki surec ayni anda istek atar.
+        cells = build_cells(cfg)
+        log(f"ornek toplama: {len(cells)} hucre")
+        for i, cell in enumerate(cells, 1):
+            try:
+                res = discover(conn, fetcher, cfg, cell)
+                meta_set(conn, f"disc:{cell['id']}", iso(now()))
+            except (BudgetExhausted, Paused) as exc:
+                log(f"durdu: {type(exc).__name__}")
+                break
+            if i % 20 == 0:
+                total = conn.execute("SELECT COUNT(*) c FROM catalog_samples").fetchone()["c"]
+                log(f"  {i}/{len(cells)} hucre | havuz: {total} ornek")
+        total = conn.execute("SELECT COUNT(*) c FROM catalog_samples").fetchone()["c"]
+        log(f"bitti: {total} ornek")
         return
 
     if args.once:
