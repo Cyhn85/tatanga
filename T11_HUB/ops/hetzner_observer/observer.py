@@ -50,6 +50,8 @@ _F_URL = re.compile(r'\\"url\\":\\"(/items/[^\\]*)')
 _F_TITLE = re.compile(r'\\"title\\":\\"([^\\]{0,160})')
 _F_FAV = re.compile(r'\\"favouriteCount\\":(\d+)')
 _F_PRICE = re.compile(r'\\"price\\":\{\\"amount\\":\\"([\d.]+)')
+# Isvec SEK ile fiyatlar: para birimi her ilanla birlikte saklanir, EUR'ya cevrim analizde yapilir
+_F_CUR = re.compile(r'\\"price\\":\{\\"amount\\":\\"[\d.]+\\",\\"currencyCode\\":\\"([A-Z]{3})')
 _F_TOTAL = re.compile(r'\\"totalItemPrice\\":\{\\"amount\\":\\"([\d.]+)')
 _F_THUMB = re.compile(r'\\"thumbnailUrl\\":\\"(https://[^\\]*)')
 _F_LINES = re.compile(r'\\"firstLine\\":\\"([^\\]*)\\",\\"secondLine\\":\\"([^\\]*)')
@@ -89,25 +91,47 @@ def load_config() -> dict:
 
 
 def build_cells(cfg: dict) -> list[dict]:
-    """Marka x pazar hucreleri. Markalar config'te kilitli; tier sadece hiz/kotayi belirler."""
+    """
+    Marka x kategori x pazar hucreleri. Markalar config'te kilitli; tier sadece hiz/kotayi belirler.
+    brand_categories bir markayi anlamli kategorilerine sinirlar (Birkenstock'ta 'mont' aranmaz).
+    """
     cells = []
+    all_cats = list(cfg["categories"])
     for tier in cfg["enabled_tiers"]:
         for brand in cfg["brands"][tier]:
-            for country in cfg["enabled_markets"]:
-                market = cfg["markets"][country]
-                cells.append({
-                    "id": f"{brand}|{cfg['category']}|{country}",
-                    "brand": brand,
-                    "tier": tier,
-                    "country": country,
-                    "market": market["domain"],
-                    "query": f"{brand} {market['keyword']}",
-                    "daily_new": cfg["daily_new"][tier],
-                    "discovery_hours": cfg["discovery_hours"][tier],
-                })
+            search = cfg.get("brand_search", {}).get(brand, brand)
+            for category in cfg.get("brand_categories", {}).get(brand, all_cats):
+                keywords = cfg["categories"][category]
+                for country in cfg["enabled_markets"]:
+                    if country not in keywords:
+                        continue
+                    cells.append({
+                        "id": f"{brand}|{category}|{country}",
+                        "brand": brand,
+                        "match": [_norm_brand(a) for a in cfg.get("brand_match", {}).get(brand, [brand])],
+                        "tier": tier,
+                        "category": category,
+                        "country": country,
+                        "market": cfg["markets"][country],
+                        "query": f"{search} {keywords[country]}",
+                        "daily_new": cfg["daily_new"][tier],
+                        "discovery_hours": cfg["discovery_hours"][tier],
+                    })
     # Ayni pazarin hucreleri pes pese: her pazar degisiminde bir oturum istegi gerekiyor
-    cells.sort(key=lambda c: (c["market"], c["brand"]))
+    cells.sort(key=lambda c: (c["market"], c["brand"], c["category"]))
     return cells
+
+
+def brand_matches(cell: dict, item_brand: str) -> bool:
+    """
+    Ilanin marka alani bizim markamiz mi? 'adidas Originals' -> adidas (on ek eslesmesi).
+    Kisa takma adlar (On) TAM eslesmeli: yoksa 'Onitsuka' da On sayilirdi.
+    """
+    got = _norm_brand(item_brand or "")
+    for alias in cell["match"]:
+        if (len(alias) <= 3 and got == alias) or (len(alias) > 3 and got.startswith(alias)):
+            return True
+    return False
 
 
 def connect() -> sqlite3.Connection:
@@ -221,6 +245,9 @@ def init_db(conn: sqlite3.Connection) -> None:
         if col not in have:
             conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {decl}")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_sig ON listings(photo_sig)")
+    have_s = {r[1] for r in conn.execute("PRAGMA table_info(catalog_samples)")}
+    if "currency" not in have_s:
+        conn.execute("ALTER TABLE catalog_samples ADD COLUMN currency TEXT DEFAULT 'EUR'")
     conn.commit()
 
 
@@ -481,6 +508,7 @@ def parse_catalog(html: str) -> list[dict]:
         thumb = _F_THUMB.search(seg)
         owner = _OWNER_RE.search(seg)
         title = _F_TITLE.search(seg)
+        cur = _F_CUR.search(seg)
         second = lines.group(2)
         size, _, condition = second.partition(" · ")
         out.append({
@@ -495,6 +523,7 @@ def parse_catalog(html: str) -> list[dict]:
             "seller_hash": seller_hash(owner.group(1)) if owner else None,
             "thumb": thumb.group(1) if thumb else None,
             "title": title.group(1) if title else None,   # model cikarimi bunun uzerinden yapilacak
+            "currency": cur.group(1) if cur else "EUR",
         })
     return out
 
@@ -535,7 +564,13 @@ def add_event(conn, item_id: int, etype: str, price=None, favourites=None) -> No
     )
 
 
-def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) -> dict:
+def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict,
+             enroll: bool = True) -> dict:
+    """
+    Katalog sayfasini okur. Sayfadaki her ilan ornek havuzuna girer (fiyat iskeleti icin);
+    enroll=True ise kota kadari ayrica satis takibine alinir. Takip kapasitesi doluyken
+    enroll=False: ornek toplama DURMAZ, sadece yeni takip baslamaz.
+    """
     market = cell["market"]
     fetcher.warm(market)
     params = {
@@ -566,18 +601,20 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
     # Ilk turda bulunanlarin yasi bilinmiyor (bizden once yayindaydilar) -> 'baseline'.
     # Satis hizi istatistikleri yalnizca 'fresh' kohorttan hesaplanir.
     cohort = "baseline" if not meta_get(conn, f"disc:{cell['id']}") else "fresh"
-    brand_key = _norm_brand(cell["brand"])
 
     # Sayfadaki butun ilanlar ornek havuzuna girer (takip kotasindan bagimsiz, bedava veri)
     conn.executemany(
         "INSERT OR IGNORE INTO catalog_samples (item_id, ts, cell, country, brand, title, size, "
-        "condition, price, total_price, favourites, is_child) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        "condition, price, total_price, favourites, is_child, currency) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(i["item_id"], iso(now()), cell["id"], cell["country"], i["brand"], i.get("title"),
           i["size"], i["condition"], i["price"], i["total_price"], i["favourites"],
-          1 if _CHILD_SIZE_RE.search(i["size"] or "") else 0)
-         for i in items if brand_key in _norm_brand(i["brand"] or "")],
+          1 if _CHILD_SIZE_RE.search(i["size"] or "") else 0, i.get("currency", "EUR"))
+         for i in items if brand_matches(cell, i["brand"])],
     )
     conn.commit()
+    if not enroll:
+        return {"found": len(items), "new": 0}
     quota = int(cell.get("daily_new", 40))
     today = now().strftime("%Y-%m-%d")
     added_today = conn.execute(
@@ -589,7 +626,7 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
     for item in items:
         if room <= 0:
             break
-        if brand_key not in _norm_brand(item["brand"] or ""):
+        if not brand_matches(cell, item["brand"]):
             continue  # arama gurultusu: baska markanin ilani
         if _CHILD_SIZE_RE.search(item["size"] or ""):
             continue  # cocuk bedeni: ayri pazar, fiyat bandi bizim disimizda
@@ -621,12 +658,12 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
         conn.execute(
             """INSERT INTO listings (item_id, market, country, cell, brand, title, size, condition,
                    url, price, total_price, favourites, seller_hash, first_seen, cohort,
-                   photo_sig, relist_of, state)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active')""",
+                   photo_sig, relist_of, currency, state)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active')""",
             (item["item_id"], market, cell["country"], cell["id"], item["brand"], item.get("title"),
              item["size"], item["condition"], f"https://www.{market}{item['url']}",
              item["price"], item["total_price"], item["favourites"], item["seller_hash"],
-             iso(now()), cohort, sig, relist_of),
+             iso(now()), cohort, sig, relist_of, item.get("currency", "EUR")),
         )
         add_event(conn, item["item_id"], "discovered", item["price"], item["favourites"])
         new += 1
@@ -761,8 +798,9 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
             elif state == "gone":
                 stats["gone"] += 1
 
-        # Sonra kesif, yalnizca kontrol payi korunuyorsa
-        for cell in (build_cells(cfg) if discovery_open else []):
+        # Sonra kesif, yalnizca kontrol payi korunuyorsa. Takip kapasitesi doluysa da kesif
+        # SURER: ornek havuzu (fiyat iskeleti) beslenir, sadece yeni ilan takibe alinmaz.
+        for cell in build_cells(cfg):
             if fetcher.budget_left() <= reserve:
                 break
             last = meta_get(conn, f"disc:{cell['id']}")
@@ -770,7 +808,7 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
                 last_dt = datetime.strptime(last, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
                 if (now() - last_dt).total_seconds() < cell["discovery_hours"] * 3600:
                     continue
-            res = discover(conn, fetcher, cfg, cell)
+            res = discover(conn, fetcher, cfg, cell, enroll=discovery_open)
             meta_set(conn, f"disc:{cell['id']}", iso(now()))
             stats["found"] += res["found"]
             stats["discovered"] += res["new"]
