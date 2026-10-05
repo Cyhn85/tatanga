@@ -44,17 +44,30 @@ SELLER_SALT = "tatanga-observer-v1"
 # Katalog sayfasi 7 MB. Tek buyuk desenle taramak islemciyi saatlerce mesgul ediyordu;
 # bunun yerine sayfa ilan bloklarina bolunup her blogun basi kisa desenlerle okunur.
 _ITEM_SPLIT = '\\"productItem\\":'
-_ITEM_WINDOW = 4000
+# Bazi ilan bloklari (uzun baslik, coklu gorsel adresi) 4000 karakteri asiyor; o zaman marka/beden/
+# kondisyon satiri pencere disinda kaliyor ve ilan sessizce kayboluyordu (2026-10-05: Paul & Shark 96/96).
+_ITEM_WINDOW = 20000
 _F_ID = re.compile(r'\\"id\\":(\d+)')
 _F_URL = re.compile(r'\\"url\\":\\"(/items/[^\\]*)')
-_F_TITLE = re.compile(r'\\"title\\":\\"([^\\]{0,160})')
+# Sayfadaki JSON metninde "&" gibi karakterler \\u0026 kacis dizisiyle yazilir. Eskiden kalip ters
+# egik cizgide duruyordu: adinda "&" olan markalarin (Paul & Shark, Dolce & Gabbana) TUM ilanlari
+# sessizce kayboluyordu. Kacis dizileri artik metnin parcasi sayilir ve sonra cozulur.
+_ESC_STR = r'((?:[^\\]|\\{1,2}u[0-9a-fA-F]{4}){0,200})'
+_UNESC_RE = re.compile(r'\\{1,2}u([0-9a-fA-F]{4})')
+
+
+def _unesc(text: str) -> str:
+    return _UNESC_RE.sub(lambda m: chr(int(m.group(1), 16)), text)
+
+
+_F_TITLE = re.compile(r'\\"title\\":\\"' + _ESC_STR)
 _F_FAV = re.compile(r'\\"favouriteCount\\":(\d+)')
 _F_PRICE = re.compile(r'\\"price\\":\{\\"amount\\":\\"([\d.]+)')
 # Isvec SEK ile fiyatlar: para birimi her ilanla birlikte saklanir, EUR'ya cevrim analizde yapilir
 _F_CUR = re.compile(r'\\"price\\":\{\\"amount\\":\\"[\d.]+\\",\\"currencyCode\\":\\"([A-Z]{3})')
 _F_TOTAL = re.compile(r'\\"totalItemPrice\\":\{\\"amount\\":\\"([\d.]+)')
 _F_THUMB = re.compile(r'\\"thumbnailUrl\\":\\"(https://[^\\]*)')
-_F_LINES = re.compile(r'\\"firstLine\\":\\"([^\\]*)\\",\\"secondLine\\":\\"([^\\]*)')
+_F_LINES = re.compile(r'\\"firstLine\\":\\"' + _ESC_STR + r'\\",\\"secondLine\\":\\"' + _ESC_STR)
 _OWNER_RE = re.compile(r'\\"ownerId\\":(\d+)')
 _TOTAL_RE = re.compile(r'\\"total_entries\\":(\d+)')
 _PAGES_RE = re.compile(r'\\"total_pages\\":(\d+)')
@@ -534,7 +547,7 @@ def parse_catalog(html: str) -> list[dict]:
         owner = _OWNER_RE.search(seg)
         title = _F_TITLE.search(seg)
         cur = _F_CUR.search(seg)
-        second = lines.group(2)
+        second = _unesc(lines.group(2))
         size, _, condition = second.partition(" · ")
         out.append({
             "item_id": int(ident.group(1)),
@@ -542,12 +555,12 @@ def parse_catalog(html: str) -> list[dict]:
             "favourites": int(fav.group(1)),
             "price": float(price.group(1)),
             "total_price": float(total.group(1)),
-            "brand": lines.group(1),
+            "brand": _unesc(lines.group(1)),
             "size": size.strip(),
             "condition": condition.strip() or second.strip(),
             "seller_hash": seller_hash(owner.group(1)) if owner else None,
             "thumb": thumb.group(1) if thumb else None,
-            "title": title.group(1) if title else None,   # model cikarimi bunun uzerinden yapilacak
+            "title": _unesc(title.group(1)) if title else None,   # model cikarimi bunun uzerinden yapilacak
             "currency": cur.group(1) if cur else "EUR",
         })
     return out
@@ -615,11 +628,21 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict,
     if not html:
         return {"found": 0, "new": 0}
     items = parse_catalog(html)
-    # HTTP basarili ama sayfadan ilan cikmiyorsa: site yapisi degismis olabilir
-    note(conn, market, "katalog_okuma", "ok" if items else "bos",
-         "" if items else f"{len(html)} bayt, ilan blogu yok", f"{market}:{cell['query']}")
     total, pages = _TOTAL_RE.search(html), _PAGES_RE.search(html)
     results = _RESULTS_RE.search(html)
+    # HTTP basarili ama sayfadan ilan cikmiyorsa: site yapisi degismis olabilir.
+    # Platformun kendisi "0 sonuc" diyorsa bu hata degil, gercek bos aramadir.
+    genuinely_empty = bool((results and results.group(1) == "0") or (total and total.group(1) == "0"))
+    blocks = html.count(_ITEM_SPLIT)
+    if not items and not genuinely_empty:
+        note(conn, market, "katalog_okuma", "bos", f"{len(html)} bayt, {blocks} blok, 0 okundu",
+             f"{market}:{cell['query']}")
+    elif blocks and len(items) < 0.9 * blocks:
+        # Kismi kayip: sayfada blok var ama bir kismi okunamadi. Eskiden hicbir test bunu gormuyordu.
+        note(conn, market, "katalog_okuma", "eksik", f"{len(items)}/{blocks} blok okundu",
+             f"{market}:{cell['query']}")
+    else:
+        note(conn, market, "katalog_okuma", "ok")
     count = int(results.group(1)) if results else (int(total.group(1)) if total else None)
     # Vinted genis aramalarda gercek sayiyi vermiyor: 96 x 10 sayfa = 960, arayuzde "500+"
     capped = bool((results and results.group(2) == "+")

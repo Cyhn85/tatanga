@@ -31,7 +31,7 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 STAGES = ["oturum", "katalog", "katalog_okuma", "ilan", "ilan_okuma"]
 STAGE_LABEL = {"oturum": "oturum", "katalog": "katalog", "katalog_okuma": "kat.oku",
                "ilan": "ilan", "ilan_okuma": "ilan.oku"}
-FAIL_OUTCOMES = ("http", "ag", "bos", "okunamadi")
+FAIL_OUTCOMES = ("http", "ag", "bos", "eksik", "okunamadi")
 KNOWN_AVAILABILITY = {"InStock", "SoldOut", "OutOfStock", "Discontinued", "LimitedAvailability"}
 
 OK, WARN, FAIL = "✔", "⚠", "✘"
