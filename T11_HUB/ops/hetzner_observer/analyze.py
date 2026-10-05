@@ -169,9 +169,11 @@ class ModelMatcher:
     def __init__(self, path: str = MODELS_FILE):
         raw = json.load(open(path, encoding="utf-8"))
         self.by_brand: dict[str, dict[str, list[tuple[re.Pattern, int, str]]]] = {}
+        self.code_pats: dict[str, list[re.Pattern]] = {}
         for brand, spec in raw.items():
             if brand.startswith("_"):
                 continue
+            self.code_pats[brand.lower()] = [re.compile(p) for p in spec.get("codes", [])]
             entry = {}
             for kind in ("models", "lines"):
                 pats = []
@@ -193,6 +195,21 @@ class ModelMatcher:
         model = next((c for pat, _, c in spec["models"] if pat.search(t)), None)
         line = next((c for pat, _, c in spec["lines"] if pat.search(t)), None)
         return model, line
+
+    def code(self, brand: str, *texts: str | None) -> str | None:
+        """
+        Stil kodu: renk dahil birebir kimlik (CW2288-111 = AF1 beyaz). Bosluk/tire farki
+        ayni kod sayilir. Bulunan ilk kod doner; metinler baslik, aciklama sirasiyla verilir.
+        """
+        for text in texts:
+            if not text:
+                continue
+            up = text.upper()
+            for pat in self.code_pats.get(brand.lower(), []):
+                m = pat.search(up)
+                if m:
+                    return re.sub(r"[\s]", "-", m.group(0))
+        return None
 
     def canonical_models(self, brand: str) -> list[str]:
         for b, spec in self.raw.items():
@@ -224,12 +241,15 @@ def samples(conn: sqlite3.Connection, matcher: ModelMatcher, rates: dict[str, fl
         if not rate:
             continue
         brand, category, _ = (r["cell"].split("|") + ["", ""])[:3]
+        if category.startswith("model:"):
+            category = "model"      # B3 dar arama hucreleri tek grupta
         model, line = matcher.match(brand, r["title"] or "")
         title_n = norm_text(r["title"] or "")
         out.append({
             "brand": brand.lower(), "category": category, "title": title_n,
             "cond": cond, "market": r["country"], "size": size_group(r["size"]),
             "price": float(r["price"]) / rate, "model": model, "line": line, "type": match_type(title_n),
+            "code": matcher.code(brand, r["title"]),
         })
     return out, unknown_cond
 
@@ -312,7 +332,16 @@ def report_factors(data, unknown_cond):
               ", ".join(f"{k}={v}" for k, v in unknown_cond.most_common(6)))
 
 
-def report_coverage(data, matcher):
+def report_coverage(data, matcher, conn=None):
+    coded = [d for d in data if d["code"]]
+    shoes = [d for d in data if d["category"] == "schuhe"]
+    print(f"STIL KODU (baslikta): {len(coded)} ilan | ayakkabida %"
+          f"{100*sum(1 for d in shoes if d['code'])/max(len(shoes),1):.0f} (n{len(shoes)})"
+          + (f" | ornek: {', '.join(sorted({d['code'] for d in coded})[:6])}" if coded else ""))
+    if conn is not None:
+        rows = conn.execute("SELECT cell, title, description FROM listings WHERE description IS NOT NULL").fetchall()
+        hit = sum(1 for r in rows if matcher.code(r["cell"].split("|")[0], r["title"], r["description"]))
+        print(f"STIL KODU (baslik+aciklama, takipteki ilanlar): {hit}/{len(rows)}")
     by_brand: dict[str, list[dict]] = defaultdict(list)
     for d in data:
         by_brand[d["brand"]].append(d)
@@ -410,11 +439,45 @@ def report_discovery(data, brand):
     print("  " + ", ".join(f"{t}({c})" for t, c in cands[:25]) if cands else "  yok")
 
 
+PLAN_FILE = os.path.join(BASE_DIR, "model_cells.json")
+PLAN_PER_TIER = {"core": 3, "watch": 1}
+
+
+def write_plan(data, matcher) -> None:
+    """
+    B3 dar arama plani: her markadan veride en cok gorulen modeller (en az 3 ilan),
+    yer kalirsa sozlugun basindaki (en bilinen) modellerle tamamlanir. Gozlemci bu dosyayi
+    okuyup bu modelleri tum pazarlarda ayrica arar: gercek arz sayisi + yogun emsal.
+    """
+    cfg = json.load(open(os.path.join(BASE_DIR, "config.json"), encoding="utf-8"))
+    seen = Counter((d["brand"], d["model"]) for d in data if d["model"])
+    plan = []
+    for tier, per_brand in PLAN_PER_TIER.items():
+        for brand in cfg["brands"].get(tier, []):
+            observed = [m for (b, m), c in seen.most_common() if b == brand.lower() and c >= 3]
+            chosen = observed[:per_brand]
+            for m in matcher.canonical_models(brand):
+                if len(chosen) >= per_brand:
+                    break
+                if m not in chosen:
+                    chosen.append(m)
+            search = cfg.get("brand_search", {}).get(brand, brand)
+            for m in chosen:
+                plan.append({"brand": brand, "model": m, "query": f"{search} {m}",
+                             "kaynak": "veri" if m in observed else "sozluk"})
+    json.dump({"olusturma": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"), "hucreler": plan},
+              open(PLAN_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    by_src = Counter(p["kaynak"] for p in plan)
+    print(f"PLAN: {len(plan)} model ({by_src['veri']} veriden, {by_src['sozluk']} sozlukten) -> {PLAN_FILE}")
+    print("  " + ", ".join(p["query"] for p in plan[:15]) + " ...")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Fiyat iskeleti olcumu")
     ap.add_argument("--kapsam", action="store_true")
     ap.add_argument("--modeller", metavar="MARKA")
     ap.add_argument("--kesif", metavar="MARKA")
+    ap.add_argument("--plan", action="store_true", help="B3 dar arama planini yaz (model_cells.json)")
     ap.add_argument("--zorla", action="store_true", help="durdurucu saglama hatasina ragmen calis")
     args = ap.parse_args()
 
@@ -433,11 +496,13 @@ def main() -> None:
     print(f"havuz: {len(data)} ilan | kur: SEK={rates.get('SEK', '-')}")
 
     if args.kapsam:
-        report_coverage(data, matcher)
+        report_coverage(data, matcher, conn)
     elif args.modeller:
         report_models(data, matcher, conn, args.modeller)
     elif args.kesif:
         report_discovery(data, args.kesif)
+    elif args.plan:
+        write_plan(data, matcher)
     else:
         report_factors(data, unknown_cond)
 

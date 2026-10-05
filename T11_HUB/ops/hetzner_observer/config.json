@@ -1,6 +1,10 @@
 {
   "_aciklama": "Hucre = marka x kategori x pazar. tier: core (alim adayi), watch (veri biriksin), luxury (potansiyel olcumu). Kondisyonlar: 6=Neu mit Preisschild, 1=Neu ohne Preisschild, 2=Sehr gut. Kusurlu urun alinmaz. Takip kapasitesi dolsa da ornek toplama surer.",
-  "conditions": ["6", "1", "2"],
+  "conditions": [
+    "6",
+    "1",
+    "2"
+  ],
   "budget": {
     "max_requests_per_day": 6000,
     "min_interval_seconds": 10,
@@ -19,12 +23,14 @@
   "discovery_hours": {
     "core": 24,
     "watch": 48,
-    "luxury": 72
+    "luxury": 72,
+    "model": 72
   },
   "daily_new": {
     "core": 1,
     "watch": 1,
-    "luxury": 1
+    "luxury": 1,
+    "model": 1
   },
   "markets": {
     "DE": "vinted.de",
@@ -36,64 +42,344 @@
     "SE": "vinted.se"
   },
   "categories": {
-    "jacken":    {"DE": "jacke",    "AT": "jacke",    "FR": "veste",      "BE": "veste",      "NL": "jas",      "IT": "giacca",   "SE": "jacka"},
-    "schuhe":    {"DE": "schuhe",   "AT": "schuhe",   "FR": "chaussures", "BE": "chaussures", "NL": "schoenen", "IT": "scarpe",   "SE": "skor"},
-    "oberteile": {"DE": "pullover", "AT": "pullover", "FR": "pull",       "BE": "pull",       "NL": "trui",     "IT": "maglione", "SE": "tröja"}
+    "jacken": {
+      "DE": "jacke",
+      "AT": "jacke",
+      "FR": "veste",
+      "BE": "veste",
+      "NL": "jas",
+      "IT": "giacca",
+      "SE": "jacka"
+    },
+    "schuhe": {
+      "DE": "schuhe",
+      "AT": "schuhe",
+      "FR": "chaussures",
+      "BE": "chaussures",
+      "NL": "schoenen",
+      "IT": "scarpe",
+      "SE": "skor"
+    },
+    "oberteile": {
+      "DE": "pullover",
+      "AT": "pullover",
+      "FR": "pull",
+      "BE": "pull",
+      "NL": "trui",
+      "IT": "maglione",
+      "SE": "tröja"
+    }
   },
   "brands": {
-    "core": ["Nike", "Adidas", "New Balance", "Asics", "Puma", "Converse", "Vans", "Salomon",
-             "Dr. Martens", "Timberland", "UGG", "Birkenstock", "Veja",
-             "The North Face", "Patagonia", "Columbia", "Arc'teryx", "Jack Wolfskin", "Fjällräven",
-             "Helly Hansen", "Mammut", "Napapijri", "Peak Performance", "Haglöfs",
-             "Carhartt", "Levi's", "Diesel", "Ralph Lauren", "Tommy Hilfiger", "Lacoste",
-             "Hugo Boss", "Calvin Klein", "Barbour", "Gant", "Stone Island", "Paul & Shark", "Woolrich"],
-    "watch": ["Moncler", "Canada Goose", "Burberry", "Hoka", "On Running", "Off-White",
-              "Michael Kors", "Coach", "Icepeak", "Peuterey", "Bogner", "Wellensteyn", "Ferre"],
-    "luxury": ["Gucci", "Louis Vuitton", "Prada", "Balenciaga", "Saint Laurent", "Dior", "Chanel",
-               "Hermes", "Valentino", "Versace", "Dolce & Gabbana", "Fendi", "Givenchy",
-               "Bottega Veneta", "Alexander McQueen", "Balmain", "Armani"]
+    "core": [
+      "Nike",
+      "Adidas",
+      "New Balance",
+      "Asics",
+      "Puma",
+      "Converse",
+      "Vans",
+      "Salomon",
+      "Dr. Martens",
+      "Timberland",
+      "UGG",
+      "Birkenstock",
+      "Veja",
+      "The North Face",
+      "Patagonia",
+      "Columbia",
+      "Arc'teryx",
+      "Jack Wolfskin",
+      "Fjällräven",
+      "Helly Hansen",
+      "Mammut",
+      "Napapijri",
+      "Peak Performance",
+      "Haglöfs",
+      "Carhartt",
+      "Levi's",
+      "Diesel",
+      "Ralph Lauren",
+      "Tommy Hilfiger",
+      "Lacoste",
+      "Hugo Boss",
+      "Calvin Klein",
+      "Barbour",
+      "Gant",
+      "Stone Island",
+      "Paul & Shark",
+      "Woolrich"
+    ],
+    "watch": [
+      "Moncler",
+      "Canada Goose",
+      "Burberry",
+      "Hoka",
+      "On Running",
+      "Off-White",
+      "Michael Kors",
+      "Coach",
+      "Icepeak",
+      "Peuterey",
+      "Bogner",
+      "Wellensteyn",
+      "Ferre"
+    ],
+    "luxury": [
+      "Gucci",
+      "Louis Vuitton",
+      "Prada",
+      "Balenciaga",
+      "Saint Laurent",
+      "Dior",
+      "Chanel",
+      "Hermes",
+      "Valentino",
+      "Versace",
+      "Dolce & Gabbana",
+      "Fendi",
+      "Givenchy",
+      "Bottega Veneta",
+      "Alexander McQueen",
+      "Balmain",
+      "Armani"
+    ]
   },
   "brand_categories": {
-    "Asics": ["schuhe"], "Converse": ["schuhe"], "Vans": ["schuhe"], "Dr. Martens": ["schuhe"],
-    "UGG": ["schuhe"], "Birkenstock": ["schuhe"], "Veja": ["schuhe"], "Hoka": ["schuhe"],
-    "On Running": ["schuhe"], "Michael Kors": ["schuhe"], "Coach": ["schuhe"],
-    "Salomon": ["schuhe", "jacken"], "Timberland": ["schuhe", "jacken"],
-    "New Balance": ["schuhe", "oberteile"], "Off-White": ["schuhe", "oberteile"],
-    "Columbia": ["jacken", "schuhe"], "Jack Wolfskin": ["jacken", "schuhe"],
-    "Canada Goose": ["jacken"], "Barbour": ["jacken"], "Woolrich": ["jacken"], "Wellensteyn": ["jacken"],
-    "Peuterey": ["jacken"], "Icepeak": ["jacken"], "Helly Hansen": ["jacken"], "Mammut": ["jacken"],
-    "Haglöfs": ["jacken"], "Moncler": ["jacken", "oberteile"], "Bogner": ["jacken", "oberteile"],
-    "Arc'teryx": ["jacken", "oberteile"], "Peak Performance": ["jacken", "oberteile"],
-    "Napapijri": ["jacken", "oberteile"], "Fjällräven": ["jacken", "oberteile"],
-    "Patagonia": ["jacken", "oberteile"], "Stone Island": ["jacken", "oberteile"],
-    "Paul & Shark": ["jacken", "oberteile"]
+    "Asics": [
+      "schuhe"
+    ],
+    "Converse": [
+      "schuhe"
+    ],
+    "Vans": [
+      "schuhe"
+    ],
+    "Dr. Martens": [
+      "schuhe"
+    ],
+    "UGG": [
+      "schuhe"
+    ],
+    "Birkenstock": [
+      "schuhe"
+    ],
+    "Veja": [
+      "schuhe"
+    ],
+    "Hoka": [
+      "schuhe"
+    ],
+    "On Running": [
+      "schuhe"
+    ],
+    "Michael Kors": [
+      "schuhe"
+    ],
+    "Coach": [
+      "schuhe"
+    ],
+    "Salomon": [
+      "schuhe",
+      "jacken"
+    ],
+    "Timberland": [
+      "schuhe",
+      "jacken"
+    ],
+    "New Balance": [
+      "schuhe",
+      "oberteile"
+    ],
+    "Off-White": [
+      "schuhe",
+      "oberteile"
+    ],
+    "Columbia": [
+      "jacken",
+      "schuhe"
+    ],
+    "Jack Wolfskin": [
+      "jacken",
+      "schuhe"
+    ],
+    "Canada Goose": [
+      "jacken"
+    ],
+    "Barbour": [
+      "jacken"
+    ],
+    "Woolrich": [
+      "jacken"
+    ],
+    "Wellensteyn": [
+      "jacken"
+    ],
+    "Peuterey": [
+      "jacken"
+    ],
+    "Icepeak": [
+      "jacken"
+    ],
+    "Helly Hansen": [
+      "jacken"
+    ],
+    "Mammut": [
+      "jacken"
+    ],
+    "Haglöfs": [
+      "jacken"
+    ],
+    "Moncler": [
+      "jacken",
+      "oberteile"
+    ],
+    "Bogner": [
+      "jacken",
+      "oberteile"
+    ],
+    "Arc'teryx": [
+      "jacken",
+      "oberteile"
+    ],
+    "Peak Performance": [
+      "jacken",
+      "oberteile"
+    ],
+    "Napapijri": [
+      "jacken",
+      "oberteile"
+    ],
+    "Fjällräven": [
+      "jacken",
+      "oberteile"
+    ],
+    "Patagonia": [
+      "jacken",
+      "oberteile"
+    ],
+    "Stone Island": [
+      "jacken",
+      "oberteile"
+    ],
+    "Paul & Shark": [
+      "jacken",
+      "oberteile"
+    ]
   },
   "brand_search": {
     "On Running": "On Running"
   },
   "brand_match": {
-    "On Running": ["on", "on running", "on-running"],
-    "Levi's": ["levi's", "levis", "levi"],
-    "Dr. Martens": ["dr. martens", "dr martens", "doc martens"],
-    "Arc'teryx": ["arc'teryx", "arcteryx"],
-    "Fjällräven": ["fjällräven", "fjallraven"],
-    "Haglöfs": ["haglöfs", "haglofs"],
-    "The North Face": ["the north face", "north face", "tnf"],
-    "Hugo Boss": ["hugo boss", "boss", "hugo"],
-    "Calvin Klein": ["calvin klein", "ck"],
-    "Ralph Lauren": ["ralph lauren", "polo ralph lauren", "lauren ralph lauren"],
-    "Tommy Hilfiger": ["tommy hilfiger", "tommy jeans"],
-    "Dolce & Gabbana": ["dolce & gabbana", "dolce gabbana", "d&g"],
-    "Saint Laurent": ["saint laurent", "yves saint laurent", "ysl"],
-    "Alexander McQueen": ["alexander mcqueen", "mcqueen"],
-    "Armani": ["armani", "emporio armani", "giorgio armani", "armani exchange", "ea7"],
-    "Paul & Shark": ["paul & shark", "paul shark"],
-    "Off-White": ["off-white", "off white"],
-    "Michael Kors": ["michael kors", "mk"],
-    "UGG": ["ugg", "ugg australia"],
-    "Hermes": ["hermes", "hermès"],
-    "Ferre": ["ferre", "gianfranco ferre", "ferré"]
+    "On Running": [
+      "on",
+      "on running",
+      "on-running"
+    ],
+    "Levi's": [
+      "levi's",
+      "levis",
+      "levi"
+    ],
+    "Dr. Martens": [
+      "dr. martens",
+      "dr martens",
+      "doc martens"
+    ],
+    "Arc'teryx": [
+      "arc'teryx",
+      "arcteryx"
+    ],
+    "Fjällräven": [
+      "fjällräven",
+      "fjallraven"
+    ],
+    "Haglöfs": [
+      "haglöfs",
+      "haglofs"
+    ],
+    "The North Face": [
+      "the north face",
+      "north face",
+      "tnf"
+    ],
+    "Hugo Boss": [
+      "hugo boss",
+      "boss",
+      "hugo"
+    ],
+    "Calvin Klein": [
+      "calvin klein",
+      "ck"
+    ],
+    "Ralph Lauren": [
+      "ralph lauren",
+      "polo ralph lauren",
+      "lauren ralph lauren"
+    ],
+    "Tommy Hilfiger": [
+      "tommy hilfiger",
+      "tommy jeans"
+    ],
+    "Dolce & Gabbana": [
+      "dolce & gabbana",
+      "dolce gabbana",
+      "d&g"
+    ],
+    "Saint Laurent": [
+      "saint laurent",
+      "yves saint laurent",
+      "ysl"
+    ],
+    "Alexander McQueen": [
+      "alexander mcqueen",
+      "mcqueen"
+    ],
+    "Armani": [
+      "armani",
+      "emporio armani",
+      "giorgio armani",
+      "armani exchange",
+      "ea7"
+    ],
+    "Paul & Shark": [
+      "paul & shark",
+      "paul shark"
+    ],
+    "Off-White": [
+      "off-white",
+      "off white"
+    ],
+    "Michael Kors": [
+      "michael kors",
+      "mk"
+    ],
+    "UGG": [
+      "ugg",
+      "ugg australia"
+    ],
+    "Hermes": [
+      "hermes",
+      "hermès"
+    ],
+    "Ferre": [
+      "ferre",
+      "gianfranco ferre",
+      "ferré"
+    ]
   },
-  "enabled_tiers": ["core", "watch", "luxury"],
-  "enabled_markets": ["DE", "AT", "FR", "BE", "NL", "IT", "SE"]
+  "enabled_tiers": [
+    "core",
+    "watch",
+    "luxury"
+  ],
+  "enabled_markets": [
+    "DE",
+    "AT",
+    "FR",
+    "BE",
+    "NL",
+    "IT",
+    "SE"
+  ]
 }

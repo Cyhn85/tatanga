@@ -69,6 +69,8 @@ _STATUS_RE = re.compile(
     r'\\"name\\":\\"buyer_item_status\\"')
 _OFFER_PRICE_RE = re.compile(r'"price":([\d.]+),"availability"')
 _LD_NAME_RE = re.compile(r'"@type":"Product","name":"([^"]{0,150})"')
+# Aciklama: stil kodu, olcu, kusur bilgisi burada yazilir. Sayfa zaten indirildigi icin bedava.
+_LD_DESC_RE = re.compile(r'"@type":"Product","name":"(?:[^"\\]|\\.)*","description":"((?:[^"\\]|\\.){0,1200})')
 # Cocuk bedenleri: emsal ve istatistik disinda (farkli pazar, dusuk fiyat)
 _CHILD_SIZE_RE = re.compile(r"\b(monate|jahre|mois|ans|kinder)\b|^\d{2,3}\s*(cm)?$", re.IGNORECASE)
 
@@ -117,6 +119,27 @@ def build_cells(cfg: dict) -> list[dict]:
                         "daily_new": cfg["daily_new"][tier],
                         "discovery_hours": cfg["discovery_hours"][tier],
                     })
+    # B3: analizin yazdigi dar arama plani (model_cells.json). Analiz -> kazima geri beslemesi.
+    plan_path = os.path.join(BASE_DIR, "model_cells.json")
+    if os.path.exists(plan_path):
+        try:
+            plan = json.load(open(plan_path, encoding="utf-8")).get("hucreler", [])
+        except (ValueError, OSError):
+            plan = []
+        for p in plan:
+            for country in cfg["enabled_markets"]:
+                cells.append({
+                    "id": f"{p['brand']}|model:{p['model']}|{country}",
+                    "brand": p["brand"],
+                    "match": [_norm_brand(a) for a in cfg.get("brand_match", {}).get(p["brand"], [p["brand"]])],
+                    "tier": "model",
+                    "category": f"model:{p['model']}",
+                    "country": country,
+                    "market": cfg["markets"][country],
+                    "query": p["query"],
+                    "daily_new": cfg["daily_new"].get("model", 1),
+                    "discovery_hours": cfg["discovery_hours"].get("model", 72),
+                })
     # Ayni pazarin hucreleri pes pese: her pazar degisiminde bir oturum istegi gerekiyor
     cells.sort(key=lambda c: (c["market"], c["brand"], c["category"]))
     return cells
@@ -241,7 +264,9 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # Satis ani iki kontrol arasinda bir yerdedir: [son aktif gorulme, satildi gorulme]
                       ("last_active_at", "TEXT"), ("close_window", "REAL"),
                       # 1: kapanis zamani bilinmiyor -> fiyat verisinde kullanilir, HIZ hesabina girmez
-                      ("close_uncertain", "INTEGER DEFAULT 0")):
+                      ("close_uncertain", "INTEGER DEFAULT 0"),
+                      # Ilan aciklamasi: stil kodu / olcu / kusur ifadeleri icin (ilk aktif okumada bir kez)
+                      ("description", "TEXT")):
         if col not in have:
             conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {decl}")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_sig ON listings(photo_sig)")
@@ -547,6 +572,13 @@ def parse_item_state(html: str) -> dict | None:
         return None
     price = _OFFER_PRICE_RE.search(html)
     name = _LD_NAME_RE.search(html)
+    desc = _LD_DESC_RE.search(html)
+    description = None
+    if desc:
+        try:
+            description = json.loads(f'"{desc.group(1)}"')
+        except ValueError:
+            description = desc.group(1)
     value = avail.group(1).rsplit("/", 1)[-1]
     state = {"InStock": "active"}.get(value, "sold" if "Sold" in value or "OutOfStock" in value else "unknown")
     return {
@@ -554,6 +586,7 @@ def parse_item_state(html: str) -> dict | None:
         "availability": value,
         "price": float(price.group(1)) if price else None,
         "title": name.group(1) if name else None,
+        "description": description,
     }
 
 
@@ -771,9 +804,10 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
             add_event(conn, row["item_id"], f"unknown:{info['availability'][:40]}")
         conn.execute(
             "UPDATE listings SET last_check=?, checks=checks+1, state=?, avail_raw=?, unresolved=0, "
-            "last_active_at=CASE WHEN ?='active' THEN ? ELSE last_active_at END WHERE item_id=?",
+            "last_active_at=CASE WHEN ?='active' THEN ? ELSE last_active_at END, "
+            "description=COALESCE(description, ?), title=COALESCE(title, ?) WHERE item_id=?",
             (ts, "active" if new_state == "active" else row["state"], info["availability"],
-             new_state, ts, row["item_id"]),
+             new_state, ts, (info.get("description") or "")[:1200] or None, info.get("title"), row["item_id"]),
         )
     conn.commit()
     return new_state

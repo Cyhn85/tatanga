@@ -133,6 +133,14 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
     except Exception:
         pass
 
+    # T11 (B3) dar arama hucreleri gercek arz sayisi veriyor mu (sinira takilmayan oran)
+    snap = conn.execute(
+        "SELECT COUNT(*) n, SUM(capped=0) real FROM cell_snapshots "
+        "WHERE cell LIKE '%|model:%' AND ts >= datetime('now', '-3 days')").fetchone()
+    if snap and snap[0] and snap[0] >= 20:
+        p = (snap[1] or 0) / snap[0]
+        out.append((WARN if p < 0.7 else OK, "T11", f"dar arama gercek arz %{p*100:.0f} ({snap[1]}/{snap[0]})"))
+
     # T10 servis
     try:
         state = subprocess.run(["systemctl", "is-active", "tatanga-observer"],

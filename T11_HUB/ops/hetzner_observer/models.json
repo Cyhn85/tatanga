@@ -1,5 +1,5 @@
 {
- "_aciklama": "Marka -> models (gercek model adi -> baslikta gecen yazimlar) ve lines (seri/teknoloji: fiyati etkiler ama model degildir). Eslestirme marka icinde yapilir, aksan ve tire yok sayilir, en uzun eslesen yazim kazanir. Model yoksa seri kullanilir.",
+ "_aciklama": "Marka -> models (gercek model adi -> baslikta gecen yazimlar) ve lines (seri/teknoloji: fiyati etkiler ama model degildir). Eslestirme marka icinde yapilir, aksan ve tire yok sayilir, en uzun eslesen yazim kazanir. Model yoksa seri kullanilir. codes: stil kodu kaliplari (buyuk harfli ham metinde aranir); kod = renk dahil birebir kimlik, model adindan ustun.",
  "Nike": {
   "models": {
    "Air Max 1": [
@@ -100,7 +100,11 @@
    "Storm-FIT": [
     "storm fit"
    ]
-  }
+  },
+  "codes": [
+   "\\b[A-Z]{2}\\d{4}[- ]\\d{3}\\b",
+   "\\b\\d{6}-\\d{3}\\b"
+  ]
  },
  "Adidas": {
   "models": {
@@ -171,7 +175,11 @@
     "y-3",
     "y3"
    ]
-  }
+  },
+  "codes": [
+   "\\b[A-Z]{2}\\d{4}\\b",
+   "\\b[A-Z]\\d{5}\\b"
+  ]
  },
  "New Balance": {
   "models": {
@@ -226,7 +234,10 @@
     "740"
    ]
   },
-  "lines": {}
+  "lines": {},
+  "codes": [
+   "\\b(?:U|M|W|BB|ML|MR|MS|WL|GC|PC|CM|UXC)\\d{3,4}[A-Z]{2,4}\\d?\\b"
+  ]
  },
  "Asics": {
   "models": {
@@ -262,7 +273,10 @@
     "quantum"
    ]
   },
-  "lines": {}
+  "lines": {},
+  "codes": [
+   "\\b1[012]\\d{2}[AB]\\d{3}[- ]\\d{3}\\b"
+  ]
  },
  "Puma": {
   "models": {
@@ -289,7 +303,10 @@
     "avanti"
    ]
   },
-  "lines": {}
+  "lines": {},
+  "codes": [
+   "\\b3\\d{5}[- ]\\d{2}\\b"
+  ]
  },
  "Converse": {
   "models": {
@@ -312,7 +329,10 @@
     "weapon"
    ]
   },
-  "lines": {}
+  "lines": {},
+  "codes": [
+   "\\b(?:A\\d{5}|\\d{6})C\\b"
+  ]
  },
  "Vans": {
   "models": {
@@ -337,7 +357,10 @@
     "knu skool"
    ]
   },
-  "lines": {}
+  "lines": {},
+  "codes": [
+   "\\bVN0[A-Z0-9]{5,9}\\b"
+  ]
  },
  "Salomon": {
   "models": {
@@ -372,7 +395,10 @@
     "goretex",
     "gtx"
    ]
-  }
+  },
+  "codes": [
+   "\\bL\\d{8}\\b"
+  ]
  },
  "Dr. Martens": {
   "models": {
@@ -430,7 +456,10 @@
    "Earthkeepers": [
     "earthkeepers"
    ]
-  }
+  },
+  "codes": [
+   "\\bTB0[A-Z0-9]{5,8}\\b"
+  ]
  },
  "UGG": {
   "models": {

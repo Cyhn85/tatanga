@@ -1,0 +1,701 @@
+{
+ "olusturma": "2026-10-05 21:27",
+ "hucreler": [
+  {
+   "brand": "Nike",
+   "model": "Windrunner",
+   "query": "Nike Windrunner",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Nike",
+   "model": "Tech Fleece",
+   "query": "Nike Tech Fleece",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Nike",
+   "model": "Air Force 1",
+   "query": "Nike Air Force 1",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Adidas",
+   "model": "Firebird",
+   "query": "Adidas Firebird",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Adidas",
+   "model": "Beckenbauer",
+   "query": "Adidas Beckenbauer",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Adidas",
+   "model": "Samba",
+   "query": "Adidas Samba",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "New Balance",
+   "model": "530",
+   "query": "New Balance 530",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "New Balance",
+   "model": "550",
+   "query": "New Balance 550",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "New Balance",
+   "model": "574",
+   "query": "New Balance 574",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Asics",
+   "model": "Gel-Kayano 14",
+   "query": "Asics Gel-Kayano 14",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Asics",
+   "model": "Gel-1130",
+   "query": "Asics Gel-1130",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Asics",
+   "model": "Gel-NYC",
+   "query": "Asics Gel-NYC",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Puma",
+   "model": "Suede",
+   "query": "Puma Suede",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Puma",
+   "model": "Speedcat",
+   "query": "Puma Speedcat",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Puma",
+   "model": "Palermo",
+   "query": "Puma Palermo",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Converse",
+   "model": "Chuck Taylor All Star",
+   "query": "Converse Chuck Taylor All Star",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Converse",
+   "model": "Chuck 70",
+   "query": "Converse Chuck 70",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Converse",
+   "model": "Run Star Hike",
+   "query": "Converse Run Star Hike",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Vans",
+   "model": "Old Skool",
+   "query": "Vans Old Skool",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Vans",
+   "model": "Sk8-Hi",
+   "query": "Vans Sk8-Hi",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Vans",
+   "model": "Authentic",
+   "query": "Vans Authentic",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Salomon",
+   "model": "XT-6",
+   "query": "Salomon XT-6",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Salomon",
+   "model": "XT-4",
+   "query": "Salomon XT-4",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Salomon",
+   "model": "ACS Pro",
+   "query": "Salomon ACS Pro",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Dr. Martens",
+   "model": "1460",
+   "query": "Dr. Martens 1460",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Dr. Martens",
+   "model": "1461",
+   "query": "Dr. Martens 1461",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Dr. Martens",
+   "model": "2976 Chelsea",
+   "query": "Dr. Martens 2976 Chelsea",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Timberland",
+   "model": "6-Inch Premium",
+   "query": "Timberland 6-Inch Premium",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Timberland",
+   "model": "Euro Hiker",
+   "query": "Timberland Euro Hiker",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Timberland",
+   "model": "3-Eye Lug",
+   "query": "Timberland 3-Eye Lug",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "UGG",
+   "model": "Classic Ultra Mini",
+   "query": "UGG Classic Ultra Mini",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "UGG",
+   "model": "Classic Mini",
+   "query": "UGG Classic Mini",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "UGG",
+   "model": "Classic Short",
+   "query": "UGG Classic Short",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Birkenstock",
+   "model": "Arizona",
+   "query": "Birkenstock Arizona",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Birkenstock",
+   "model": "Boston",
+   "query": "Birkenstock Boston",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Birkenstock",
+   "model": "Gizeh",
+   "query": "Birkenstock Gizeh",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Veja",
+   "model": "V-10",
+   "query": "Veja V-10",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Veja",
+   "model": "Campo",
+   "query": "Veja Campo",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Veja",
+   "model": "Esplar",
+   "query": "Veja Esplar",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "The North Face",
+   "model": "Denali",
+   "query": "The North Face Denali",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "The North Face",
+   "model": "Summit",
+   "query": "The North Face Summit",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "The North Face",
+   "model": "Nuptse",
+   "query": "The North Face Nuptse",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Patagonia",
+   "model": "Synchilla",
+   "query": "Patagonia Synchilla",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Patagonia",
+   "model": "Better Sweater",
+   "query": "Patagonia Better Sweater",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Patagonia",
+   "model": "Torrentshell",
+   "query": "Patagonia Torrentshell",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Columbia",
+   "model": "Interchange",
+   "query": "Columbia Interchange",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Columbia",
+   "model": "Bugaboo",
+   "query": "Columbia Bugaboo",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Columbia",
+   "model": "Powder Lite",
+   "query": "Columbia Powder Lite",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Arc'teryx",
+   "model": "Atom",
+   "query": "Arc'teryx Atom",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Arc'teryx",
+   "model": "Beta LT",
+   "query": "Arc'teryx Beta LT",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Arc'teryx",
+   "model": "Alpha SV",
+   "query": "Arc'teryx Alpha SV",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Jack Wolfskin",
+   "model": "Nanuk",
+   "query": "Jack Wolfskin Nanuk",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Jack Wolfskin",
+   "model": "Glacier Canyon",
+   "query": "Jack Wolfskin Glacier Canyon",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Jack Wolfskin",
+   "model": "Troposphere",
+   "query": "Jack Wolfskin Troposphere",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Fjällräven",
+   "model": "Övik",
+   "query": "Fjällräven Övik",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Fjällräven",
+   "model": "Greenland",
+   "query": "Fjällräven Greenland",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Fjällräven",
+   "model": "Keb",
+   "query": "Fjällräven Keb",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Helly Hansen",
+   "model": "Arctic Patrol",
+   "query": "Helly Hansen Arctic Patrol",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Helly Hansen",
+   "model": "Lifaloft",
+   "query": "Helly Hansen Lifaloft",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Helly Hansen",
+   "model": "Odin",
+   "query": "Helly Hansen Odin",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Mammut",
+   "model": "Ultimate",
+   "query": "Mammut Ultimate",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Mammut",
+   "model": "Nordwand",
+   "query": "Mammut Nordwand",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Mammut",
+   "model": "Albula",
+   "query": "Mammut Albula",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Napapijri",
+   "model": "Rainforest",
+   "query": "Napapijri Rainforest",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Napapijri",
+   "model": "Skidoo",
+   "query": "Napapijri Skidoo",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Napapijri",
+   "model": "Aerons",
+   "query": "Napapijri Aerons",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Peak Performance",
+   "model": "Frost",
+   "query": "Peak Performance Frost",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Peak Performance",
+   "model": "Rider",
+   "query": "Peak Performance Rider",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Peak Performance",
+   "model": "Helium",
+   "query": "Peak Performance Helium",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Haglöfs",
+   "model": "L.I.M",
+   "query": "Haglöfs L.I.M",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Haglöfs",
+   "model": "Mimic",
+   "query": "Haglöfs Mimic",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Haglöfs",
+   "model": "Spitz",
+   "query": "Haglöfs Spitz",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Carhartt",
+   "model": "Detroit Jacket",
+   "query": "Carhartt Detroit Jacket",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Carhartt",
+   "model": "Active Jacket",
+   "query": "Carhartt Active Jacket",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Carhartt",
+   "model": "Nimbus",
+   "query": "Carhartt Nimbus",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Levi's",
+   "model": "Trucker",
+   "query": "Levi's Trucker",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Levi's",
+   "model": "Sherpa Trucker",
+   "query": "Levi's Sherpa Trucker",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Levi's",
+   "model": "501",
+   "query": "Levi's 501",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Diesel",
+   "model": "1DR",
+   "query": "Diesel 1DR",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Diesel",
+   "model": "D-Strukt",
+   "query": "Diesel D-Strukt",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Diesel",
+   "model": "Krooley",
+   "query": "Diesel Krooley",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Ralph Lauren",
+   "model": "Harrington",
+   "query": "Ralph Lauren Harrington",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Ralph Lauren",
+   "model": "Polo Bear",
+   "query": "Ralph Lauren Polo Bear",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Ralph Lauren",
+   "model": "Big Pony",
+   "query": "Ralph Lauren Big Pony",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Tommy Hilfiger",
+   "model": "Puffer",
+   "query": "Tommy Hilfiger Puffer",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Tommy Hilfiger",
+   "model": "Varsity",
+   "query": "Tommy Hilfiger Varsity",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Tommy Hilfiger",
+   "model": "Flag",
+   "query": "Tommy Hilfiger Flag",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Lacoste",
+   "model": "L.12.12",
+   "query": "Lacoste L.12.12",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Lacoste",
+   "model": "Carnaby",
+   "query": "Lacoste Carnaby",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Lacoste",
+   "model": "Graduate",
+   "query": "Lacoste Graduate",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Hugo Boss",
+   "model": "Saturn",
+   "query": "Hugo Boss Saturn",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Hugo Boss",
+   "model": "Paddy",
+   "query": "Hugo Boss Paddy",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Calvin Klein",
+   "model": "Puffer",
+   "query": "Calvin Klein Puffer",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Calvin Klein",
+   "model": "Monogram",
+   "query": "Calvin Klein Monogram",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Barbour",
+   "model": "International",
+   "query": "Barbour International",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Barbour",
+   "model": "Beaufort",
+   "query": "Barbour Beaufort",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Barbour",
+   "model": "Liddesdale",
+   "query": "Barbour Liddesdale",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Gant",
+   "model": "Rugger",
+   "query": "Gant Rugger",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Gant",
+   "model": "Shield",
+   "query": "Gant Shield",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Stone Island",
+   "model": "Soft Shell-R",
+   "query": "Stone Island Soft Shell-R",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Stone Island",
+   "model": "Nylon Metal",
+   "query": "Stone Island Nylon Metal",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Stone Island",
+   "model": "David-TC",
+   "query": "Stone Island David-TC",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Paul & Shark",
+   "model": "Typhoon",
+   "query": "Paul & Shark Typhoon",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Woolrich",
+   "model": "Arctic Parka",
+   "query": "Woolrich Arctic Parka",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Woolrich",
+   "model": "Luxury Arctic",
+   "query": "Woolrich Luxury Arctic",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Woolrich",
+   "model": "Polar",
+   "query": "Woolrich Polar",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Moncler",
+   "model": "Maya",
+   "query": "Moncler Maya",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Canada Goose",
+   "model": "Wyndham",
+   "query": "Canada Goose Wyndham",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Burberry",
+   "model": "Kensington",
+   "query": "Burberry Kensington",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Hoka",
+   "model": "Clifton",
+   "query": "Hoka Clifton",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "On Running",
+   "model": "Cloudmonster",
+   "query": "On Running Cloudmonster",
+   "kaynak": "veri"
+  },
+  {
+   "brand": "Off-White",
+   "model": "Out of Office",
+   "query": "Off-White Out of Office",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Michael Kors",
+   "model": "Jet Set",
+   "query": "Michael Kors Jet Set",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Coach",
+   "model": "Tabby",
+   "query": "Coach Tabby",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Peuterey",
+   "model": "Hurricane",
+   "query": "Peuterey Hurricane",
+   "kaynak": "sozluk"
+  },
+  {
+   "brand": "Wellensteyn",
+   "model": "Zermatt",
+   "query": "Wellensteyn Zermatt",
+   "kaynak": "sozluk"
+  }
+ ]
+}
