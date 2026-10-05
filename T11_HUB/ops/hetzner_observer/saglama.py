@@ -111,9 +111,11 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
 
     # T7 bilinmeyen ham durum degeri: platform yeni bir deger dondurmeye baslamis
     raws = [r[0] for r in conn.execute("SELECT DISTINCT avail_raw FROM listings WHERE avail_raw IS NOT NULL")]
-    unknown = [r for r in raws if r not in KNOWN_AVAILABILITY]
+    # 'SUCCESS:<dile gore baslik>' satildi demektir; baslik dili onemsiz, tema belirleyici
+    unknown = [r for r in raws if r not in KNOWN_AVAILABILITY and not r.startswith("SUCCESS:")]
+    themes = sorted({r.split(":")[0] if ":" in r else r for r in raws})
     out.append((WARN if unknown else OK, "T7",
-                f"durum degerleri: {', '.join(raws) or '-'}" + (f" | BILINMEYEN: {unknown}" if unknown else "")))
+                f"durum turleri: {', '.join(themes) or '-'}" + (f" | BILINMEYEN: {unknown[:5]}" if unknown else "")))
 
     # T8 duraklatma
     paused = conn.execute("SELECT value FROM meta WHERE key='paused_until'").fetchone()

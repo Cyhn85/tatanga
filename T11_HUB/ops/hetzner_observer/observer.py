@@ -59,6 +59,12 @@ _PAGES_RE = re.compile(r'\\"total_pages\\":(\d+)')
 # Arayuzdeki sonuc sayisi: "342 Ergebnisse" gercek, "500+ Ergebnisse" ust sinira takilmis
 _RESULTS_RE = re.compile(r">(\d+)(\+?)\s*(?:Ergebnis|résultat|result)", re.IGNORECASE)
 _AVAIL_RE = re.compile(r'"availability":"([^"]+)"')
+# Satilmis ilanin KESIN isareti (2026-10-05, gercek satilmis ilanla dogrulandi):
+# sayfa 200 doner, stok blogu YOKTUR, sonda buyer_item_status eklentisi theme=SUCCESS tasir.
+# Baslik dile gore degisir (Verkauft/Vendu/Venduto/Verkocht); karar dilden bagimsiz 'theme' ile.
+_STATUS_RE = re.compile(
+    r'\\"theme\\":\\"(\w+)\\",\\"title\\":\\"([^\\]{0,40})\\"\},\\"exposures\\":\[\],'
+    r'\\"name\\":\\"buyer_item_status\\"')
 _OFFER_PRICE_RE = re.compile(r'"price":([\d.]+),"availability"')
 _LD_NAME_RE = re.compile(r'"@type":"Product","name":"([^"]{0,150})"')
 # Cocuk bedenleri: emsal ve istatistik disinda (farkli pazar, dusuk fiyat)
@@ -207,7 +213,11 @@ def init_db(conn: sqlite3.Connection) -> None:
     )
     have = {r[1] for r in conn.execute("PRAGMA table_info(listings)")}
     for col, decl in (("photo_sig", "TEXT"), ("relist_of", "INTEGER"), ("avail_raw", "TEXT"),
-                      ("unresolved", "INTEGER DEFAULT 0")):
+                      ("unresolved", "INTEGER DEFAULT 0"),
+                      # Satis ani iki kontrol arasinda bir yerdedir: [son aktif gorulme, satildi gorulme]
+                      ("last_active_at", "TEXT"), ("close_window", "REAL"),
+                      # 1: kapanis zamani bilinmiyor -> fiyat verisinde kullanilir, HIZ hesabina girmez
+                      ("close_uncertain", "INTEGER DEFAULT 0")):
         if col not in have:
             conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {decl}")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_sig ON listings(photo_sig)")
@@ -356,7 +366,8 @@ class Fetcher:
                         return self._handle_bad(resp.status_code, market, stage, url)
                     for chunk in resp.iter_content():
                         buf.extend(chunk)
-                        if found_at is None and b'"availability"' in buf[-len(chunk) - 40:]:
+                        tail = buf[-len(chunk) - 60:]
+                        if found_at is None and (b'"availability"' in tail or b'buyer_item_status' in tail):
                             found_at = len(buf)
                         # isareti gordukten sonra blogun kalanini da al, sonra kes
                         if len(buf) > scan_limit or (found_at and len(buf) - found_at > 4096):
@@ -489,7 +500,19 @@ def parse_catalog(html: str) -> list[dict]:
 
 
 def parse_item_state(html: str) -> dict | None:
-    """Ilan sayfasindaki schema.org blogundan durum ve fiyat."""
+    """
+    Durum once buyer_item_status eklentisinden (satildi/rezerve), yoksa stok blogundan okunur.
+    Ikisi de yoksa None: tahmin yurutulmez, kontrol tekrarlanir.
+    """
+    status = _STATUS_RE.search(html)
+    if status:
+        theme, title = status.group(1), status.group(2)
+        return {
+            "state": "sold" if theme == "SUCCESS" else "unknown",
+            "availability": f"{theme}:{title}",
+            "price": None,      # satilmis sayfada teklif blogu yok: son bilinen ilan fiyati kullanilir
+            "title": None,
+        }
     avail = _AVAIL_RE.search(html)
     if not avail:
         return None
@@ -654,10 +677,13 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
     if html is None:
         if fetcher.last_status in (404, 410):
             first = datetime.strptime(row["first_seen"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-            days = round((now() - first).total_seconds() / 86400, 2)
+            lower = datetime.strptime(row["last_active_at"] or row["first_seen"],
+                                      "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            days = round(((lower + (now() - lower) / 2) - first).total_seconds() / 86400, 2)
+            window = round((now() - lower).total_seconds() / 86400, 2)
             conn.execute(
-                "UPDATE listings SET state='gone', closed_at=?, days_to_close=?, last_check=?, "
-                "checks=checks+1 WHERE item_id=?", (ts, days, ts, row["item_id"]),
+                "UPDATE listings SET state='gone', closed_at=?, days_to_close=?, close_window=?, "
+                "last_check=?, checks=checks+1 WHERE item_id=?", (ts, days, window, ts, row["item_id"]),
             )
             add_event(conn, row["item_id"], "gone")
             conn.commit()
@@ -688,12 +714,17 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
         conn.execute("UPDATE listings SET price=? WHERE item_id=?", (price, row["item_id"]))
 
     if new_state == "sold":
+        # Satis ani [son aktif gorulme, simdi] araligindadir; gun = aralik ortasi, genislik ayrica saklanir
         first = datetime.strptime(row["first_seen"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-        days = round((now() - first).total_seconds() / 86400, 2)
+        lower_raw = row["last_active_at"] or row["first_seen"]
+        lower = datetime.strptime(lower_raw, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        mid = lower + (now() - lower) / 2
+        days = round((mid - first).total_seconds() / 86400, 2)
+        window = round((now() - lower).total_seconds() / 86400, 2)
         conn.execute(
             "UPDATE listings SET state='sold', final_price=?, closed_at=?, days_to_close=?, "
-            "last_check=?, checks=checks+1, avail_raw=? WHERE item_id=?",
-            (price if price is not None else row["price"], ts, days, ts,
+            "close_window=?, last_check=?, checks=checks+1, avail_raw=?, unresolved=0 WHERE item_id=?",
+            (price if price is not None else row["price"], ts, days, window, ts,
              info["availability"], row["item_id"]),
         )
         add_event(conn, row["item_id"], "sold", price)
@@ -702,9 +733,10 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
             # Tanimadigimiz durum degeri: tahmin yurutmuyoruz, ham degeri kaydedip isaretliyoruz
             add_event(conn, row["item_id"], f"unknown:{info['availability'][:40]}")
         conn.execute(
-            "UPDATE listings SET last_check=?, checks=checks+1, state=?, avail_raw=?, unresolved=0 "
-            "WHERE item_id=?",
-            (ts, "active" if new_state == "active" else row["state"], info["availability"], row["item_id"]),
+            "UPDATE listings SET last_check=?, checks=checks+1, state=?, avail_raw=?, unresolved=0, "
+            "last_active_at=CASE WHEN ?='active' THEN ? ELSE last_active_at END WHERE item_id=?",
+            (ts, "active" if new_state == "active" else row["state"], info["availability"],
+             new_state, ts, row["item_id"]),
         )
     conn.commit()
     return new_state
@@ -772,7 +804,9 @@ def print_stats(conn: sqlite3.Connection) -> None:
                   SUM(state='sold') satildi,
                   SUM(state='gone') kalkti,
                   SUM(state='relisted') tekrar,
-                  ROUND(AVG(CASE WHEN state='sold' THEN days_to_close END), 1) ort_gun,
+                  -- hiz yalnizca kapanis ani bilinen ve araligi 7 gunden dar satislardan
+                  ROUND(AVG(CASE WHEN state='sold' AND COALESCE(close_uncertain,0)=0
+                                  AND COALESCE(close_window,99) <= 7 THEN days_to_close END), 1) ort_gun,
                   ROUND(AVG(CASE WHEN state='sold' THEN final_price END), 2) ort_fiyat
              FROM listings WHERE cohort='fresh' GROUP BY cell ORDER BY total DESC"""
     ).fetchall()
