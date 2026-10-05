@@ -194,9 +194,20 @@ def model_base(data: list[dict], brand: str, model: str, cond_f, market_f, size_
 def main() -> None:
     ap = argparse.ArgumentParser(description="Fiyat iskeleti olcumu")
     ap.add_argument("--brand", help="tek markanin model tablosu")
+    ap.add_argument("--zorla", action="store_true", help="durdurucu saglama hatasina ragmen calis")
     args = ap.parse_args()
 
     conn = connect()
+
+    # Saglama testleri gecmeden rakam uretilmez: guvenilir gorunen yanlis rakam en tehlikelisidir
+    from saglama import FAIL, run_checks
+    blockers = [(code, text) for lvl, code, text in run_checks(conn) if lvl == FAIL]
+    if blockers and not args.zorla:
+        print("ANALIZ DURDURULDU — saglama testleri gecmedi:")
+        for code, text in blockers:
+            print(f"   {code} {text}")
+        print("Once sorunu gider, sonra tekrar calistir (ya da bilerek --zorla).")
+        return
     data = samples(conn)
     print(f"ornek havuzu: {len(data)} ilan, {len({d['brand'] for d in data})} marka\n")
     if len(data) < 100:

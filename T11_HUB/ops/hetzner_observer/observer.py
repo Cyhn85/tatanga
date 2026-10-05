@@ -191,6 +191,18 @@ def init_db(conn: sqlite3.Connection) -> None:
             errors INTEGER DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
+        -- Saglik matrisi: gun x pazar x asama x sonuc. HTTP basarisi ile OKUMA basarisi
+        -- ayri asamalardir: 10 gunluk sessiz hata, HTTP 'ok' iken okumanin bos donmesiydi.
+        CREATE TABLE IF NOT EXISTS health (
+            day TEXT NOT NULL, market TEXT NOT NULL, stage TEXT NOT NULL, outcome TEXT NOT NULL,
+            n INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (day, market, stage, outcome)
+        );
+        CREATE TABLE IF NOT EXISTS error_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL, market TEXT, stage TEXT, outcome TEXT, detail TEXT, url TEXT
+        );
         """
     )
     have = {r[1] for r in conn.execute("PRAGMA table_info(listings)")}
@@ -199,6 +211,38 @@ def init_db(conn: sqlite3.Connection) -> None:
         if col not in have:
             conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {decl}")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_sig ON listings(photo_sig)")
+    conn.commit()
+
+
+ERROR_LOG_KEEP = 300
+_MARKET_RE = re.compile(r"www\.(vinted\.[a-z]+)")
+
+
+def market_of(url: str) -> str:
+    m = _MARKET_RE.search(url or "")
+    return m.group(1) if m else "gorsel-cdn"
+
+
+def note(conn: sqlite3.Connection, market: str, stage: str, outcome: str,
+         detail: str = "", url: str = "") -> None:
+    """
+    Her istegin ve her okumanin sonucunu saglik matrisine yazar.
+    Asamalar: oturum, katalog, katalog_okuma, ilan, ilan_okuma, gorsel, gorsel_okuma
+    Sonuclar: ok, yok (404), http, ag, bos, okunamadi
+    """
+    conn.execute(
+        "INSERT INTO health (day, market, stage, outcome, n) VALUES (?,?,?,?,1) "
+        "ON CONFLICT(day, market, stage, outcome) DO UPDATE SET n=n+1",
+        (now().strftime("%Y-%m-%d"), market, stage, outcome),
+    )
+    if outcome not in ("ok", "yok"):
+        conn.execute(
+            "INSERT INTO error_log (ts, market, stage, outcome, detail, url) VALUES (?,?,?,?,?,?)",
+            (iso(now()), market, stage, outcome, detail[:200], url[:200]),
+        )
+        conn.execute(
+            "DELETE FROM error_log WHERE id <= (SELECT MAX(id) FROM error_log) - ?", (ERROR_LOG_KEEP,)
+        )
     conn.commit()
 
 
@@ -279,11 +323,20 @@ class Fetcher:
         if self.warm_market == market:
             return
         self._throttle()
-        self.session.get(f"https://www.{market}/", timeout=40)
-        self._count()
+        try:
+            resp = self.session.get(f"https://www.{market}/", timeout=40)
+            self._count(error=resp.status_code != 200)
+            note(self.conn, market, "oturum", "ok" if resp.status_code == 200 else "http",
+                 f"HTTP {resp.status_code}")
+        except Exception as exc:
+            # Onceden yakalanmiyordu: tek bir ag hatasi butun turu dusurebiliyordu
+            self._count(error=True)
+            note(self.conn, market, "oturum", "ag", f"{type(exc).__name__}: {str(exc)[:120]}")
+            return
         self.warm_market = market
 
-    def get(self, url: str, params: dict | None = None, scan_limit: int | None = None) -> str | None:
+    def get(self, url: str, params: dict | None = None, scan_limit: int | None = None,
+            stage: str = "katalog") -> str | None:
         """Sayfayi getirir. scan_limit verilirse JSON-LD bulununca indirme kesilir."""
         if self.budget_left() <= 0:
             raise BudgetExhausted()
@@ -291,6 +344,7 @@ class Fetcher:
             raise Paused()
         self._throttle()
         self.last_status = None
+        market = market_of(url)
         try:
             if scan_limit:
                 # Sayfa 2 MB; aradigimiz schema.org blogu ~110 KB'de. Bulunca indirmeyi keseriz.
@@ -299,7 +353,7 @@ class Fetcher:
                 found_at = None
                 try:
                     if resp.status_code != 200:
-                        return self._handle_bad(resp.status_code)
+                        return self._handle_bad(resp.status_code, market, stage, url)
                     for chunk in resp.iter_content():
                         buf.extend(chunk)
                         if found_at is None and b'"availability"' in buf[-len(chunk) - 40:]:
@@ -313,20 +367,23 @@ class Fetcher:
             else:
                 resp = self.session.get(url, params=params, timeout=90)
                 if resp.status_code != 200:
-                    return self._handle_bad(resp.status_code)
+                    return self._handle_bad(resp.status_code, market, stage, url)
                 text = resp.text[:CATALOG_MAX_BYTES]
         except (BudgetExhausted, Paused):
             raise
         except Exception as exc:  # aglayla ilgili hata
             self._count(error=True)
             self.consecutive_errors += 1
-            log(f"istek hatasi: {type(exc).__name__}: {str(exc)[:120]}")
+            detail = f"{type(exc).__name__}: {str(exc)[:120]}"
+            log(f"istek hatasi [{market}/{stage}]: {detail}")
+            note(self.conn, market, stage, "ag", detail, url)
             if self.consecutive_errors >= 5:
                 self._pause(6)
             return None
         self._count()
         self.consecutive_errors = 0
         self.last_status = 200
+        note(self.conn, market, stage, "ok")
         return text
 
     def get_bytes(self, url: str, max_bytes: int = 120_000) -> bytes | None:
@@ -336,22 +393,27 @@ class Fetcher:
         self._throttle()
         try:
             resp = self.session.get(url, timeout=30)
-            self._count()
+            self._count(error=resp.status_code != 200)
+            note(self.conn, "gorsel-cdn", "gorsel", "ok" if resp.status_code == 200 else "http",
+                 f"HTTP {resp.status_code}", url)
             return resp.content[:max_bytes] if resp.status_code == 200 else None
-        except Exception:
+        except Exception as exc:
             self._count(error=True)
+            note(self.conn, "gorsel-cdn", "gorsel", "ag", f"{type(exc).__name__}", url)
             return None
 
-    def _handle_bad(self, status: int) -> None:
+    def _handle_bad(self, status: int, market: str = "?", stage: str = "?", url: str = "") -> None:
         self.last_status = status
         if status in (404, 410):
             # Silinmis ilan: normal bir sonuc, hata degil. Engel korumasini tetiklemez.
             self._count()
             self.consecutive_errors = 0
+            note(self.conn, market, stage, "yok")
             return None
         self._count(error=True)
         self.consecutive_errors += 1
-        log(f"HTTP {status} (ust uste {self.consecutive_errors})")
+        note(self.conn, market, stage, "http", f"HTTP {status}", url)
+        log(f"HTTP {status} [{market}/{stage}] (ust uste {self.consecutive_errors})")
         if status in (403, 429) or self.consecutive_errors >= 5:
             self._pause(6 if status in (403, 429) else 3)
         return None
@@ -458,10 +520,13 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
         "order": "newest_first",
         "status_ids[]": cfg["conditions"],
     }
-    html = fetcher.get(f"https://www.{market}/catalog", params=params)
+    html = fetcher.get(f"https://www.{market}/catalog", params=params, stage="katalog")
     if not html:
         return {"found": 0, "new": 0}
     items = parse_catalog(html)
+    # HTTP basarili ama sayfadan ilan cikmiyorsa: site yapisi degismis olabilir
+    note(conn, market, "katalog_okuma", "ok" if items else "bos",
+         "" if items else f"{len(html)} bayt, ilan blogu yok", f"{market}:{cell['query']}")
     total, pages = _TOTAL_RE.search(html), _PAGES_RE.search(html)
     results = _RESULTS_RE.search(html)
     count = int(results.group(1)) if results else (int(total.group(1)) if total else None)
@@ -512,6 +577,10 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict) 
         if item.get("thumb"):
             blob = fetcher.get_bytes(item["thumb"])
             sig = photo_signature(blob) if blob else None
+            if blob and not sig:
+                note(conn, "gorsel-cdn", "gorsel_okuma", "okunamadi", f"{len(blob)} bayt", item["thumb"])
+            elif sig:
+                note(conn, "gorsel-cdn", "gorsel_okuma", "ok")
         if sig:
             prev = conn.execute(
                 "SELECT item_id, state FROM listings WHERE photo_sig=? AND seller_hash IS ? "
@@ -576,7 +645,7 @@ def due_listings(conn: sqlite3.Connection, cfg: dict, limit: int) -> list[sqlite
 
 def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) -> str:
     fetcher.warm(row["market"])
-    html = fetcher.get(row["url"], scan_limit=ITEM_PAGE_SCAN_LIMIT)
+    html = fetcher.get(row["url"], scan_limit=ITEM_PAGE_SCAN_LIMIT, stage="ilan")
     ts = iso(now())
 
     # SADECE 404/410 "kalkti" demektir. Sayfanin yuklenmemesi ya da durum blogunun
@@ -598,6 +667,8 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
         return "error"
 
     info = parse_item_state(html)
+    note(conn, row["market"], "ilan_okuma", "ok" if info else "okunamadi",
+         "" if info else f"{len(html)} bayt, durum blogu yok", row["url"])
     if info is None:
         unresolved = (row["unresolved"] or 0) + 1
         state = "unknown" if unresolved >= UNRESOLVED_LIMIT else row["state"]
