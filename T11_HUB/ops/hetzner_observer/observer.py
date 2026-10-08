@@ -38,6 +38,10 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 ITEM_PAGE_SCAN_LIMIT = 2_400_000
 # Durum blogu bu kadar kez ust uste okunamazsa ilan 'bilinmiyor' olur (tahmin yurutulmez)
 UNRESOLVED_LIMIT = 6
+# Engel (dogrulama) sayfasi: normal sayfalar bundan cok buyuktur
+CHALLENGE_MAX_BYTES = 60_000
+CHALLENGE_PAUSE_AFTER = 3        # yeni oturuma ragmen ust uste bu kadar engel -> 2 saat dur
+SESSION_ROTATE_EVERY = 400       # tek oturum bu kadar istekten sonra yenilenir
 CATALOG_MAX_BYTES = 12_000_000
 SELLER_SALT = "tatanga-observer-v1"
 
@@ -346,6 +350,19 @@ class Fetcher:
         self.consecutive_errors = 0
         self.warm_market: str | None = None
         self.last_status: int | None = None
+        self.consecutive_challenges = 0
+        self.session_requests = 0
+
+    def new_session(self, reason: str) -> None:
+        """
+        Yeni oturum. 2026-10-07'de tek oturum gunlerce acik kaldi, bot korumasi onu isaretledi ve
+        36 saat boyunca her istege ~20 KB dogrulama sayfasi dondu (IP engelli degildi: yeni oturum
+        normal sayfa aliyordu). Artik engel gorulunce ve belirli araliklarla oturum yenilenir.
+        """
+        self.session = requests.Session(impersonate="chrome")
+        self.warm_market = None
+        self.session_requests = 0
+        log(f"yeni oturum: {reason}")
 
     def _today(self) -> str:
         return now().strftime("%Y-%m-%d")
@@ -395,6 +412,8 @@ class Fetcher:
 
     def warm(self, market: str) -> None:
         """Pazar degistiginde bir kez ana sayfa: oturum cerezleri icin."""
+        if self.session_requests >= SESSION_ROTATE_EVERY:
+            self.new_session(f"{SESSION_ROTATE_EVERY} istek doldu")
         if self.warm_market == market:
             return
         self._throttle()
@@ -456,11 +475,34 @@ class Fetcher:
             if self.consecutive_errors >= 5:
                 self._pause(6)
             return None
+        self.session_requests += 1
+        if self._is_challenge(text, stage):
+            # HTTP 200 ama icerik dogrulama sayfasi: veri yok, oturum yenilenir, ust uste olursa durulur
+            self._count(error=True)
+            self.consecutive_challenges += 1
+            note(self.conn, market, stage, "engel", f"{len(text)} bayt dogrulama sayfasi", url)
+            self.new_session("engel sayfasi")
+            if self.consecutive_challenges >= CHALLENGE_PAUSE_AFTER:
+                self.consecutive_challenges = 0
+                self._pause(2)
+            return None
         self._count()
         self.consecutive_errors = 0
+        self.consecutive_challenges = 0
         self.last_status = 200
         note(self.conn, market, stage, "ok")
         return text
+
+    @staticmethod
+    def _is_challenge(text: str, stage: str) -> bool:
+        """Normal katalog ~2-4 MB, ilan sayfasi >=100 KB. Kucuk VE beklenen blogu olmayan sayfa = engel."""
+        if len(text) >= CHALLENGE_MAX_BYTES:
+            return False
+        if stage == "katalog":
+            return _ITEM_SPLIT not in text
+        if stage == "ilan":
+            return '"availability"' not in text and "buyer_item_status" not in text
+        return False
 
     def get_bytes(self, url: str, max_bytes: int = 120_000) -> bytes | None:
         """Kucuk onizleme gorseli: parmak izi icin indirilir, diske yazilmaz."""
@@ -626,7 +668,7 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict,
     }
     html = fetcher.get(f"https://www.{market}/catalog", params=params, stage="katalog")
     if not html:
-        return {"found": 0, "new": 0}
+        return {"found": 0, "new": 0, "read": False}
     items = parse_catalog(html)
     total, pages = _TOTAL_RE.search(html), _PAGES_RE.search(html)
     results = _RESULTS_RE.search(html)
@@ -637,6 +679,7 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict,
     if not items and not genuinely_empty:
         note(conn, market, "katalog_okuma", "bos", f"{len(html)} bayt, {blocks} blok, 0 okundu",
              f"{market}:{cell['query']}")
+        return {"found": 0, "new": 0, "read": False}   # bos sayfa: anlik goruntu ve tarama zamani yazilmaz
     elif blocks and len(items) < 0.9 * blocks:
         # Kismi kayip: sayfada blok var ama bir kismi okunamadi. Eskiden hicbir test bunu gormuyordu.
         note(conn, market, "katalog_okuma", "eksik", f"{len(items)}/{blocks} blok okundu",
@@ -670,7 +713,7 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict,
     )
     conn.commit()
     if not enroll:
-        return {"found": len(items), "new": 0}
+        return {"found": len(items), "new": 0, "read": True}
     quota = int(cell.get("daily_new", 40))
     today = now().strftime("%Y-%m-%d")
     added_today = conn.execute(
@@ -725,7 +768,7 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict,
         new += 1
         room -= 1
     conn.commit()
-    return {"found": len(items), "new": new}
+    return {"found": len(items), "new": new, "read": True}
 
 
 def check_interval_days(age_days: float, tr: dict) -> float:
@@ -866,7 +909,10 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
                 if (now() - last_dt).total_seconds() < cell["discovery_hours"] * 3600:
                     continue
             res = discover(conn, fetcher, cfg, cell, enroll=discovery_open)
-            meta_set(conn, f"disc:{cell['id']}", iso(now()))
+            # Tarama zamani YALNIZCA sayfa okunduysa yazilir: engel/hata gunlerinde yazilirsa
+            # hucre "tarandi" sanilip 24-72 saat atlaniyordu (2026-10-07 boslugu).
+            if res.get("read"):
+                meta_set(conn, f"disc:{cell['id']}", iso(now()))
             stats["found"] += res["found"]
             stats["discovered"] += res["new"]
             stats["cells"] += 1
@@ -960,7 +1006,8 @@ def main() -> None:
         for i, cell in enumerate(cells, 1):
             try:
                 res = discover(conn, fetcher, cfg, cell)
-                meta_set(conn, f"disc:{cell['id']}", iso(now()))
+                if res.get("read"):
+                    meta_set(conn, f"disc:{cell['id']}", iso(now()))
             except (BudgetExhausted, Paused) as exc:
                 log(f"durdu: {type(exc).__name__}")
                 break

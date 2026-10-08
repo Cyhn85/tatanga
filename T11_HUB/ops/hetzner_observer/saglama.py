@@ -31,7 +31,7 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 STAGES = ["oturum", "katalog", "katalog_okuma", "ilan", "ilan_okuma"]
 STAGE_LABEL = {"oturum": "oturum", "katalog": "katalog", "katalog_okuma": "kat.oku",
                "ilan": "ilan", "ilan_okuma": "ilan.oku"}
-FAIL_OUTCOMES = ("http", "ag", "bos", "eksik", "okunamadi")
+FAIL_OUTCOMES = ("http", "ag", "bos", "eksik", "okunamadi", "engel")
 KNOWN_AVAILABILITY = {"InStock", "SoldOut", "OutOfStock", "Discontinued", "LimitedAvailability"}
 
 OK, WARN, FAIL = "✔", "⚠", "✘"
@@ -132,6 +132,13 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
                         f"akis {req} istek (bu saate kadar beklenen en az {expected:.0f})"))
     except Exception:
         pass
+
+    # T12 bot korumasi: HTTP 200 ama dogrulama sayfasi (2026-10-07'de 36 saat boyunca oldu)
+    eng = _one(conn, "SELECT SUM(n) FROM health WHERE day=? AND outcome='engel'", day)
+    tot = _one(conn, "SELECT SUM(n) FROM health WHERE day=? AND stage IN ('katalog','ilan')", day)
+    if tot >= 20:
+        p = eng / tot
+        out.append((FAIL if p > 0.2 else WARN if p > 0.05 else OK, "T12", f"engel sayfasi %{p*100:.0f} ({eng}/{tot})"))
 
     # T11 (B3) dar arama hucreleri gercek arz sayisi veriyor mu (sinira takilmayan oran)
     snap = conn.execute(

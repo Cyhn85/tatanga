@@ -1,0 +1,13 @@
+[Unit]
+Description=TATANGA gozlemci saglama alarmi (FAIL 1 saati gecerse Telegram)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/tatanga-observer
+ExecStart=/opt/tatanga-observer/venv/bin/python /opt/tatanga-observer/alarm.py
+SuccessExitStatus=0 1 2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/tatanga-observer

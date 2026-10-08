@@ -439,6 +439,93 @@ def report_discovery(data, brand):
     print("  " + ", ".join(f"{t}({c})" for t, c in cands[:25]) if cands else "  yok")
 
 
+MIN_SALES_GROUP = 8     # satis orani icin grupta gereken en az takipli ilan
+
+
+def tracked(conn: sqlite3.Connection, matcher: ModelMatcher, rates: dict[str, float]) -> list[dict]:
+    """Takip edilen ilanlar ve sonuclari. Tekrar yayinlar satis/kayip sayilmaz, disarida birakilir."""
+    out = []
+    for r in conn.execute(
+            "SELECT cell, title, description, state, price, final_price, COALESCE(currency,'EUR') currency, "
+            "days_to_close, COALESCE(close_uncertain,0) unc, close_window, favourites, condition, country "
+            "FROM listings WHERE state IN ('active','sold','gone')"):
+        brand, category, _ = (r["cell"].split("|") + ["", ""])[:3]
+        if category.startswith("model:"):
+            category = "model"
+        rate = rates.get(r["currency"]) or 0
+        if not rate:
+            continue
+        model, line = matcher.match(brand, r["title"] or "")
+        price = (r["final_price"] if r["state"] == "sold" and r["final_price"] else r["price"]) or 0
+        exact = r["state"] == "sold" and not r["unc"] and (r["close_window"] or 99) <= 7
+        out.append({
+            "brand": brand, "category": category, "model": model, "line": line,
+            "type": match_type(norm_text(r["title"] or "")), "state": r["state"],
+            "price": price / rate, "days": r["days_to_close"] if exact else None,
+            "fav": r["favourites"] or 0, "cond": norm_condition(r["condition"]), "market": r["country"],
+        })
+    return out
+
+
+def _sales_rows(items: list[dict], key) -> list[dict]:
+    groups: dict = defaultdict(list)
+    for d in items:
+        k = key(d)
+        if k:
+            groups[k].append(d)
+    rows = []
+    for k, g in groups.items():
+        n = len(g)
+        if n < MIN_SALES_GROUP:
+            continue
+        sold = [d for d in g if d["state"] == "sold"]
+        gone = sum(1 for d in g if d["state"] == "gone")
+        days = sorted(d["days"] for d in sold if d["days"] is not None)
+        prices = sorted(d["price"] for d in sold)
+        rows.append({
+            "key": k, "n": n, "sold": len(sold), "rate": len(sold) / n,
+            "close_share": len(sold) / max(len(sold) + gone, 1),
+            "days": statistics.median(days) if days else None, "n_days": len(days),
+            "price": statistics.median(prices) if prices else None,
+            "fav": statistics.median(d["fav"] for d in g),
+        })
+    rows.sort(key=lambda r: (-r["rate"], -r["sold"]))
+    return rows
+
+
+def _print_sales(title: str, rows: list[dict], limit: int) -> None:
+    print(f"\n{title}")
+    print(f"{'':30}{'takip':>6}{'satis':>6}{'oran':>6}{'gun':>6}{'(n)':>5}{'fiyat':>8}{'fav':>5}")
+    for r in rows[:limit]:
+        label = " · ".join(str(x) for x in r["key"]) if isinstance(r["key"], tuple) else str(r["key"])
+        days = f"{r['days']:.1f}" if r["days"] is not None else "-"
+        price = f"{r['price']:.0f}€" if r["price"] is not None else "-"
+        print(f"{label[:30]:30}{r['n']:>6}{r['sold']:>6}{r['rate']*100:>5.0f}%{days:>6}{r['n_days']:>5}"
+              f"{price:>8}{r['fav']:>5.0f}")
+
+
+def report_sales(conn, matcher, rates) -> None:
+    """
+    Gercek sonuclardan siralama: takibe alinan ilanin ne kadari satildi, kac gunde, kaca.
+    Oran = satilan / takip edilen. Gun yalnizca satis ani kesin bilinen satislardan.
+    Grupta en az MIN_SALES_GROUP takipli ilan yoksa grup gosterilmez (sans eseri sonuc olmasin).
+    """
+    items = tracked(conn, matcher, rates)
+    sold = sum(1 for d in items if d["state"] == "sold")
+    exact = sum(1 for d in items if d["days"] is not None)
+    first = conn.execute("SELECT MIN(first_seen) FROM listings").fetchone()[0]
+    print(f"SATIS RAPORU: {len(items)} takipli ilan, {sold} satis ({exact} tanesinde satis gunu kesin) | "
+          f"ilk kayit {first[:10] if first else '-'}")
+    print("Uyari: oran, takip suresi farkli ilanlari karsilastirir; erken veri, yon gosterir, kesin degildir.")
+    _print_sales("MARKA", _sales_rows(items, lambda d: d["brand"]), 15)
+    _print_sales("KATEGORI", _sales_rows(items, lambda d: d["category"]), 6)
+    _print_sales("MARKA x TIP (model adi olmayanlar dahil)",
+                 _sales_rows(items, lambda d: (d["brand"], d["type"]) if d["type"] else None), 15)
+    _print_sales("MARKA x MODEL", _sales_rows(items, lambda d: (d["brand"], d["model"]) if d["model"] else None), 10)
+    _print_sales("PAZAR", _sales_rows(items, lambda d: d["market"]), 7)
+    _print_sales("KONDISYON", _sales_rows(items, lambda d: d["cond"]), 3)
+
+
 PLAN_FILE = os.path.join(BASE_DIR, "model_cells.json")
 PLAN_PER_TIER = {"core": 3, "watch": 1}
 
@@ -478,6 +565,7 @@ def main() -> None:
     ap.add_argument("--modeller", metavar="MARKA")
     ap.add_argument("--kesif", metavar="MARKA")
     ap.add_argument("--plan", action="store_true", help="B3 dar arama planini yaz (model_cells.json)")
+    ap.add_argument("--satislar", action="store_true", help="gercek satis sonuclarina gore siralama")
     ap.add_argument("--zorla", action="store_true", help="durdurucu saglama hatasina ragmen calis")
     args = ap.parse_args()
 
@@ -503,6 +591,8 @@ def main() -> None:
         report_discovery(data, args.kesif)
     elif args.plan:
         write_plan(data, matcher)
+    elif args.satislar:
+        report_sales(conn, matcher, rates)
     else:
         report_factors(data, unknown_cond)
 
