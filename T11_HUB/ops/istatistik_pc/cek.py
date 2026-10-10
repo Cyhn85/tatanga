@@ -152,6 +152,7 @@ def run_trends() -> None:
         ("wikipedia", [sys.executable, str(here / "trend_wiki.py")]),
         ("etiketli-yeni", [sys.executable, str(obs / "analyze.py"), "--db", str(ARCHIVE),
                            "--etiketli", "--csv", str(TABLES_DIR)]),
+        ("motor", [sys.executable, str(obs / "motor.py"), "--db", str(ARCHIVE), "--csv", str(TABLES_DIR)]),
     ):
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=1200,
