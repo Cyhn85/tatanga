@@ -25,6 +25,7 @@ import re
 import sqlite3
 import sys
 import time
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from curl_cffi import requests
@@ -810,27 +811,67 @@ def check_interval_days(age_days: float, tr: dict) -> float:
     return float(tr["day31_90"])
 
 
-def due_listings(conn: sqlite3.Connection, cfg: dict, limit: int) -> list[sqlite3.Row]:
+def _category_of(cell: str) -> str:
+    part = (cell.split("|") + ["", ""])[1]
+    return "model" if part.startswith("model:") else part
+
+
+def due_queue(conn: sqlite3.Connection, cfg: dict) -> list[tuple[int, str, int]]:
+    """
+    Vadesi gelmis tum aktif ilanlar: (oncelik, kategori, item_id).
+    Oncelik 0 = hic kontrol edilmemis, 1 = ilk haftadaki genc ilan, 2 = digerleri.
+    """
     tr = cfg["tracking"]
-    rows = conn.execute(
-        "SELECT * FROM listings WHERE state='active' ORDER BY COALESCE(last_check, first_seen) LIMIT ?",
-        (limit * 4,),
-    ).fetchall()
-    due = []
-    for row in rows:
-        first = datetime.strptime(row["first_seen"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    out, expired = [], []
+    for item_id, cell, first_seen, last_check in conn.execute(
+            "SELECT item_id, cell, first_seen, last_check FROM listings WHERE state='active'"):
+        first = datetime.strptime(first_seen, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         age = (now() - first).total_seconds() / 86400
         if age > float(tr["max_days"]):
-            conn.execute("UPDATE listings SET state='expired' WHERE item_id=?", (row["item_id"],))
+            expired.append(item_id)
             continue
-        last = row["last_check"] or row["first_seen"]
-        last_dt = datetime.strptime(last, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-        if (now() - last_dt).total_seconds() / 86400 >= check_interval_days(age, tr):
-            due.append(row)
-        if len(due) >= limit:
+        last = datetime.strptime(last_check or first_seen, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        waited = (now() - last).total_seconds() / 86400
+        if waited >= check_interval_days(age, tr):
+            prio = 0 if last_check is None else 1 if age <= 7 else 2
+            out.append((prio, _category_of(cell), item_id, waited))
+    if expired:
+        conn.executemany("UPDATE listings SET state='expired' WHERE item_id=?", [(i,) for i in expired])
+        conn.commit()
+    return out
+
+
+def due_listings(conn: sqlite3.Connection, cfg: dict, limit: int) -> list[sqlite3.Row]:
+    """
+    Adil kontrol kuyrugu. Eskiden 'en eski kontrol once' calisiyordu: gecikmis eski mont ilanlari
+    kuyrugu tikiyor, yeni ayakkabi/giyim ilanlari hic sira bulamiyordu (2026-10-10: IT/NL/SE
+    ayakkabilarinin %100'u hic kontrol edilmemisti). Simdi: oncelik sirasina gore, her oncelik
+    icinde kategoriler donusumlu; ayni kategoride en uzun bekleyen once.
+    """
+    queue = due_queue(conn, cfg)
+    chosen: list[int] = []
+    for prio in (0, 1, 2):
+        buckets: dict[str, list[tuple]] = defaultdict(list)
+        for p, cat, item_id, waited in queue:
+            if p == prio:
+                buckets[cat].append((waited, item_id))
+        for cat in buckets:
+            buckets[cat].sort(reverse=True)
+        while buckets and len(chosen) < limit:
+            for cat in list(buckets):
+                if not buckets[cat]:
+                    del buckets[cat]
+                    continue
+                chosen.append(buckets[cat].pop(0)[1])
+                if len(chosen) >= limit:
+                    break
+        if len(chosen) >= limit:
             break
-    conn.commit()
-    return due
+    if not chosen:
+        return []
+    marks = ",".join("?" * len(chosen))
+    rows = {r["item_id"]: r for r in conn.execute(f"SELECT * FROM listings WHERE item_id IN ({marks})", chosen)}
+    return [rows[i] for i in chosen if i in rows]
 
 
 def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) -> str:
@@ -916,8 +957,12 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
     # Takip yuku kapasiteyi asarsa yeni ilan almayi kendiliginden durdurur:
     # yarim takip edilen cok ilan yerine, tam takip edilen daha az ilan.
     tracked = conn.execute("SELECT COUNT(*) c FROM listings WHERE state='active'").fetchone()["c"]
-    discovery_open = tracked < int(cfg["budget"].get("max_tracked", 2500))
+    # Yeni ilan takibe ancak kontrol kuyrugu yetisebiliyorsa alinir: birikmis is buyukse once onu erit.
+    backlog = len(due_queue(conn, cfg))
+    backlog_limit = max(200, int(0.1 * tracked))
+    discovery_open = tracked < int(cfg["budget"].get("max_tracked", 2500)) and backlog < backlog_limit
     stats["takipte"] = tracked
+    stats["birikmis"] = backlog
     try:
         # Once takip (kural 29): vadesi gelen kontroller ertelenirse satis anini kaciririz.
         limit = min(fetcher.budget_left(), int(cfg["budget"].get("checks_per_cycle", 200)))

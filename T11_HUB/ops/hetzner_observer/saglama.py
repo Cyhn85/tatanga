@@ -113,6 +113,32 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
         lvl = OK if age_h <= 2 else (WARN if planned else FAIL)
         out.append((lvl, "T6", f"son kontrol {age_h:.1f} saat once" + (" (planli duraklama)" if planned else "")))
 
+    # T14 gecikmis kontrol: vadesinden 1 gunden fazla gecmis aktif ilan orani + hic bakilmamislar
+    try:
+        tr = json.load(open(CONFIG_FILE, encoding="utf-8"))["tracking"]
+        late, total, never = 0, 0, {}
+        for cell, first_seen, last_check in conn.execute(
+                "SELECT cell, first_seen, last_check FROM listings WHERE state='active'"):
+            total += 1
+            first = datetime.strptime(first_seen, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            age = (utcnow() - first).total_seconds() / 86400
+            interval = tr["day1_7"] if age <= 7 else tr["day8_30"] if age <= 30 else tr["day31_90"]
+            last = datetime.strptime(last_check or first_seen, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            if (utcnow() - last).total_seconds() / 86400 > interval + 1:
+                late += 1
+                if last_check is None:
+                    cat = cell.split("|")[1]
+                    cat = "model" if cat.startswith("model:") else cat
+                    never[cat] = never.get(cat, 0) + 1
+        if total:
+            p = late / total
+            detail = f"gecikmis kontrol %{p*100:.0f} ({late}/{total})"
+            if never:
+                detail += " | hic bakilmamis: " + ", ".join(f"{k} {v}" for k, v in sorted(never.items()))
+            out.append((FAIL if p > 0.25 else WARN if p > 0.1 else OK, "T14", detail))
+    except (OSError, KeyError, ValueError):
+        pass
+
     # T13 bosta gecen zaman: son 24 saatte duraklamalarin toplami
     try:
         mins = _one(conn, "SELECT SUM(minutes) FROM pauses WHERE ts >= datetime('now','-1 day')")
