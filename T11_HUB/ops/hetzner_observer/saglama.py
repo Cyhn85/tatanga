@@ -151,7 +151,9 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
     # T7 bilinmeyen ham durum degeri: platform yeni bir deger dondurmeye baslamis
     raws = [r[0] for r in conn.execute("SELECT DISTINCT avail_raw FROM listings WHERE avail_raw IS NOT NULL")]
     # 'SUCCESS:<dile gore baslik>' satildi demektir; baslik dili onemsiz, tema belirleyici
-    unknown = [r for r in raws if r not in KNOWN_AVAILABILITY and not r.startswith("SUCCESS:")]
+    # SUCCESS:<baslik> = satildi, AMPLIFIED:<baslik> = rezerve; baslik dili onemsiz, tema belirleyici
+    unknown = [r for r in raws if r not in KNOWN_AVAILABILITY
+               and not r.startswith(("SUCCESS:", "AMPLIFIED:"))]
     themes = sorted({r.split(":")[0] if ":" in r else r for r in raws})
     out.append((WARN if unknown else OK, "T7",
                 f"durum turleri: {', '.join(themes) or '-'}" + (f" | BILINMEYEN: {unknown[:5]}" if unknown else "")))

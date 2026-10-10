@@ -290,7 +290,9 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # 1: kapanis zamani bilinmiyor -> fiyat verisinde kullanilir, HIZ hesabina girmez
                       ("close_uncertain", "INTEGER DEFAULT 0"),
                       # Ilan aciklamasi: stil kodu / olcu / kusur ifadeleri icin (ilk aktif okumada bir kez)
-                      ("description", "TEXT")):
+                      ("description", "TEXT"),
+                      # Ilk rezerve gorulme ani (satis oncesi sinyal)
+                      ("reserved_at", "TEXT")):
         if col not in have:
             conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {decl}")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_sig ON listings(photo_sig)")
@@ -649,7 +651,9 @@ def parse_item_state(html: str) -> dict | None:
     if status:
         theme, title = status.group(1), status.group(2)
         return {
-            "state": "sold" if theme == "SUCCESS" else "unknown",
+            # SUCCESS = satildi. AMPLIFIED = rezerve (2026-10-10'da "AMPLIFIED:Reserviert" goruldu):
+            # ilan hala yayinda ama bir aliciya ayrilmis -> satisa giden yolun ilk sinyali.
+            "state": "sold" if theme == "SUCCESS" else "reserved" if theme == "AMPLIFIED" else "unknown",
             "availability": f"{theme}:{title}",
             "price": None,      # satilmis sayfada teklif blogu yok: son bilinen ilan fiyati kullanilir
             "title": None,
@@ -940,12 +944,17 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
         if new_state == "unknown":
             # Tanimadigimiz durum degeri: tahmin yurutmuyoruz, ham degeri kaydedip isaretliyoruz
             add_event(conn, row["item_id"], f"unknown:{info['availability'][:40]}")
+        if new_state == "reserved" and not row["reserved_at"]:
+            add_event(conn, row["item_id"], "reserved")
+        # Rezerve ilan hala yayinda: takip surer (state 'active' kalir), ilk rezerve ani ayrica saklanir
         conn.execute(
             "UPDATE listings SET last_check=?, checks=checks+1, state=?, avail_raw=?, unresolved=0, "
-            "last_active_at=CASE WHEN ?='active' THEN ? ELSE last_active_at END, "
+            "last_active_at=CASE WHEN ? IN ('active','reserved') THEN ? ELSE last_active_at END, "
+            "reserved_at=CASE WHEN ?='reserved' THEN COALESCE(reserved_at, ?) ELSE reserved_at END, "
             "description=COALESCE(description, ?), title=COALESCE(title, ?) WHERE item_id=?",
-            (ts, "active" if new_state == "active" else row["state"], info["availability"],
-             new_state, ts, (info.get("description") or "")[:1200] or None, info.get("title"), row["item_id"]),
+            (ts, "active" if new_state in ("active", "reserved") else row["state"], info["availability"],
+             new_state, ts, new_state, ts,
+             (info.get("description") or "")[:1200] or None, info.get("title"), row["item_id"]),
         )
     conn.commit()
     return new_state
