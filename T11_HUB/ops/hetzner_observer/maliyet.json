@@ -1,0 +1,10 @@
+{
+  "_aciklama": "Firsat puaninin maliyet varsayimlari. 'kaynak' alani her degerin nereden geldigini yazar; 'varsayim' olanlar gercek veriyle guncellenmelidir.",
+  "alici_koruma_sabit": {"deger": 0.70, "kaynak": "Vinted DE alici koruma ucreti (sabit kisim)"},
+  "alici_koruma_oran": {"deger": 0.05, "kaynak": "Vinted DE alici koruma ucreti (urun fiyatinin %5'i)"},
+  "gelen_kargo": {"deger": 5.00, "kaynak": "varsayim: Vinted DE paket kargo ortalamasi"},
+  "paketleme": {"deger": 1.00, "kaynak": "varsayim"},
+  "iade_payi_oran": {"deger": 0.03, "kaynak": "varsayim: gercek iade orani olculunce guncellenecek"},
+  "satis_komisyonu_oran": {"deger": 0.00, "kaynak": "Vinted Pro: saticidan komisyon alinmaz"},
+  "giden_kargo": {"deger": 0.00, "kaynak": "Vinted: giden kargoyu alici oder"}
+}
