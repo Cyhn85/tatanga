@@ -43,8 +43,9 @@ UNRESOLVED_LIMIT = 6
 CHALLENGE_MAX_BYTES = 60_000
 CHALLENGE_PAUSE_AFTER = 3        # yeni oturuma ragmen ust uste bu kadar engel -> 2 saat dur
 SESSION_ROTATE_EVERY = 150       # tek oturum bu kadar istekten sonra yenilenir (403'ler ~2 saatte bir geliyordu)
-BLOCK_MID_COUNT = 3              # 30 dk icinde bu kadar 403/429 -> 2 saat dur
-BLOCK_LONG_COUNT = 6             # 3 saat icinde bu kadar 403/429 -> 6 saat dur (gercek engel)
+FAV_SCAN_LIMIT = 800_000                # favori sayisi ilan sayfasinda ~450 KB'de; bundan sonra aranmaz
+MARKET_COOLDOWN_STEPS = (15, 60, 360)   # ayni pazarda ust uste 1., 2., 3+. red -> dakika
+GLOBAL_PAUSE_MARKETS = 3                # bu kadar pazar ayni anda bekliyorsa genel duraklama
 CATALOG_MAX_BYTES = 12_000_000
 SELLER_SALT = "tatanga-observer-v1"
 
@@ -87,12 +88,46 @@ _AVAIL_RE = re.compile(r'"availability":"([^"]+)"')
 _STATUS_RE = re.compile(
     r'\\"theme\\":\\"(\w+)\\",\\"title\\":\\"([^\\]{0,40})\\"\},\\"exposures\\":\[\],'
     r'\\"name\\":\\"buyer_item_status\\"')
+# Favori sayisi (2026-10-10 dogrulandi): ilana ozgu blok, hemen ardindan item_id gelir.
+_FAV_RE = re.compile(r'\\"favourite_count\\":(\d+),\\"is_favourite\\":(?:true|false),\\"item_id\\":\\"(\d+)\\"')
+
+
+def parse_favourites(html: str, item_id: int) -> int | None:
+    """Yalnizca kimlik eslesirse doner: sayfadaki baska bir ilanin (oneriler) favorisi alinmasin."""
+    for m in _FAV_RE.finditer(html):
+        if m.group(2) == str(item_id):
+            return int(m.group(1))
+    return None
 _OFFER_PRICE_RE = re.compile(r'"price":([\d.]+),"availability"')
 _LD_NAME_RE = re.compile(r'"@type":"Product","name":"([^"]{0,150})"')
 # Aciklama: stil kodu, olcu, kusur bilgisi burada yazilir. Sayfa zaten indirildigi icin bedava.
 _LD_DESC_RE = re.compile(r'"@type":"Product","name":"(?:[^"\\]|\\.)*","description":"((?:[^"\\]|\\.){0,1200})')
 # Cocuk bedenleri: emsal ve istatistik disinda (farkli pazar, dusuk fiyat)
-_CHILD_SIZE_RE = re.compile(r"\b(monate|jahre|mois|ans|kinder)\b|^\d{2,3}\s*(cm)?$", re.IGNORECASE)
+_CHILD_WORD_RE = re.compile(
+    r"\b(monate|jahre|mois|ans|anni|mesi|maanden|jaar|år|kinder|kids|enfant|bambin[oa]|baby|bebe)\b",
+    re.IGNORECASE)
+_SIZE_NUM_RE = re.compile(r"\b(\d{2,3})\b")
+_BABY_CM = {50, 56, 62, 68, 74, 80, 86, 92, 98}
+
+
+def is_child_size(size: str | None, category: str) -> bool:
+    """
+    Kategoriye duyarli cocuk bedeni tespiti. Eski kural her 2-3 haneli bedeni cocuk sayiyordu:
+    ayakkabilarin %84'u (35-46 numara) ve montlarda "54" gibi erkek bedenleri yanlislikla
+    analizden ve takipten dusuyordu (2026-10-10).
+    Ayakkabi: AB numarasi 15-34 cocuk. Giyim: 100 cm ve ustu boy ya da bebek bedenleri cocuk;
+    30-64 arasi yetiskin sayisal beden (kadin 32-48, erkek 44-60).
+    """
+    s = size or ""
+    if _CHILD_WORD_RE.search(s):
+        return True
+    nums = [int(n) for n in _SIZE_NUM_RE.findall(s)]
+    if not nums:
+        return False
+    n = nums[0]
+    if category == "schuhe":
+        return 15 <= n <= 34          # 15'ten kucuk sayi UK/US numarasidir, cocuk sayilmaz
+    return n >= 100 or n in _BABY_CM
 
 
 def now() -> datetime:
@@ -118,11 +153,16 @@ def build_cells(cfg: dict) -> list[dict]:
     brand_categories bir markayi anlamli kategorilerine sinirlar (Birkenstock'ta 'mont' aranmaz).
     """
     cells = []
-    all_cats = list(cfg["categories"])
+    # Temel kategoriler (mont/ayakkabi/giyim) varsayilan; ek kategoriler (kot, sweatshirt) yalnizca
+    # o kategoride anlamli markalar icin: her markaya kot aratmak butceyi bosa harcardi.
+    base_cats = cfg.get("base_categories", list(cfg["categories"]))
+    extra = cfg.get("extra_categories", {})
     for tier in cfg["enabled_tiers"]:
         for brand in cfg["brands"][tier]:
             search = cfg.get("brand_search", {}).get(brand, brand)
-            for category in cfg.get("brand_categories", {}).get(brand, all_cats):
+            cats = list(cfg.get("brand_categories", {}).get(brand, base_cats))
+            cats += [cat for cat, brands in extra.items() if brand in brands and cat not in cats]
+            for category in cats:
                 keywords = cfg["categories"][category]
                 for country in cfg["enabled_markets"]:
                     if country not in keywords:
@@ -292,10 +332,24 @@ def init_db(conn: sqlite3.Connection) -> None:
                       # Ilan aciklamasi: stil kodu / olcu / kusur ifadeleri icin (ilk aktif okumada bir kez)
                       ("description", "TEXT"),
                       # Ilk rezerve gorulme ani (satis oncesi sinyal)
-                      ("reserved_at", "TEXT")):
+                      ("reserved_at", "TEXT"),
+                      # Basligin kaynagi: 'katalog' (tam metin) ya da 'adres' (URL'deki sadelestirilmis baslik)
+                      ("title_src", "TEXT")):
         if col not in have:
             conn.execute(f"ALTER TABLE listings ADD COLUMN {col} {decl}")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_sig ON listings(photo_sig)")
+    # Basliksiz ilanlar (baslik kaydi 2026-10-04'te basladi): ilan adresindeki baslik kullanilir.
+    # /items/10241835461-regenjacke-von-jack-wolfskinn -> "regenjacke von jack wolfskinn".
+    # Ek istek yok; aksanlar sadelesmis olur ama model/tip eslestirmesi zaten aksansiz calisir.
+    conn.execute(
+        "UPDATE listings SET title_src = 'katalog' WHERE title IS NOT NULL AND title_src IS NULL")
+    conn.execute(
+        """UPDATE listings
+              SET title = replace(substr(substr(url, instr(url, '/items/') + 7),
+                                         instr(substr(url, instr(url, '/items/') + 7), '-') + 1), '-', ' '),
+                  title_src = 'adres'
+            WHERE title IS NULL AND instr(url, '/items/') > 0
+              AND instr(substr(url, instr(url, '/items/') + 7), '-') > 0""")
     have_s = {r[1] for r in conn.execute("PRAGMA table_info(catalog_samples)")}
     if "currency" not in have_s:
         conn.execute("ALTER TABLE catalog_samples ADD COLUMN currency TEXT DEFAULT 'EUR'")
@@ -361,7 +415,9 @@ class Fetcher:
         self.last_status: int | None = None
         self.consecutive_challenges = 0
         self.session_requests = 0
-        self.recent_blocks: list[float] = []
+        self.recent_outcomes: list[int] = []
+        self.market_strikes: dict[str, int] = {}
+        self.market_cooldown: dict[str, float] = {}
 
     def new_session(self, reason: str) -> None:
         """
@@ -385,6 +441,8 @@ class Fetcher:
         return max(0, int(self.cfg["max_requests_per_day"]) - self.used_today())
 
     def _count(self, error: bool = False) -> None:
+        self.recent_outcomes.append(1 if error else 0)
+        del self.recent_outcomes[:-100]
         self.conn.execute(
             "INSERT INTO budget (day, requests, errors) VALUES (?, 1, ?) "
             "ON CONFLICT(day) DO UPDATE SET requests=requests+1, errors=errors+?",
@@ -406,29 +464,46 @@ class Fetcher:
         self.conn.commit()
         log(f"DURAKLAMA: {minutes} dk ({reason}) -> {iso(until)}")
 
-    def _on_block(self, status: int) -> None:
+    def _on_block(self, status: int, market: str) -> None:
         """
-        Kademeli 403/429 politikasi. Eskiden TEK bir 403 sistemi 6 saat uyutuyordu: gunun ~%75'i
-        bosta geciyordu (2026-10-09/10 olcumu). 403 cogunlukla oturumun isaretlenmesidir, IP engeli
-        degildir: yeni oturum + kisa bekleme yeter; ancak tekrar ederse uzun durulur.
+        Pazar bazli kademeli 403/429 politikasi.
+
+        2026-10-10: vinted.fr bu IP'ye hem ilan hem ana sayfada 403 verirken diger pazarlar calisiyordu.
+        Kuyruk her turda once bir Fransa ilani sectigi icin tum sistem 15'er dakika duruyor, saatte
+        ~4 istek atabiliyordu. Artik reddeden PAZAR beklemeye alinir (ilk red 15 dk, sonra 1 saat,
+        sonra 6 saat; basarili istek sayaci sifirlar), digerleri calismaya devam eder. Genel duraklama
+        yalnizca en az 3 pazar ayni anda bekliyorsa.
         """
-        cutoff = time.time() - 3 * 3600
-        self.recent_blocks = [t for t in self.recent_blocks if t > cutoff] + [time.time()]
-        last_30m = sum(1 for t in self.recent_blocks if t > time.time() - 1800)
-        self.new_session(f"HTTP {status}")
-        if len(self.recent_blocks) >= BLOCK_LONG_COUNT:
-            self._pause(360, f"3 saatte {len(self.recent_blocks)} kez HTTP {status}")
-            self.recent_blocks = []
-        elif last_30m >= BLOCK_MID_COUNT:
-            self._pause(120, f"30 dk icinde {last_30m} kez HTTP {status}")
-        else:
-            self._pause(15, f"tek HTTP {status}, yeni oturum")
+        self.new_session(f"HTTP {status} [{market}]")
+        strikes = self.market_strikes.get(market, 0) + 1
+        self.market_strikes[market] = strikes
+        minutes = MARKET_COOLDOWN_STEPS[min(strikes, len(MARKET_COOLDOWN_STEPS)) - 1]
+        self.market_cooldown[market] = time.time() + minutes * 60
+        self.conn.execute("INSERT INTO pauses (ts, minutes, reason) VALUES (?,?,?)",
+                          (iso(now()), minutes, f"pazar:{market} HTTP {status} ({strikes}. red)"))
+        self.conn.commit()
+        log(f"PAZAR BEKLEMEDE: {market} {minutes} dk ({strikes}. ust uste red)")
+        cooling = self.cooling_markets()
+        if len(cooling) >= GLOBAL_PAUSE_MARKETS:
+            self._pause(120, f"{len(cooling)} pazar ayni anda reddediyor: {', '.join(sorted(cooling))}")
+
+    def cooling_markets(self) -> set[str]:
+        t = time.time()
+        return {m for m, until in self.market_cooldown.items() if until > t}
+
+    def market_ok(self, market: str) -> None:
+        """Basarili istek: o pazarin red sayaci sifirlanir."""
+        if self.market_strikes.get(market):
+            self.market_strikes[market] = 0
 
     def error_rate(self) -> float:
-        row = self.conn.execute("SELECT requests, errors FROM budget WHERE day=?", (self._today(),)).fetchone()
-        if not row or row["requests"] < 20:
+        """
+        Son 100 istegin hata orani. Eskiden gunun tamaminin orani kullaniliyordu: sabahki bir
+        403 dalgasi sistemi gun boyu yari hizda calistiriyordu.
+        """
+        if len(self.recent_outcomes) < 20:
             return 0.0
-        return row["errors"] / row["requests"]
+        return sum(self.recent_outcomes) / len(self.recent_outcomes)
 
     def _throttle(self) -> None:
         # Kendi kendini ayarlar: hata orani yukseldikce yavaslar (insan mudahalesi gerekmez)
@@ -451,7 +526,10 @@ class Fetcher:
             resp = self.session.get(f"https://www.{market}/", timeout=40)
             self._count(error=resp.status_code != 200)
             note(self.conn, market, "oturum", "ok" if resp.status_code == 200 else "http",
-                 f"HTTP {resp.status_code}")
+                 f"HTTP {resp.status_code}", f"https://www.{market}/")
+            if resp.status_code in (403, 429):
+                self._on_block(resp.status_code, market)
+                return
         except Exception as exc:
             # Onceden yakalanmiyordu: tek bir ag hatasi butun turu dusurebiliyordu
             self._count(error=True)
@@ -475,6 +553,7 @@ class Fetcher:
                 buf = bytearray()
                 resp = self.session.get(url, params=params, timeout=60, stream=True)
                 found_at = None
+                fav_at = None
                 try:
                     if resp.status_code != 200:
                         return self._handle_bad(resp.status_code, market, stage, url)
@@ -483,8 +562,13 @@ class Fetcher:
                         tail = buf[-len(chunk) - 60:]
                         if found_at is None and (b'"availability"' in tail or b'buyer_item_status' in tail):
                             found_at = len(buf)
-                        # isareti gordukten sonra blogun kalanini da al, sonra kes
-                        if len(buf) > scan_limit or (found_at and len(buf) - found_at > 4096):
+                        if fav_at is None and b'favourite_count' in tail:
+                            fav_at = len(buf)
+                        # Durum blogu + favori sayisi (sayfada ~450 KB) okununca kes. Favori bulunamazsa
+                        # FAV_SCAN_LIMIT'te vazgecilir: durum bilgisi icin fazlasi gerekmez.
+                        status_done = found_at and len(buf) - found_at > 4096
+                        fav_done = (fav_at and len(buf) - fav_at > 512) or len(buf) > FAV_SCAN_LIMIT
+                        if len(buf) > scan_limit or (status_done and fav_done):
                             break
                 finally:
                     resp.close()
@@ -522,6 +606,7 @@ class Fetcher:
         self.consecutive_challenges = 0
         self.last_status = 200
         note(self.conn, market, stage, "ok")
+        self.market_ok(market)
         return text
 
     @staticmethod
@@ -564,7 +649,7 @@ class Fetcher:
         note(self.conn, market, stage, "http", f"HTTP {status}", url)
         log(f"HTTP {status} [{market}/{stage}] (ust uste {self.consecutive_errors})")
         if status in (403, 429):
-            self._on_block(status)
+            self._on_block(status, market)
         elif self.consecutive_errors >= 5:
             self.consecutive_errors = 0
             self._pause(30, f"ust uste 5 HTTP hatasi (son {status})")
@@ -744,10 +829,27 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict,
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(i["item_id"], iso(now()), cell["id"], cell["country"], i["brand"], i.get("title"),
           i["size"], i["condition"], i["price"], i["total_price"], i["favourites"],
-          1 if _CHILD_SIZE_RE.search(i["size"] or "") else 0, i.get("currency", "EUR"))
+          1 if is_child_size(i["size"], cell["category"]) else 0, i.get("currency", "EUR"))
          for i in items if brand_matches(cell, i["brand"])],
     )
     conn.commit()
+    # Ek sayfalar: sadece ornek havuzu icin (takibe alim 1. sayfadan). Her sayfa ~96 ornek ve tek istek.
+    extra_pages = int(cfg.get("extra_pages", {}).get(cell["tier"], 0))
+    if extra_pages and len(items) >= 90:
+        for page in range(2, 2 + extra_pages):
+            more_html = fetcher.get(f"https://www.{market}/catalog", params={**params, "page": page},
+                                    stage="katalog")
+            more = parse_catalog(more_html or "")
+            if not more:
+                break
+            conn.executemany(
+                "INSERT OR IGNORE INTO catalog_samples (item_id, ts, cell, country, brand, title, size, "
+                "condition, price, total_price, favourites, is_child, currency) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(i["item_id"], iso(now()), cell["id"], cell["country"], i["brand"], i.get("title"),
+                  i["size"], i["condition"], i["price"], i["total_price"], i["favourites"],
+                  1 if is_child_size(i["size"], cell["category"]) else 0, i.get("currency", "EUR"))
+                 for i in more if brand_matches(cell, i["brand"])])
+            conn.commit()
     if not enroll:
         return {"found": len(items), "new": 0, "read": True}
     quota = int(cell.get("daily_new", 40))
@@ -763,7 +865,7 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict,
             break
         if not brand_matches(cell, item["brand"]):
             continue  # arama gurultusu: baska markanin ilani
-        if _CHILD_SIZE_RE.search(item["size"] or ""):
+        if is_child_size(item["size"], cell["category"]):
             continue  # cocuk bedeni: ayri pazar, fiyat bandi bizim disimizda
         exists = conn.execute("SELECT 1 FROM listings WHERE item_id=?", (item["item_id"],)).fetchone()
         if exists:
@@ -808,6 +910,10 @@ def discover(conn: sqlite3.Connection, fetcher: Fetcher, cfg: dict, cell: dict,
 
 
 def check_interval_days(age_days: float, tr: dict) -> float:
+    # Ilk 3 gun gunluk: satislarin cogu ilk gunlerde oluyor; 2 gunluk aralikla "2,0 gun" disinda
+    # bir satis suresi olculemiyordu (cozunurluk sinirina takiliyordu).
+    if age_days <= 3 and "day1_3" in tr:
+        return float(tr["day1_3"])
     if age_days <= 7:
         return float(tr["day1_7"])
     if age_days <= 30:
@@ -878,9 +984,27 @@ def due_listings(conn: sqlite3.Connection, cfg: dict, limit: int) -> list[sqlite
     return [rows[i] for i in chosen if i in rows]
 
 
+ALT_MARKETS = ("vinted.de", "vinted.at", "vinted.nl", "vinted.be", "vinted.it", "vinted.fr")
+
+
 def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) -> str:
-    fetcher.warm(row["market"])
-    html = fetcher.get(row["url"], scan_limit=ITEM_PAGE_SCAN_LIMIT, stage="ilan")
+    # Vinted'in ulke siteleri ayni pazaryeri: ayni ilan her alan adinda acilir, satis durumu ilana aittir.
+    # Ilanin pazari beklemedeyse saglikli bir alan adindan kontrol edilir; takip durmaz.
+    # Kontrol, o anki oturumun alan adindan yapilir: her ilan icin ulke degistirmek her seferinde ek bir
+    # oturum istegi demekti (istek sayisi ikiye katlaniyordu). Oturumun alani beklemedeyse saglikli biri secilir.
+    orig_market, url = row["market"], row["url"]
+    cooling = fetcher.cooling_markets()
+    if fetcher.warm_market and fetcher.warm_market not in cooling:
+        market = fetcher.warm_market
+    else:
+        market = next((m for m in ALT_MARKETS if m not in cooling), None)
+        if market is None:
+            return "error"
+    url = url.replace(f"www.{orig_market}", f"www.{market}")
+    fetcher.warm(market)
+    if market in fetcher.cooling_markets():
+        return "error"   # oturum acilisi az once reddedildi
+    html = fetcher.get(url, scan_limit=ITEM_PAGE_SCAN_LIMIT, stage="ilan")
     ts = iso(now())
 
     # SADECE 404/410 "kalkti" demektir. Sayfanin yuklenmemesi ya da durum blogunun
@@ -924,6 +1048,11 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
     if price is not None and row["price"] is not None and abs(price - row["price"]) >= 0.01:
         add_event(conn, row["item_id"], "price_changed", price)
         conn.execute("UPDATE listings SET price=? WHERE item_id=?", (price, row["item_id"]))
+    # Favori her kontrolde guncellenir; degisim olay olarak saklanir -> favori artis hizi = talep sinyali
+    fav = parse_favourites(html, row["item_id"])
+    if fav is not None and fav != (row["favourites"] or 0):
+        add_event(conn, row["item_id"], "fav", None, fav)
+        conn.execute("UPDATE listings SET favourites=? WHERE item_id=?", (fav, row["item_id"]))
 
     if new_state == "sold":
         # Satis ani [son aktif gorulme, simdi] araligindadir; gun = aralik ortasi, genislik ayrica saklanir
@@ -988,6 +1117,8 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
         for cell in build_cells(cfg):
             if fetcher.budget_left() <= reserve:
                 break
+            if cell["market"] in fetcher.cooling_markets():
+                continue   # beklemedeki pazarin aramasi atlanir; tarama zamani yazilmadigi icin sonra yapilir
             last = meta_get(conn, f"disc:{cell['id']}")
             if last:
                 last_dt = datetime.strptime(last, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)

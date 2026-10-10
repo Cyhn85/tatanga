@@ -144,10 +144,19 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
 
     # T13 bosta gecen zaman: son 24 saatte duraklamalarin toplami
     try:
-        mins = _one(conn, "SELECT SUM(minutes) FROM pauses WHERE ts >= datetime('now','-1 day')")
+        # Yalnizca GENEL duraklama sayilir; tek pazarin beklemesi sistemi durdurmaz (T15'te gorunur)
+        mins = _one(conn, "SELECT SUM(minutes) FROM pauses WHERE ts >= datetime('now','-1 day') "
+                          "AND reason NOT LIKE 'pazar:%'")
         share = mins / 1440
         out.append((FAIL if share > 0.3 else WARN if share > 0.15 else OK, "T13",
-                    f"son 24 saatte duraklama {mins} dk (%{share*100:.0f})"))
+                    f"son 24 saatte genel duraklama {mins} dk (%{share*100:.0f})"))
+        # T15 pazar bazli beklemeler (son 6 saat): hangi pazar reddediyor
+        rows = conn.execute(
+            "SELECT substr(reason, 7, instr(reason, ' ')-7) m, COUNT(*) c FROM pauses "
+            "WHERE reason LIKE 'pazar:%' AND ts >= datetime('now','-6 hours') GROUP BY 1 ORDER BY 2 DESC"
+        ).fetchall()
+        if rows:
+            out.append((WARN, "T15", "son 6 saatte reddeden pazar: " + ", ".join(f"{r[0]} x{r[1]}" for r in rows)))
     except sqlite3.OperationalError:
         pass
 

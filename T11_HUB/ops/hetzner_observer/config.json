@@ -18,7 +18,8 @@
     "day1_7": 2,
     "day8_30": 4,
     "day31_90": 10,
-    "max_days": 90
+    "max_days": 90,
+    "day1_3": 1
   },
   "discovery_hours": {
     "core": 24,
@@ -68,6 +69,24 @@
       "NL": "trui",
       "IT": "maglione",
       "SE": "tröja"
+    },
+    "jeans": {
+      "DE": "jeans",
+      "AT": "jeans",
+      "FR": "jean",
+      "BE": "jean",
+      "NL": "jeans",
+      "IT": "jeans",
+      "SE": "jeans"
+    },
+    "hoodies": {
+      "DE": "hoodie",
+      "AT": "hoodie",
+      "FR": "sweat",
+      "BE": "sweat",
+      "NL": "hoodie",
+      "IT": "felpa",
+      "SE": "hoodie"
     }
   },
   "brands": {
@@ -381,5 +400,46 @@
     "NL",
     "IT",
     "SE"
-  ]
+  ],
+  "base_categories": [
+    "jacken",
+    "schuhe",
+    "oberteile"
+  ],
+  "extra_categories": {
+    "jeans": [
+      "Levi's",
+      "Diesel",
+      "Tommy Hilfiger",
+      "Calvin Klein",
+      "Ralph Lauren",
+      "Hugo Boss",
+      "Carhartt",
+      "Armani"
+    ],
+    "hoodies": [
+      "Nike",
+      "Adidas",
+      "Carhartt",
+      "Ralph Lauren",
+      "Tommy Hilfiger",
+      "Lacoste",
+      "Stone Island",
+      "The North Face",
+      "Patagonia",
+      "New Balance",
+      "Calvin Klein",
+      "Hugo Boss",
+      "Off-White",
+      "Moncler",
+      "Balenciaga",
+      "Burberry",
+      "Napapijri",
+      "Gant"
+    ]
+  },
+  "extra_pages": {
+    "core": 2,
+    "model": 1
+  }
 }

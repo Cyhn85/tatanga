@@ -67,6 +67,30 @@ def norm_condition(raw: str | None) -> str | None:
     return CONDITION_MAP.get(norm_text(raw or ""))
 
 
+_CHILD_WORD_RE = re.compile(
+    r"\b(monate|jahre|mois|ans|anni|mesi|maanden|jaar|år|kinder|kids|enfant|bambin[oa]|baby|bebe)\b",
+    re.IGNORECASE)
+_SIZE_NUM_RE = re.compile(r"\b(\d{2,3})\b")
+_BABY_CM = {50, 56, 62, 68, 74, 80, 86, 92, 98}
+_NON_SHOE_RE = re.compile(
+    r"\b(socken|chaussettes|socks|calzini|sokken|strumpfe|lacets|schnursenkel|shoelaces|einlegesohlen|"
+    r"semelles|insoles|schuhkarton|boite vide|empty box|dzieciece|dziecięce|enfant|kinderschuhe)\b")
+
+
+def is_child_size(size: str | None, category: str) -> bool:
+    """observer.is_child_size ile ayni kural (analiz PC'de curl_cffi olmadan calistigi icin kopya)."""
+    s = size or ""
+    if _CHILD_WORD_RE.search(s):
+        return True
+    nums = [int(n) for n in _SIZE_NUM_RE.findall(s)]
+    if not nums:
+        return False
+    n = nums[0]
+    if category == "schuhe":
+        return 15 <= n <= 34
+    return n >= 100 or n in _BABY_CM
+
+
 def size_group(raw: str | None) -> str | None:
     s = (raw or "").upper()
     for tag in ("XXL", "XXS", "XS", "XL", "S", "M", "L"):
@@ -146,15 +170,26 @@ TYPES = {
                    "tuta", "trainingsanzug"],
     "kot_ceket":  ["jeansjacke", "veste en jean", "veste en denim", "denim jacket", "giacca di jeans", "spijkerjas",
                    "jeansjacka", "giubbotto di jeans", "denim", "jeans jacke"],
+    "kot_pantolon": ["jeans", "jean", "jeanshose", "spijkerbroek", "pantalon en jean", "denim pants",
+                     "straight jeans", "slim jeans", "mom jeans", "baggy jeans"],
     "kapusonlu":  ["hoodie", "kapuzenpullover", "sweat a capuche", "felpa con cappuccio", "huvtroja", "hoody"],
     "sweatshirt": ["sweatshirt", "sweat", "felpa", "crewneck", "rundhals sweat"],
     "triko":      ["strickpullover", "pull en laine", "maglione", "gebreide trui", "stickad troja", "cardigan",
                    "strickjacke", "knit", "laine", "wolle", "wool", "cashmere", "kaschmir", "torsade",
                    "pullover", "pulli", "pull", "trui", "troja", "jumper"],
-    "sneaker":    ["sneaker", "sneakers", "baskets", "turnschuhe", "turnschuh", "scarpe da ginnastica",
-                   "sportschoenen", "gympaskor", "trainers"],
+    "sneaker":    ["sneaker", "sneakers", "baskets", "basket", "turnschuhe", "turnschuh", "scarpe da ginnastica",
+                   "sportschoenen", "gympaskor", "trainers", "sneakersy", "zapatillas", "deportivas", "tenis",
+                   "tennis", "sportschuhe", "sportschuh"],
     "bot":        ["stiefel", "boots", "bottes", "bottines", "stivali", "stivaletti", "laarzen", "kangor",
-                   "boot", "chelsea boots", "schnurstiefel"],
+                   "boot", "chelsea boots", "schnurstiefel", "kozaki", "botki", "botas", "botines",
+                   "stiefeletten", "enkellaarsjes"],
+    "topuklu":    ["pumps", "escarpins", "szpilki", "decollete", "high heels", "heels", "stilettos", "talons",
+                   "tacchi", "slingback", "slingbacks"],
+    "babet":      ["ballerine", "ballerines", "ballerinas", "ballerinen", "flats", "balerinki"],
+    "loafer":     ["loafer", "loafers", "mocassins", "mocassin", "mokassins", "mocassini", "slipper", "penny"],
+    "klasik":     ["derbies", "derby", "richelieu", "oxford shoes", "budapester", "brogues", "halbschuhe"],
+    "espadril":   ["espadrilles", "espadrille", "alpargatas"],
+    "terlik":     ["clogs", "sabots", "zuecos", "mules", "pantoffeln", "hausschuhe", "chaussons"],
     "kosu":       ["laufschuhe", "running", "chaussures de course", "scarpe da corsa", "hardloopschoenen",
                    "lopskor", "runner"],
     "trekking":   ["wanderschuhe", "randonnee", "trekking", "hiking", "wandelschoenen", "vandringskangor"],
@@ -246,12 +281,21 @@ OPERATIONAL_CHECKS = {"T6", "T8", "T9", "T10", "T13"}
 
 
 def samples(conn: sqlite3.Connection, matcher: ModelMatcher, rates: dict[str, float]) -> tuple[list[dict], Counter]:
+    # Cocuk bedeni kayittaki eski isaretten degil, kategoriye duyarli kuraldan karar verilir:
+    # eski isaret ayakkabilarin %84'unu yanlislikla cocuk saymisti.
     rows = conn.execute(
         "SELECT cell, title, size, condition, price, country, COALESCE(currency,'EUR') currency "
-        "FROM catalog_samples WHERE is_child=0 AND price > 0"
+        "FROM catalog_samples WHERE price > 0"
     ).fetchall()
     out, unknown_cond = [], Counter()
     for r in rows:
+        brand, category, _ = (r["cell"].split("|") + ["", ""])[:3]
+        if is_child_size(r["size"], category):
+            continue
+        if category == "schuhe" and _NON_SHOE_RE.search(norm_text(r["title"] or "")):
+            continue   # ayakkabi aramasina karisan corap, bagcik, taban, bos kutu
+        if category == "schuhe" and _CHILD_WORD_RE.search(norm_text(r["title"] or "")):
+            continue
         cond = norm_condition(r["condition"])
         if not cond:
             unknown_cond[r["condition"]] += 1
@@ -259,7 +303,6 @@ def samples(conn: sqlite3.Connection, matcher: ModelMatcher, rates: dict[str, fl
         rate = rates.get(r["currency"])
         if not rate:
             continue
-        brand, category, _ = (r["cell"].split("|") + ["", ""])[:3]
         if category.startswith("model:"):
             category = "model"      # B3 dar arama hucreleri tek grupta
         model, line = matcher.match(brand, r["title"] or "")

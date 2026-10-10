@@ -99,6 +99,35 @@
    ],
    "Storm-FIT": [
     "storm fit"
+   ],
+   "Air Max": [
+    "air max",
+    "airmax"
+   ],
+   "Jordan": [
+    "jordan",
+    "air jordan"
+   ],
+   "Air Force": [
+    "air force",
+    "airforce"
+   ],
+   "Dunk": [
+    "dunk"
+   ],
+   "Air Zoom": [
+    "air zoom",
+    "zoom"
+   ],
+   "React": [
+    "react"
+   ],
+   "Revolution": [
+    "revolution"
+   ],
+   "Court": [
+    "court vision",
+    "court"
    ]
   },
   "codes": [
@@ -174,6 +203,22 @@
    "Y-3": [
     "y-3",
     "y3"
+   ],
+   "Boost": [
+    "boost"
+   ],
+   "Runfalcon": [
+    "runfalcon"
+   ],
+   "Grand Court": [
+    "grand court"
+   ],
+   "Continental": [
+    "continental 80",
+    "continental"
+   ],
+   "Ozweego": [
+    "ozweego"
    ]
   },
   "codes": [
@@ -234,7 +279,14 @@
     "740"
    ]
   },
-  "lines": {},
+  "lines": {
+   "Fresh Foam": [
+    "fresh foam"
+   ],
+   "FuelCell": [
+    "fuelcell"
+   ]
+  },
   "codes": [
    "\\b(?:U|M|W|BB|ML|MR|MS|WL|GC|PC|CM|UXC)\\d{3,4}[A-Z]{2,4}\\d?\\b"
   ]
@@ -273,7 +325,14 @@
     "quantum"
    ]
   },
-  "lines": {},
+  "lines": {
+   "Gel": [
+    "gel"
+   ],
+   "Novablast": [
+    "novablast"
+   ]
+  },
   "codes": [
    "\\b1[012]\\d{2}[AB]\\d{3}[- ]\\d{3}\\b"
   ]
@@ -303,7 +362,17 @@
     "avanti"
    ]
   },
-  "lines": {},
+  "lines": {
+   "Cali": [
+    "cali"
+   ],
+   "Carina": [
+    "carina"
+   ],
+   "Smash": [
+    "smash"
+   ]
+  },
   "codes": [
    "\\b3\\d{5}[- ]\\d{2}\\b"
   ]
@@ -329,7 +398,11 @@
     "weapon"
    ]
   },
-  "lines": {},
+  "lines": {
+   "Chuck": [
+    "chuck"
+   ]
+  },
   "codes": [
    "\\b(?:A\\d{5}|\\d{6})C\\b"
   ]
@@ -394,6 +467,9 @@
     "gore-tex",
     "goretex",
     "gtx"
+   ],
+   "Speedcross": [
+    "speedcross"
    ]
   },
   "codes": [
@@ -428,7 +504,12 @@
     "1490"
    ]
   },
-  "lines": {}
+  "lines": {
+   "Doc": [
+    "docs",
+    "doc martens"
+   ]
+  }
  },
  "Timberland": {
   "models": {
@@ -455,6 +536,10 @@
   "lines": {
    "Earthkeepers": [
     "earthkeepers"
+   ],
+   "Boot": [
+    "timberland boot",
+    "timbs"
    ]
   },
   "codes": [
