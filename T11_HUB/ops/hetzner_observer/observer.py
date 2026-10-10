@@ -41,7 +41,9 @@ UNRESOLVED_LIMIT = 6
 # Engel (dogrulama) sayfasi: normal sayfalar bundan cok buyuktur
 CHALLENGE_MAX_BYTES = 60_000
 CHALLENGE_PAUSE_AFTER = 3        # yeni oturuma ragmen ust uste bu kadar engel -> 2 saat dur
-SESSION_ROTATE_EVERY = 400       # tek oturum bu kadar istekten sonra yenilenir
+SESSION_ROTATE_EVERY = 150       # tek oturum bu kadar istekten sonra yenilenir (403'ler ~2 saatte bir geliyordu)
+BLOCK_MID_COUNT = 3              # 30 dk icinde bu kadar 403/429 -> 2 saat dur
+BLOCK_LONG_COUNT = 6             # 3 saat icinde bu kadar 403/429 -> 6 saat dur (gercek engel)
 CATALOG_MAX_BYTES = 12_000_000
 SELLER_SALT = "tatanga-observer-v1"
 
@@ -269,6 +271,10 @@ def init_db(conn: sqlite3.Connection) -> None:
             n INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (day, market, stage, outcome)
         );
+        -- Her duraklama sebebi ve suresiyle: "gunun ne kadari bosta gecti" olculebilsin diye
+        CREATE TABLE IF NOT EXISTS pauses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, minutes INTEGER NOT NULL, reason TEXT
+        );
         CREATE TABLE IF NOT EXISTS error_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts TEXT NOT NULL, market TEXT, stage TEXT, outcome TEXT, detail TEXT, url TEXT
@@ -352,6 +358,7 @@ class Fetcher:
         self.last_status: int | None = None
         self.consecutive_challenges = 0
         self.session_requests = 0
+        self.recent_blocks: list[float] = []
 
     def new_session(self, reason: str) -> None:
         """
@@ -389,10 +396,30 @@ class Fetcher:
         until = datetime.strptime(raw, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         return until if until > now() else None
 
-    def _pause(self, hours: int) -> None:
-        until = now() + timedelta(hours=hours)
+    def _pause(self, minutes: int, reason: str) -> None:
+        until = now() + timedelta(minutes=minutes)
         meta_set(self.conn, "paused_until", iso(until))
-        log(f"ENGEL KORUMASI: {hours} saat duraklatildi ({iso(until)})")
+        self.conn.execute("INSERT INTO pauses (ts, minutes, reason) VALUES (?,?,?)", (iso(now()), minutes, reason))
+        self.conn.commit()
+        log(f"DURAKLAMA: {minutes} dk ({reason}) -> {iso(until)}")
+
+    def _on_block(self, status: int) -> None:
+        """
+        Kademeli 403/429 politikasi. Eskiden TEK bir 403 sistemi 6 saat uyutuyordu: gunun ~%75'i
+        bosta geciyordu (2026-10-09/10 olcumu). 403 cogunlukla oturumun isaretlenmesidir, IP engeli
+        degildir: yeni oturum + kisa bekleme yeter; ancak tekrar ederse uzun durulur.
+        """
+        cutoff = time.time() - 3 * 3600
+        self.recent_blocks = [t for t in self.recent_blocks if t > cutoff] + [time.time()]
+        last_30m = sum(1 for t in self.recent_blocks if t > time.time() - 1800)
+        self.new_session(f"HTTP {status}")
+        if len(self.recent_blocks) >= BLOCK_LONG_COUNT:
+            self._pause(360, f"3 saatte {len(self.recent_blocks)} kez HTTP {status}")
+            self.recent_blocks = []
+        elif last_30m >= BLOCK_MID_COUNT:
+            self._pause(120, f"30 dk icinde {last_30m} kez HTTP {status}")
+        else:
+            self._pause(15, f"tek HTTP {status}, yeni oturum")
 
     def error_rate(self) -> float:
         row = self.conn.execute("SELECT requests, errors FROM budget WHERE day=?", (self._today(),)).fetchone()
@@ -473,7 +500,8 @@ class Fetcher:
             log(f"istek hatasi [{market}/{stage}]: {detail}")
             note(self.conn, market, stage, "ag", detail, url)
             if self.consecutive_errors >= 5:
-                self._pause(6)
+                self.consecutive_errors = 0
+                self._pause(30, "ust uste 5 ag hatasi")
             return None
         self.session_requests += 1
         if self._is_challenge(text, stage):
@@ -484,7 +512,7 @@ class Fetcher:
             self.new_session("engel sayfasi")
             if self.consecutive_challenges >= CHALLENGE_PAUSE_AFTER:
                 self.consecutive_challenges = 0
-                self._pause(2)
+                self._pause(120, f"ust uste {CHALLENGE_PAUSE_AFTER} engel sayfasi")
             return None
         self._count()
         self.consecutive_errors = 0
@@ -532,8 +560,11 @@ class Fetcher:
         self.consecutive_errors += 1
         note(self.conn, market, stage, "http", f"HTTP {status}", url)
         log(f"HTTP {status} [{market}/{stage}] (ust uste {self.consecutive_errors})")
-        if status in (403, 429) or self.consecutive_errors >= 5:
-            self._pause(6 if status in (403, 429) else 3)
+        if status in (403, 429):
+            self._on_block(status)
+        elif self.consecutive_errors >= 5:
+            self.consecutive_errors = 0
+            self._pause(30, f"ust uste 5 HTTP hatasi (son {status})")
         return None
 
 
@@ -1028,7 +1059,16 @@ def main() -> None:
     while True:
         stats = run_cycle(conn, cfg, fetcher)
         log(f"tur: {stats} | butce kalan: {fetcher.budget_left()}")
-        time.sleep(interval)
+        # Is varsa (kontrol kotasi doldu ya da kesif yapildi) hemen devam; yoksa uzun bekle.
+        # Eskiden her turdan sonra 30 dk bekleniyordu: kuyruk doluyken bile gunun yarisi bosta gecti.
+        busy = stats["checked"] >= int(cfg["budget"].get("checks_per_cycle", 150)) or stats["cells"] > 0
+        if fetcher.paused_until():
+            wait = max(60, (fetcher.paused_until() - now()).total_seconds())
+        elif busy and fetcher.budget_left() > 0:
+            wait = 60
+        else:
+            wait = interval
+        time.sleep(wait)
 
 
 if __name__ == "__main__":

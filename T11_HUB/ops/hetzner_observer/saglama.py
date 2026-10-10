@@ -107,7 +107,20 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
     if last:
         age_h = (utcnow() - datetime.strptime(last, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
                  ).total_seconds() / 3600
-        out.append((FAIL if age_h > 2 else OK, "T6", f"son kontrol {age_h:.1f} saat once"))
+        paused_row = conn.execute("SELECT value FROM meta WHERE key='paused_until'").fetchone()
+        planned = bool(paused_row and paused_row[0] > utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+        # Planli duraklamada kontrolun durmasi beklenen davranistir: kirmizi degil sari (sahte alarm olmasin)
+        lvl = OK if age_h <= 2 else (WARN if planned else FAIL)
+        out.append((lvl, "T6", f"son kontrol {age_h:.1f} saat once" + (" (planli duraklama)" if planned else "")))
+
+    # T13 bosta gecen zaman: son 24 saatte duraklamalarin toplami
+    try:
+        mins = _one(conn, "SELECT SUM(minutes) FROM pauses WHERE ts >= datetime('now','-1 day')")
+        share = mins / 1440
+        out.append((FAIL if share > 0.3 else WARN if share > 0.15 else OK, "T13",
+                    f"son 24 saatte duraklama {mins} dk (%{share*100:.0f})"))
+    except sqlite3.OperationalError:
+        pass
 
     # T7 bilinmeyen ham durum degeri: platform yeni bir deger dondurmeye baslamis
     raws = [r[0] for r in conn.execute("SELECT DISTINCT avail_raw FROM listings WHERE avail_raw IS NOT NULL")]
