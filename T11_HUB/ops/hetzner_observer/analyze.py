@@ -77,6 +77,19 @@ def size_group(raw: str | None) -> str | None:
 
 # ----------------------------------------------------------------- kur (ECB)
 
+def _tls_context():
+    """
+    Windows'taki Python'da sertifika deposu eksik olabiliyor (PC'de ECB istegi bu yuzden
+    dusuyordu). Varsa certifi paketi kullanilir; dogrulama hicbir durumda kapatilmaz.
+    """
+    import ssl
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
 def fx_rates(conn: sqlite3.Connection) -> dict[str, float]:
     """
     ECB gunluk referans kurlari: 1 EUR = X birim. Gunde bir kez indirilir, meta'da saklanir.
@@ -88,7 +101,7 @@ def fx_rates(conn: sqlite3.Connection) -> dict[str, float]:
     if cached and cached.get("day") == today:
         return cached["rates"]
     try:
-        with urllib.request.urlopen(ECB_URL, timeout=20) as resp:
+        with urllib.request.urlopen(ECB_URL, timeout=20, context=_tls_context()) as resp:
             root = ET.fromstring(resp.read())
         rates = {"EUR": 1.0}
         for node in root.iter():
