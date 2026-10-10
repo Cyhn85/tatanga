@@ -141,6 +141,27 @@ def write_tables() -> None:
     conn.close()
 
 
+def run_trends() -> None:
+    """
+    Ek trend verileri: Wikipedia ilgi endeksi (T1) ve Vinted etiketli-yeni endeksi (T2).
+    Hata cekme islemini bozmaz; sadece gunluge yazilir.
+    """
+    here = Path(__file__).resolve().parent
+    obs = here.parent / "hetzner_observer"
+    for name, cmd in (
+        ("wikipedia", [sys.executable, str(here / "trend_wiki.py")]),
+        ("etiketli-yeni", [sys.executable, str(obs / "analyze.py"), "--db", str(ARCHIVE),
+                           "--etiketli", "--csv", str(TABLES_DIR)]),
+    ):
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=1200,
+                                 env={**__import__("os").environ, "PYTHONIOENCODING": "utf-8"})
+            last = (res.stdout or res.stderr).strip().splitlines()[-1:] or ["-"]
+            log(f"trend {name}: {'tamam' if res.returncode == 0 else 'HATA'} | {last[0][:120]}")
+        except Exception as exc:
+            log(f"trend {name}: HATA {type(exc).__name__}: {exc}")
+
+
 def pull() -> int:
     ROOT.mkdir(parents=True, exist_ok=True)
     INBOX.mkdir(parents=True, exist_ok=True)
@@ -161,6 +182,7 @@ def pull() -> int:
     cleaned = ssh(f"cd {REMOTE_DIR} && ./venv/bin/python arsiv.py temizle").strip()
     log(f"sunucu temizligi: {cleaned}")
     write_tables()
+    run_trends()
     log(f"bitti: {total} | arsiv {ARCHIVE.stat().st_size // 1024 // 1024} MB | tablolar: {TABLES_DIR}")
     return 0
 

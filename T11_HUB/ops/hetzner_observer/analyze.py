@@ -280,11 +280,18 @@ def connect(path: str | None = None) -> sqlite3.Connection:
 OPERATIONAL_CHECKS = {"T6", "T8", "T9", "T10", "T13"}
 
 
+def _iso_week(ts: str | None) -> str | None:
+    if not ts:
+        return None
+    y, w, _ = datetime.strptime(ts[:10], "%Y-%m-%d").isocalendar()
+    return f"{y}-W{w:02d}"
+
+
 def samples(conn: sqlite3.Connection, matcher: ModelMatcher, rates: dict[str, float]) -> tuple[list[dict], Counter]:
     # Cocuk bedeni kayittaki eski isaretten degil, kategoriye duyarli kuraldan karar verilir:
     # eski isaret ayakkabilarin %84'unu yanlislikla cocuk saymisti.
     rows = conn.execute(
-        "SELECT cell, title, size, condition, price, country, COALESCE(currency,'EUR') currency "
+        "SELECT cell, title, size, condition, price, country, COALESCE(currency,'EUR') currency, ts "
         "FROM catalog_samples WHERE price > 0"
     ).fetchall()
     out, unknown_cond = [], Counter()
@@ -312,6 +319,7 @@ def samples(conn: sqlite3.Connection, matcher: ModelMatcher, rates: dict[str, fl
             "cond": cond, "market": r["country"], "size": size_group(r["size"]),
             "price": float(r["price"]) / rate, "model": model, "line": line, "type": match_type(title_n),
             "code": matcher.code(brand, r["title"]),
+            "week": _iso_week(r["ts"]),
         })
     return out, unknown_cond
 
@@ -588,6 +596,55 @@ def report_sales(conn, matcher, rates) -> None:
     _print_sales("KONDISYON", _sales_rows(items, lambda d: d["cond"]), 3)
 
 
+def report_tagged(data: list[dict], csv_dir: str | None) -> None:
+    """
+    Vinted "etiketli yeni" endeksi (T2): markanin haftalik ornekleri icinde etiketli yeni payi.
+    Pay yukseliyorsa insanlar urunu sifir alip hemen satiyor: sifir urundeki populerligin yansimasi.
+    Ek veridir; tek basina oneri uretmez. Haftada en az 30 ornegi olmayan marka-hafta gosterilmez.
+    """
+    # Marka x KATEGORI bazinda: kategorilerin etiketli orani farkli (ayakkabi > mont). Marka bazinda
+    # toplasaydik, olcume yeni kategori eklenmesi sahte "trend" uretirdi (2026-10-10: Hugo Boss
+    # %3,6 -> %23,8 gorundu, sebep kot/sweatshirt/ayakkabi hucrelerinin eklenmesiydi).
+    weekly: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
+    for d in data:
+        if d["week"] and d["category"] != "model":
+            weekly[f"{d['brand']} · {d['category']}"][d["week"]].append(d)
+    weeks = sorted({w for b in weekly.values() for w in b})
+    rows = []
+    for brand, by_week in weekly.items():
+        series = []
+        for w in weeks:
+            g = by_week.get(w, [])
+            if len(g) < 30:
+                series.append(None)
+                continue
+            tagged = [d for d in g if d["cond"] == "yeni_etiketli"]
+            series.append((len(g), len(tagged), len(tagged) / len(g),
+                           statistics.median(d["price"] for d in tagged) if tagged else None))
+        valid = [s for s in series if s]
+        if len(valid) < 2:
+            continue
+        last, prev = valid[-1], valid[-2]
+        rows.append((brand, last[0], last[1], round(100 * last[2], 1), round(100 * prev[2], 1),
+                     round(100 * (last[2] - prev[2]), 1), round(last[3], 1) if last[3] else None))
+    rows.sort(key=lambda r: -r[5])
+    print(f"ETIKETLI YENI ENDEKSI (haftalar: {', '.join(weeks[-4:])})")
+    print(f"{'marka · kategori':30}{'ornek':>7}{'etiketli':>9}{'pay%':>7}{'onceki%':>9}{'degisim':>9}{'fiyat':>8}")
+    for r in rows[:15]:
+        print(f"{r[0][:30]:30}{r[1]:>7}{r[2]:>9}{r[3]:>7}{r[4]:>9}{r[5]:>+9}{str(r[6] or '-'):>8}")
+    if not rows:
+        print("  henuz iki tam hafta yok (haftada en az 30 ornek gerekir)")
+    if csv_dir:
+        import csv
+        os.makedirs(csv_dir, exist_ok=True)
+        with open(os.path.join(csv_dir, "vinted_etiketli_endeks.csv"), "w", encoding="utf-8-sig", newline="") as fh:
+            w = csv.writer(fh, delimiter=";")
+            w.writerow(["marka_kategori", "son_hafta_ornek", "etiketli", "pay_yuzde", "onceki_pay", "degisim_puan",
+                        "etiketli_medyan_fiyat"])
+            for r in rows:
+                w.writerow([str(x).replace(".", ",") if isinstance(x, float) else x for x in r])
+
+
 PLAN_FILE = os.path.join(BASE_DIR, "model_cells.json")
 PLAN_PER_TIER = {"core": 3, "watch": 1}
 
@@ -628,6 +685,8 @@ def main() -> None:
     ap.add_argument("--kesif", metavar="MARKA")
     ap.add_argument("--plan", action="store_true", help="B3 dar arama planini yaz (model_cells.json)")
     ap.add_argument("--satislar", action="store_true", help="gercek satis sonuclarina gore siralama")
+    ap.add_argument("--etiketli", action="store_true", help="T2: Vinted etiketli-yeni endeksi")
+    ap.add_argument("--csv", metavar="KLASOR", help="raporu ayrica CSV olarak bu klasore yaz")
     ap.add_argument("--zorla", action="store_true", help="durdurucu saglama hatasina ragmen calis")
     ap.add_argument("--db", default=os.environ.get("TATANGA_DB"),
                     help="veritabani yolu (PC arsivi icin: <tatanga>/istatistik/arsiv.db)")
@@ -636,8 +695,11 @@ def main() -> None:
     conn = connect(args.db)
     pc_mode = bool(args.db)
     from saglama import FAIL, run_checks
+    # Takip kuyruguna bagli testler (T2 satis/kalkti, T14 gecikmis kontrol) yalnizca satis raporunu
+    # durdurur: ornek havuzuna dayanan raporlar (carpanlar, endeks, kapsam) gecikmeden etkilenmez.
+    tracking_only = set() if args.satislar else {"T2", "T14"}
     blockers = [(code, text) for lvl, code, text in run_checks(conn) if lvl == FAIL
-                and not (pc_mode and code in OPERATIONAL_CHECKS)]
+                and not (pc_mode and code in OPERATIONAL_CHECKS) and code not in tracking_only]
     if blockers and not args.zorla:
         print("ANALIZ DURDURULDU — saglama testleri gecmedi:")
         for code, text in blockers:
@@ -659,6 +721,8 @@ def main() -> None:
         write_plan(data, matcher)
     elif args.satislar:
         report_sales(conn, matcher, rates)
+    elif args.etiketli:
+        report_tagged(data, args.csv)
     else:
         report_factors(data, unknown_cond)
 
