@@ -220,10 +220,16 @@ class ModelMatcher:
 
 # ----------------------------------------------------------------- veri
 
-def connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_FILE)
+def connect(path: str | None = None) -> sqlite3.Connection:
+    conn = sqlite3.connect(path or DB_FILE)
     conn.row_factory = sqlite3.Row
+    # PC arsivinde meta tablosu yok: kur onbellegi icin gerekli
+    conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     return conn
+
+
+# PC arsivinde anlamsiz olan (sunucu isletimine ait) testler: analizi durdurmaz
+OPERATIONAL_CHECKS = {"T6", "T8", "T9", "T10", "T13"}
 
 
 def samples(conn: sqlite3.Connection, matcher: ModelMatcher, rates: dict[str, float]) -> tuple[list[dict], Counter]:
@@ -567,11 +573,15 @@ def main() -> None:
     ap.add_argument("--plan", action="store_true", help="B3 dar arama planini yaz (model_cells.json)")
     ap.add_argument("--satislar", action="store_true", help="gercek satis sonuclarina gore siralama")
     ap.add_argument("--zorla", action="store_true", help="durdurucu saglama hatasina ragmen calis")
+    ap.add_argument("--db", default=os.environ.get("TATANGA_DB"),
+                    help="veritabani yolu (PC arsivi icin: <tatanga>/istatistik/arsiv.db)")
     args = ap.parse_args()
 
-    conn = connect()
+    conn = connect(args.db)
+    pc_mode = bool(args.db)
     from saglama import FAIL, run_checks
-    blockers = [(code, text) for lvl, code, text in run_checks(conn) if lvl == FAIL]
+    blockers = [(code, text) for lvl, code, text in run_checks(conn) if lvl == FAIL
+                and not (pc_mode and code in OPERATIONAL_CHECKS)]
     if blockers and not args.zorla:
         print("ANALIZ DURDURULDU — saglama testleri gecmedi:")
         for code, text in blockers:

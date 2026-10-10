@@ -48,7 +48,10 @@ def connect() -> sqlite3.Connection:
 
 
 def _one(conn, sql, *args):
-    row = conn.execute(sql, args).fetchone()
+    try:
+        row = conn.execute(sql, args).fetchone()
+    except sqlite3.OperationalError:
+        return 0   # PC arsivinde sunucuya ait isletim tablolari (budget vb.) yoktur
     return row[0] if row and row[0] is not None else 0
 
 
