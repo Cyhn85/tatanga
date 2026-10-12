@@ -20,10 +20,20 @@ Rol: ALIS tarafi (kullanici beklentisi: en dusuk fiyatlar). Sabit fiyat, profesy
 ## robots.txt
 - Allow: /. Yasak: /sale/*, /order/*, /payment/*, /claims/*, /store/*/*/search*, favori listeleri. /search ve /item serbest.
 
-## Toplama secenekleri (karar bekliyor)
-1. Gercek tarayici (Playwright/Chromium, insansi gezinme): sitenin gosterdigini okur; agir (~300 MB RAM), yavas, en guvenli yorum.
-2. Sitenin kendi Algolia aramasini dogrudan sormak: hizli, kucuk veri; ama arayuzu atlamak kullanim sartlari acisindan gri alan.
--> Oneri: 1 (insansi, dusuk hiz).
+## Toplama yontemi (kullanici karari: A, insansi) - 2026-10-12 olcumle dogrulandi
+- Gercek tarayici (Playwright) adres ile sayfayi acar; sayfanin KENDI Algolia yaniti dinlenir (servise biz istek atmayiz).
+- Adres parametreleri (sayfanin Algolia'ya gonderdigi facetFilters/indexName okunarak dogrulandi):
+  - Kategori yolu: /search/<Herren|Damen>/Kleidung/Jacken & Outdoor | Kleidung/Pullover & Strickjacken |
+    Kleidung/Hosen & Jeans/Jeans | Schuhe
+  - query=<marka>; condition=Neuwertig&condition=Sehr gut (TEKRARLI; virgulle 0 sonuc verir)
+  - sortBy=saleStartedAt_desc (en yeni once; index prod_marketItem_de_saleStartedAt_desc); page=N (1'den)
+  - brand=<Sellpy marka adi> calisir (ornek "Carhartt WIP"); kullanmiyoruz, metadata.brand ile teyit ediyoruz.
+  - CALISMAYAN: metadata.condition=, refinementList[...], sortBy=newest, sort=, orderBy=
+- Sayfa basina 60 ilan, en fazla 40 sayfa (Algolia siniri 2400).
+- Yanit alanlari: price_DE.amount (KURUS), priceDrop_DE.oldPrice, favouriteCount, firstOfferedAt_DE, saleStartedAt,
+  isReserved, isForSale, saleType, metadata{brand,type,condition,size,color,material,season,defects[{type,location}]},
+  categories.lvl0-3, brandClassification.pricePoint (1-5).
+- Cerez penceresine dokunulmaz (onay yok = zorunlu olmayan cerez yok); veri yine gelir.
 
 ## Tuzaklar
 - Cerez/GTM/Facebook izleyicileri: toplayici reddeder/yuklemez.

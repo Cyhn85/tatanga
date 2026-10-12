@@ -284,8 +284,11 @@ def dmy(s: str | None) -> str | None:
 # ---------- tarayici ----------
 
 class Browser:
-    def __init__(self, pw, conn):
+    def __init__(self, pw, conn, home: str = SITE + "/", count=None, on_page=None):
+        # home: oturum acilisinda ziyaret edilen ana sayfa; count: sayfa butcesi sayaci (site basina ayri);
+        # on_page: yeni sayfa acilinca cagrilir (ornek: Sellpy'de arama yanitlarini dinlemek)
         self.pw, self.conn = pw, conn
+        self.home, self.count, self.on_page = home, count or count_page, on_page
         self.browser = self.ctx = self.page = None
         self.pages = 0
         self.limit = random.randint(*SESSION_PAGES)
@@ -305,7 +308,9 @@ class Browser:
                               lambda r: r.abort())
         self.pages, self.limit = 0, random.randint(*SESSION_PAGES)
         log(f"yeni tarayici oturumu ({reason}) {w}x{h}")
-        await self.visit(SITE + "/", "oturum")
+        if self.on_page:
+            self.on_page(self.page)
+        await self.visit(self.home, "oturum")
 
     async def close(self) -> None:
         if self.browser:
@@ -342,7 +347,7 @@ class Browser:
             note(self.conn, stage, "ag", f"{type(exc).__name__}: {exc}"[:200], url)
             return None
         self.pages += 1
-        count_page(self.conn)
+        self.count(self.conn)
         if status in (403, 429) or re.search(r"Access Denied|Zugriff verweigert|captcha",
                                              (await self.page.title()) or "", re.I):
             note(self.conn, stage, "engel", f"HTTP {status} {await self.page.title()}", url)

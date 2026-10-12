@@ -11,6 +11,8 @@ K6 marka teyidi: ilan sayfasindaki Marke alani bizim marka mi (basliga gore seci
 K7 kondisyon filtresi tutuyor mu: ilk 3 disi kondisyon orani (filtre bozulursa artar)
 E1 eBay son basarili arama kac dakika once (> 90 dk = hata)   E2 bugun eBay arama basarisi
 E3 eBay'de AB disi ilan (0 olmali)                              E4 eBay token (401 = anahtar gecersiz)
+S1 Sellpy son basarili okuma (aktif saatte > 90 dk = hata)     S2 bugun Sellpy okuma basarisi
+S3 Sellpy filtre/siralama tuttu mu (eksik = adres parametresi bozulmus)   S4 Sellpy kayit doluluk
 """
 
 from __future__ import annotations
@@ -93,6 +95,27 @@ def run_checks(conn) -> list[tuple[str, str, str]]:
                     else f"eBay 401 x{unauth}: anahtar gecersiz/degismis -> ebay.env guncellenmeli"))
     except sqlite3.OperationalError:
         out.append((WARN, "E1", "eBay tablolari henuz yok"))
+    try:
+        age = conn.execute("SELECT (julianday('now') - julianday(max(last_visit))) * 1440 FROM sp_cells").fetchone()[0]
+        out.append((FAIL if age is None or (age > 90 and 8 <= hour < 23) else OK, "S1",
+                    "Sellpy hic okunmamis" if age is None else f"Sellpy son okuma {age:.0f} dk once"))
+        total, ok, rows = rate(conn, "sp_okuma")
+        bad = ", ".join(f"{k} {v}" for k, v in rows.items() if k != "ok")
+        if total:
+            out.append((OK if ok / total >= 0.9 else WARN if ok / total >= 0.7 else FAIL, "S2",
+                        f"Sellpy okuma: %{ok/total*100:.0f} basarili ({ok}/{total})" + (f" | {bad}" if bad else "")))
+        broken = one(conn, "SELECT COUNT(*) FROM error_log WHERE stage='sp_okuma' AND detail LIKE 'filtre/siralama%' "
+                           "AND ts >= datetime('now','-1 day')")
+        out.append((OK if broken == 0 else FAIL, "S3", "Sellpy filtre ve siralama tutuyor" if broken == 0
+                    else f"Sellpy filtre/siralama TUTMADI x{broken}: adres parametreleri degismis olabilir"))
+        n = one(conn, "SELECT COUNT(*) FROM sp_items")
+        if n:
+            fill = {k: one(conn, f"SELECT COUNT(*) FROM sp_items WHERE {k} IS NOT NULL") / n
+                    for k in ("price", "condition", "brand", "size", "type")}
+            out.append((OK if min(fill.values()) >= 0.9 else WARN, "S4",
+                        "doluluk " + ", ".join(f"{k} %{v*100:.0f}" for k, v in fill.items()) + f" (n={n})"))
+    except sqlite3.OperationalError:
+        out.append((WARN, "S1", "Sellpy tablolari henuz yok"))
     return out
 
 
@@ -107,7 +130,7 @@ def main() -> int:
         if lvl == OK:
             print(f"  {lvl} {code} {text}")
     print("ozet: " + " | ".join(f"{r[0]} {r[1]}" for r in conn.execute(
-        "SELECT 'ka-'||cat, COUNT(*) FROM ka_ads GROUP BY 1 UNION ALL SELECT 'eb-'||cat, COUNT(*) FROM eb_items GROUP BY 1")) + f" | hucre {one(conn, 'SELECT COUNT(*) FROM ka_cells')}"
+        "SELECT 'ka-'||cat, COUNT(*) FROM ka_ads GROUP BY 1 UNION ALL SELECT 'eb-'||cat, COUNT(*) FROM eb_items GROUP BY 1 UNION ALL SELECT 'sp-'||cat, COUNT(*) FROM sp_items GROUP BY 1")) + f" | hucre {one(conn, 'SELECT COUNT(*) FROM ka_cells')}"
           + f" | bugun sayfa {one(conn, 'SELECT pages FROM budget WHERE day=date(?)', ('now',))}")
     errs = conn.execute("SELECT ts, stage, outcome, detail FROM error_log ORDER BY id DESC LIMIT 5").fetchall()
     if errs:
