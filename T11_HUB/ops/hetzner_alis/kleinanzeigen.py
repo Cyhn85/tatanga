@@ -57,6 +57,9 @@ KA_CATS = {
               ("damen", "kleidung-damen/jeans", 154, "kleidung_damen.art_s:jeans")],
     "schuhe": [("herren", "schuhe-herren", 158, None), ("damen", "schuhe-damen", 159, None)],
 }
+TRACKERS = re.compile(r"https?://[^/]*(googletagmanager|google-analytics|doubleclick|googlesyndication|"
+                      r"facebook\.(com|net)|intercom|sentry\.io|hotjar|criteo|tiktok|pinterest|bing\.com|adnxs|"
+                      r"adsrvr|taboola|outbrain|amazon-adsystem|snapchat|clarity\.ms)")
 DEFECT_RE = re.compile(
     r"\b(fleck\w*|loch|l[oö]cher|riss\w*|defekt\w*|kaputt|verf[aä]rb\w*|abgenutzt|pilling|besch[aä]digt\w*|"
     r"stofffehler|gebrauchsspuren|abgel[oö]st|fehlt|fehlen)\b", re.I)
@@ -306,6 +309,9 @@ class Browser:
         # gorsel/yazi tipi/video indirilmez: hem veri saklamama kurali hem trafik
         await self.page.route(re.compile(r"\.(png|jpe?g|webp|gif|avif|svg|mp4|woff2?)(\?|$)|img\.kleinanzeigen"),
                               lambda r: r.abort())
+        # ucuncu taraf izleyici/reklam: reklam engelleyicili bir kullanici gibi yuklenmez (gizlilik + islemci).
+        # Sitenin kendi betikleri ve arama servisi (Algolia, Akamai) ENGELLENMEZ.
+        await self.page.route(TRACKERS, lambda r: r.abort())
         self.pages, self.limit = 0, random.randint(*SESSION_PAGES)
         log(f"yeni tarayici oturumu ({reason}) {w}x{h}")
         if self.on_page:

@@ -13,7 +13,7 @@ Environment=PYTHONUNBUFFERED=1
 Environment=TATANGA_BRAND_CONFIG=/opt/tatanga-observer/config.json
 # Chromium icin gozlemciden genis, ama sunucuyu bogmayacak sinirlar
 MemoryMax=800M
-CPUQuota=40%
+CPUQuota=60%
 Nice=10
 
 [Install]

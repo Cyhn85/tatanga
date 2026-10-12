@@ -41,7 +41,7 @@ SP_CATS = {
 CELL_HOURS = {"core": 12, "watch": 24, "luxury": 24}
 FIRST_VISIT_PAGES = 8      # ilk ziyaret: mevcut stoktan en fazla 8 x 60 ilan
 LATER_PAGES = 4            # sonraki ziyaretler: tamami bilinen sayfaya gelince durur
-WAIT_RESULT = 12           # arama yaniti icin en fazla bu kadar saniye beklenir
+WAIT_RESULT = 40           # arama yaniti icin en fazla (olculdu: CPU sinirinda 17-20 sn surebiliyor)
 
 
 def log(msg: str) -> None:

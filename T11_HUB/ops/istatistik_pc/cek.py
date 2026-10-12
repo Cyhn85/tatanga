@@ -32,6 +32,8 @@ ARCHIVE = ROOT / "arsiv.db"
 TABLES_DIR = ROOT / "tablolar"
 INBOX = ROOT / "gelen"
 LOG = ROOT / "cek.log"
+ALIS_ARCHIVE = ROOT / "alis_arsiv.db"
+ALIS_REMOTE = "/opt/tatanga-alis"
 
 # tablo -> (benzersiz anahtar, cakisma davranisi). listings/health guncellenir, digerleri bir kez yazilir.
 KEYS = {
@@ -41,6 +43,13 @@ KEYS = {
     "pauses": ("id", "IGNORE"),
     "listings": ("item_id", "REPLACE"),
     "health": ("day, market, stage, outcome", "REPLACE"),
+}
+# Alis toplayicilari (Kleinanzeigen / eBay / Sellpy): satirlar her goruldukce guncellenir -> hep uzerine yazilir
+ALIS_KEYS = {
+    "ka_ads": ("adid", "REPLACE"), "eb_items": ("item_id", "REPLACE"), "sp_items": ("object_id", "REPLACE"),
+    "eb_track": ("item_id", "REPLACE"), "eb_track_raw": ("status", "REPLACE"),
+    "ka_cells": ("cell", "REPLACE"), "eb_cells": ("cell", "REPLACE"), "sp_cells": ("cell", "REPLACE"),
+    "health": ("day, stage, outcome", "REPLACE"),
 }
 
 
@@ -67,16 +76,16 @@ def scp(remote: str, local: Path) -> None:
         raise RuntimeError(f"scp hatasi: {res.stderr.strip()[:300]}")
 
 
-def import_package(path: Path) -> dict:
+def import_package(path: Path, archive: Path = ARCHIVE, keys: dict = KEYS) -> dict:
     """Paketi arsive aktarir ve dogrular. Eksik satir varsa hata firlatir (onay verilmez)."""
-    conn = sqlite3.connect(ARCHIVE)
+    conn = sqlite3.connect(archive)
     conn.execute("ATTACH DATABASE ? AS p", (str(path),))
     tables = [r[0] for r in conn.execute("SELECT name FROM p.sqlite_master WHERE type='table'")]
     result = {}
     for table in tables:
-        if table not in KEYS:
+        if table not in keys:
             continue
-        key, mode = KEYS[table]
+        key, mode = keys[table]
         conn.execute(f"CREATE TABLE IF NOT EXISTS main.{table} AS SELECT * FROM p.{table} WHERE 0")
         # Sunucuda sonradan eklenen sutunlar arsive de eklenir
         have = {r[1] for r in conn.execute(f"PRAGMA main.table_info({table})")}
@@ -183,10 +192,31 @@ def pull() -> int:
         log(f"  {name}: {counts} -> onaylandi")
     cleaned = ssh(f"cd {REMOTE_DIR} && ./venv/bin/python arsiv.py temizle").strip()
     log(f"sunucu temizligi: {cleaned}")
+    try:
+        pull_alis()
+    except Exception as exc:          # alis cekimi gozlemci arsivini bozmasin; hata gunluge, onay verilmez
+        log(f"ALIS HATA: {type(exc).__name__}: {exc}")
     write_tables()
     run_trends()
     log(f"bitti: {total} | arsiv {ARCHIVE.stat().st_size // 1024 // 1024} MB | tablolar: {TABLES_DIR}")
     return 0
+
+
+def pull_alis() -> None:
+    """Kleinanzeigen / eBay / Sellpy paketleri: ayni kural, ayri arsiv (istatistik/alis_arsiv.db)."""
+    pending = ssh(f"ls {ALIS_REMOTE}/arsiv_paketleri 2>/dev/null || true").split()
+    info = json.loads(ssh(f"cd {ALIS_REMOTE} && ./venv/bin/python alis_arsiv.py paketle").strip().splitlines()[-1])
+    names = sorted(set(p for p in pending if p.endswith(".db")) | {info["paket"]})
+    log(f"alis: cekilecek paket {len(names)}")
+    for name in names:
+        local = INBOX / name
+        scp(f"{ALIS_REMOTE}/arsiv_paketleri/{name}", local)
+        counts = import_package(local, ALIS_ARCHIVE, ALIS_KEYS)
+        ssh(f"cd {ALIS_REMOTE} && ./venv/bin/python alis_arsiv.py onayla {name}")
+        local.unlink(missing_ok=True)
+        log(f"  alis {name}: {counts} -> onaylandi")
+    log(f"alis sunucu temizligi: {ssh(f'cd {ALIS_REMOTE} && ./venv/bin/python alis_arsiv.py temizle').strip()}")
+    log(f"alis arsiv {ALIS_ARCHIVE.stat().st_size // 1024 // 1024} MB")
 
 
 def status() -> int:
