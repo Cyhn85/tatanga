@@ -11,6 +11,7 @@ K6 marka teyidi: ilan sayfasindaki Marke alani bizim marka mi (basliga gore seci
 K7 kondisyon filtresi tutuyor mu: ilk 3 disi kondisyon orani (filtre bozulursa artar)
 E1 eBay son basarili arama kac dakika once (> 90 dk = hata)   E2 bugun eBay arama basarisi
 E3 eBay'de AB disi ilan (0 olmali)                              E4 eBay token (401 = anahtar gecersiz)
+E5 eBay satis takibi: aktif/kapanan, gecikmis kontrol, ulke dagilimi
 S1 Sellpy son basarili okuma (aktif saatte > 90 dk = hata)     S2 bugun Sellpy okuma basarisi
 S3 Sellpy filtre/siralama tuttu mu (eksik = adres parametresi bozulmus)   S4 Sellpy kayit doluluk
 """
@@ -91,6 +92,13 @@ def run_checks(conn) -> list[tuple[str, str, str]]:
         out.append((OK if non_eu == 0 else FAIL, "E3", f"eBay AB disi ilan: {non_eu}"))
         unauth = one(conn, "SELECT COUNT(*) FROM error_log WHERE stage='eb_arama' AND detail LIKE 'HTTP 401%' "
                            "AND ts >= datetime('now','-3 hours')")
+        tr = dict(conn.execute("SELECT state, COUNT(*) FROM eb_track GROUP BY 1").fetchall())
+        late = one(conn, "SELECT COUNT(*) FROM eb_track WHERE state='active' AND "
+                         "(last_check IS NULL AND enrolled < datetime('now','-1 day') OR last_check < datetime('now','-5 day'))")
+        mk = ", ".join(f"{r[0]} {r[1]}" for r in conn.execute(
+            "SELECT substr(cell, -2), COUNT(*) FROM eb_cells GROUP BY 1 ORDER BY 2 DESC"))
+        out.append((OK if late == 0 else WARN, "E5", f"eBay takip: " + (", ".join(f"{k} {v}" for k, v in tr.items()) or "henuz yok")
+                    + f" | gecikmis {late} | taranan ulke hucresi: {mk}"))
         out.append((OK if unauth == 0 else FAIL, "E4", "eBay anahtar gecerli" if unauth == 0
                     else f"eBay 401 x{unauth}: anahtar gecersiz/degismis -> ebay.env guncellenmeli"))
     except sqlite3.OperationalError:
