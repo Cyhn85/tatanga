@@ -9,6 +9,8 @@ K2 bugun liste okuma basarisi            K3 bugun ilan okuma basarisi
 K4 son 24 saatte engel                   K5 kayit doluluk: fiyat, kondisyon, beden, marka teyidi
 K6 marka teyidi: ilan sayfasindaki Marke alani bizim marka mi (basliga gore secim dogru mu)
 K7 kondisyon filtresi tutuyor mu: ilk 3 disi kondisyon orani (filtre bozulursa artar)
+E1 eBay son basarili arama kac dakika once (> 90 dk = hata)   E2 bugun eBay arama basarisi
+E3 eBay'de AB disi ilan (0 olmali)                              E4 eBay token (401 = anahtar gecersiz)
 """
 
 from __future__ import annotations
@@ -72,6 +74,25 @@ def run_checks(conn) -> list[tuple[str, str, str]]:
         out.append((OK if off / n <= 0.05 else FAIL, "K7", f"ilk 3 disi kondisyon: %{off/n*100:.0f} ({off}/{n})"))
     else:
         out.append((WARN, "K5", "henuz okunmus ilan sayfasi yok"))
+    try:
+        age = conn.execute("SELECT (julianday('now') - julianday(max(last_visit))) * 1440 FROM eb_cells").fetchone()[0]
+        out.append((FAIL if age is None or age > 90 else OK, "E1",
+                    "eBay hic arama yok" if age is None else f"eBay son arama {age:.0f} dk once"))
+        total, ok, rows = rate(conn, "eb_arama")
+        bad = ", ".join(f"{k} {v}" for k, v in rows.items() if k != "ok")
+        if total:
+            out.append((OK if ok / total >= 0.95 else FAIL, "E2",
+                        f"eBay arama: %{ok/total*100:.0f} basarili ({ok}/{total})" + (f" | {bad}" if bad else "")))
+        eu = ("DE","AT","FR","BE","NL","IT","PL","ES","PT","LU","DK","SE","FI","IE","CZ","SK","SI","HU","RO","BG",
+              "HR","GR","CY","MT","EE","LV","LT")
+        non_eu = one(conn, f"SELECT COUNT(*) FROM eb_items WHERE country NOT IN ({','.join('?'*len(eu))})", eu)
+        out.append((OK if non_eu == 0 else FAIL, "E3", f"eBay AB disi ilan: {non_eu}"))
+        unauth = one(conn, "SELECT COUNT(*) FROM error_log WHERE stage='eb_arama' AND detail LIKE 'HTTP 401%' "
+                           "AND ts >= datetime('now','-3 hours')")
+        out.append((OK if unauth == 0 else FAIL, "E4", "eBay anahtar gecerli" if unauth == 0
+                    else f"eBay 401 x{unauth}: anahtar gecersiz/degismis -> ebay.env guncellenmeli"))
+    except sqlite3.OperationalError:
+        out.append((WARN, "E1", "eBay tablolari henuz yok"))
     return out
 
 
@@ -86,7 +107,7 @@ def main() -> int:
         if lvl == OK:
             print(f"  {lvl} {code} {text}")
     print("ozet: " + " | ".join(f"{r[0]} {r[1]}" for r in conn.execute(
-        "SELECT cat, COUNT(*) FROM ka_ads GROUP BY 1")) + f" | hucre {one(conn, 'SELECT COUNT(*) FROM ka_cells')}"
+        "SELECT 'ka-'||cat, COUNT(*) FROM ka_ads GROUP BY 1 UNION ALL SELECT 'eb-'||cat, COUNT(*) FROM eb_items GROUP BY 1")) + f" | hucre {one(conn, 'SELECT COUNT(*) FROM ka_cells')}"
           + f" | bugun sayfa {one(conn, 'SELECT pages FROM budget WHERE day=date(?)', ('now',))}")
     errs = conn.execute("SELECT ts, stage, outcome, detail FROM error_log ORDER BY id DESC LIMIT 5").fetchall()
     if errs:

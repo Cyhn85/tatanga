@@ -101,11 +101,35 @@ def title_has_brand(title: str, aliases: list[str]) -> bool:
     return any((" " + re.sub(r"[^a-z0-9'&]+", " ", a).strip() + " ") in t for a in aliases)
 
 
+UNKNOWN_MARKE = {"sonstige", "sonstiges", "andere", "keine", "keine angabe", "unbekannt", "no name", "noname"}
+
+
+def _tokens(text: str) -> set[str]:
+    return set(re.sub(r"[^a-z0-9]+", " ", norm(text).replace("&", " ").replace("'", "")).split())
+
+
 def marke_matches(marke: str | None, aliases: list[str]) -> bool | None:
-    if not marke:
+    """
+    Saticinin sectigi Marke bizim marka mi. None = bilinmiyor ("Sonstige" vb.).
+    Kelime duzeyinde: biri digerinin kelimelerini kapsiyorsa ayni marka
+    ("Gf Ferre" ~ Ferre, "Paul&Shark"/"Shark" ~ Paul & Shark, "Jack" ~ Jack Wolfskin, "adidas Originals" ~ adidas).
+    Kisa takma adlar (On) yalnizca TAM eslesir: "Onitsuka" On sayilmaz.
+    """
+    if not marke or norm(marke) in UNKNOWN_MARKE:
         return None
-    got = norm(marke)
-    return any((len(a) <= 3 and got == a) or (len(a) > 3 and got.startswith(a)) for a in aliases)
+    got = _tokens(marke)
+    glued = re.sub(r"[^a-z0-9]", "", norm(marke))
+    for a in aliases:
+        at = _tokens(a)
+        if not at:
+            continue
+        if len(a) <= 3:
+            if got == at:
+                return True
+            continue
+        if at <= got or (got and got <= at) or glued == re.sub(r"[^a-z0-9]", "", a):
+            return True
+    return False
 
 
 def parse_price(text: str | None) -> tuple[float | None, str]:
