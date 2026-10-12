@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""
+Alis toplayicilari saglama araci. Tek bakista: hangi asamada ne kadar basari / hata var.
+
+    python saglama_alis.py          -> testler + son hatalar   (cikis: 0 tamam, 1 uyari, 2 hata)
+
+K1 son basarili liste okuma kac dakika once (aktif saatlerde > 90 dk = hata)
+K2 bugun liste okuma basarisi            K3 bugun ilan okuma basarisi
+K4 son 24 saatte engel                   K5 kayit doluluk: fiyat, kondisyon, beden, marka teyidi
+K6 marka teyidi: ilan sayfasindaki Marke alani bizim marka mi (basliga gore secim dogru mu)
+K7 kondisyon filtresi tutuyor mu: ilk 3 disi kondisyon orani (filtre bozulursa artar)
+"""
+
+from __future__ import annotations
+
+import os
+import sqlite3
+import sys
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alis.db")
+OK, WARN, FAIL = "✔", "⚠", "✘"
+TOP3 = ("Neu mit Etikett", "Neu", "Sehr Gut")
+
+
+def one(conn, sql, args=()):
+    r = conn.execute(sql, args).fetchone()
+    return (r[0] if r and r[0] is not None else 0)
+
+
+def rate(conn, stage):
+    rows = dict(conn.execute("SELECT outcome, n FROM health WHERE day=date('now') AND stage=?", (stage,)).fetchall())
+    total = sum(rows.values())
+    return total, rows.get("ok", 0), rows
+
+
+def run_checks(conn) -> list[tuple[str, str, str]]:
+    out = []
+    hour = datetime.now(ZoneInfo("Europe/Berlin")).hour
+    age = conn.execute("SELECT (julianday('now') - julianday(max(last_visit))) * 1440 FROM ka_cells").fetchone()[0]
+    if age is None:
+        out.append((FAIL, "K1", "hic liste okunmamis"))
+    else:
+        lvl = FAIL if (age > 90 and 8 <= hour < 23) else OK
+        out.append((lvl, "K1", f"son liste okuma {age:.0f} dk once" + ("" if 7 <= hour < 23 else " (gece molasi)")))
+    for code, stage in (("K2", "liste_okuma"), ("K3", "ilan_okuma")):
+        total, ok, rows = rate(conn, stage)
+        if total == 0:
+            out.append((WARN, code, f"{stage}: bugun kayit yok"))
+            continue
+        share = ok / total
+        bad = ", ".join(f"{k} {v}" for k, v in rows.items() if k != "ok")
+        out.append((OK if share >= 0.9 else WARN if share >= 0.7 else FAIL, code,
+                    f"{stage}: %{share*100:.0f} basarili ({ok}/{total})" + (f" | {bad}" if bad else "")))
+    blocks = one(conn, "SELECT COUNT(*) FROM pauses WHERE ts >= datetime('now','-1 day')")
+    out.append((OK if blocks == 0 else WARN if blocks < 3 else FAIL, "K4", f"son 24 saatte engel: {blocks}"))
+    n = one(conn, "SELECT COUNT(*) FROM ka_ads WHERE detail_status='ok'")
+    if n:
+        fill = {k: one(conn, f"SELECT COUNT(*) FROM ka_ads WHERE detail_status='ok' AND {k} IS NOT NULL") / n
+                for k in ("detail_price", "zustand", "groesse", "marke")}
+        weak = min(fill, key=fill.get)
+        out.append((OK if fill["zustand"] >= 0.95 and fill["detail_price"] >= 0.8 else WARN, "K5",
+                    "doluluk " + ", ".join(f"{k} %{v*100:.0f}" for k, v in fill.items()) + f" (n={n})"))
+        bad = one(conn, "SELECT COUNT(*) FROM ka_ads WHERE detail_status='ok' AND marke_ok=0")
+        known = one(conn, "SELECT COUNT(*) FROM ka_ads WHERE detail_status='ok' AND marke_ok IS NOT NULL")
+        if known:
+            out.append((OK if bad / known <= 0.1 else WARN, "K6",
+                        f"Marke alani baska marka: %{bad/known*100:.0f} ({bad}/{known})"))
+        off = one(conn, f"SELECT COUNT(*) FROM ka_ads WHERE detail_status='ok' AND zustand NOT IN "
+                        f"({','.join('?'*len(TOP3))})", TOP3)
+        out.append((OK if off / n <= 0.05 else FAIL, "K7", f"ilk 3 disi kondisyon: %{off/n*100:.0f} ({off}/{n})"))
+    else:
+        out.append((WARN, "K5", "henuz okunmus ilan sayfasi yok"))
+    return out
+
+
+def main() -> int:
+    conn = sqlite3.connect(DB_FILE)
+    checks = run_checks(conn)
+    print("ALIS  " + "  ".join(f"{lvl}{code}" for lvl, code, _ in checks))
+    for lvl, code, text in checks:
+        if lvl != OK:
+            print(f"  {lvl} {code} {text}")
+    for lvl, code, text in checks:
+        if lvl == OK:
+            print(f"  {lvl} {code} {text}")
+    print("ozet: " + " | ".join(f"{r[0]} {r[1]}" for r in conn.execute(
+        "SELECT cat, COUNT(*) FROM ka_ads GROUP BY 1")) + f" | hucre {one(conn, 'SELECT COUNT(*) FROM ka_cells')}"
+          + f" | bugun sayfa {one(conn, 'SELECT pages FROM budget WHERE day=date(?)', ('now',))}")
+    errs = conn.execute("SELECT ts, stage, outcome, detail FROM error_log ORDER BY id DESC LIMIT 5").fetchall()
+    if errs:
+        print("son hatalar:")
+        for e in errs:
+            print(f"  {e[0]} {e[1]}/{e[2]} {e[3][:110]}")
+    levels = {lvl for lvl, _, _ in checks}
+    return 2 if FAIL in levels else 1 if WARN in levels else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

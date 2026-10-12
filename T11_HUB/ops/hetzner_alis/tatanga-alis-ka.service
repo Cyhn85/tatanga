@@ -1,0 +1,20 @@
+[Unit]
+Description=TATANGA alis toplayicisi: Kleinanzeigen (salt okur, insan hizinda, gorsel saklamaz)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tatanga-alis
+ExecStart=/opt/tatanga-alis/venv/bin/python /opt/tatanga-alis/kleinanzeigen.py
+Restart=always
+RestartSec=120
+Environment=PYTHONUNBUFFERED=1
+Environment=TATANGA_BRAND_CONFIG=/opt/tatanga-observer/config.json
+# Chromium icin gozlemciden genis, ama sunucuyu bogmayacak sinirlar
+MemoryMax=900M
+CPUQuota=50%
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
