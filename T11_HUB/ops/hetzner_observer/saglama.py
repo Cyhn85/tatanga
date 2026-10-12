@@ -145,8 +145,23 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
     # T13 bosta gecen zaman: son 24 saatte duraklamalarin toplami
     try:
         # Yalnizca GENEL duraklama sayilir; tek pazarin beklemesi sistemi durdurmaz (T15'te gorunur)
-        mins = _one(conn, "SELECT SUM(minutes) FROM pauses WHERE ts >= datetime('now','-1 day') "
-                          "AND reason NOT LIKE 'pazar:%'")
+        # Ust uste binen duraklamalar (her yeni reddeden pazar yeni bir 120 dk acar) birlestirilir;
+        # duz toplam ayni dakikayi defalarca sayip %100'u asiyordu.
+        spans = conn.execute(
+            "SELECT max(strftime('%s', ts), strftime('%s','now','-1 day')), "
+            "min(strftime('%s', ts) + minutes*60, strftime('%s','now')) FROM pauses "
+            "WHERE datetime(ts, '+' || minutes || ' minutes') >= datetime('now','-1 day') "
+            "AND reason NOT LIKE 'pazar:%' ORDER BY 1").fetchall()
+        total, cur_s, cur_e = 0, None, None
+        for s_, e_ in spans:
+            s_, e_ = int(s_), int(e_)
+            if cur_e is None or s_ > cur_e:
+                total += (cur_e - cur_s) if cur_e is not None else 0
+                cur_s, cur_e = s_, e_
+            else:
+                cur_e = max(cur_e, e_)
+        total += (cur_e - cur_s) if cur_e is not None else 0
+        mins = round(total / 60)
         share = mins / 1440
         out.append((FAIL if share > 0.3 else WARN if share > 0.15 else OK, "T13",
                     f"son 24 saatte genel duraklama {mins} dk (%{share*100:.0f})"))
