@@ -153,18 +153,41 @@ def save_hits(conn, cell: dict, hits: list[dict], baseline: bool) -> tuple[int, 
 
 
 async def read_page(br: K.Browser, lst: Listener, conn, cell: dict, page_no: int) -> dict | None:
-    lst.results.clear()
     url = cell["url"] + (f"&page={page_no}" if page_no > 1 else "")
-    status = await br.visit(url, "sp_liste")
-    if status != 200:
-        return None
-    for _ in range(WAIT_RESULT * 2):
-        hit = next((r for r in lst.results if (r["query"].get("page") or 0) == page_no - 1), None)
+    hit = None
+    for attempt in (1, 2):
+        lst.results.clear()
+        if attempt == 1:
+            status = await br.visit(url, "sp_liste")
+            if status != 200:
+                return None
+        else:
+            # bir insanin "yenile"ye basmasi gibi tek seferlik yeniden yukleme
+            try:
+                await br.page.reload(wait_until="domcontentloaded", timeout=45000)
+            except Exception as exc:
+                K.note(conn, "sp_okuma", "ag", f"yenileme: {type(exc).__name__}", url)
+                return None
+        for _ in range(WAIT_RESULT * 2):
+            hit = next((r for r in lst.results if (r["query"].get("page") or 0) == page_no - 1), None)
+            if hit:
+                break
+            await asyncio.sleep(0.5)
         if hit:
+            if attempt == 2:
+                K.note(conn, "sp_yenileme", "ok")
             break
-        await asyncio.sleep(0.5)
-    else:
-        K.note(conn, "sp_okuma", "okunamadi", "arama yaniti gelmedi", url)
+        # teshis: o ana kadar gelen yanitlar ve sayfa basligi (bir sonraki hatada sebep kesin gorunsun)
+        got = [(r["query"].get("page"), r["query"].get("indexName", "")[-12:], r["query"].get("hitsPerPage"))
+               for r in lst.results]
+        try:
+            title = (await br.page.title())[:60]
+        except Exception:
+            title = "?"
+        K.note(conn, "sp_yenileme" if attempt == 1 else "sp_okuma", "okunamadi",
+               f"arama yaniti gelmedi (deneme {attempt}) | gelen {got[:6]} | baslik {title} | url {br.page.url[-50:]}",
+               url)
+    if not hit:
         return None
     # yanitin gercekten istedigimiz filtreyle geldigini dogrula (adres parametresi bozulursa sessizce kaymasin)
     ff = json.dumps(hit["query"].get("facetFilters") or [], ensure_ascii=False)
