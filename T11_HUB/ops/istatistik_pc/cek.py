@@ -165,6 +165,8 @@ def run_trends() -> None:
         ("firsat", [sys.executable, str(obs / "firsat.py"), "--db", str(ARCHIVE), "--csv", str(TABLES_DIR)]),
         ("capraz", [sys.executable, str(obs / "capraz.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
                     "--csv", str(TABLES_DIR)]),
+        ("karne", [sys.executable, str(obs / "karne.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
+                   "--csv", str(TABLES_DIR)]),
     ):
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=1200,
