@@ -441,5 +441,10 @@
   "extra_pages": {
     "core": 2,
     "model": 1
+  },
+  "ev_hatti": {
+    "_aciklama": "Vinted isteklerini PC'deki ev internetinden cikarmak icin (ters SSH tuneli). mod: kapali | tercih | zorunlu. Kurulum: ops/ev_hatti/KURULUM.md",
+    "mod": "kapali",
+    "proxy": "socks5h://127.0.0.1:1080"
   }
 }

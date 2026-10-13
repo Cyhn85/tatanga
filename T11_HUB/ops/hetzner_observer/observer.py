@@ -22,6 +22,7 @@ import json
 import os
 import random
 import re
+import socket
 import sqlite3
 import sys
 import time
@@ -408,7 +409,14 @@ class Fetcher:
     def __init__(self, conn: sqlite3.Connection, cfg: dict):
         self.conn = conn
         self.cfg = cfg["budget"]
-        self.session = requests.Session(impersonate="chrome")
+        # EV HATTI: PC'den acilan ters SSH tuneli (sunucuda 127.0.0.1:1080 SOCKS). Vinted istegi ev IP'sinden cikar.
+        # mod: "kapali" (yalnizca sunucu IP), "tercih" (tunel varsa ev, yoksa sunucu), "zorunlu" (tunel yoksa bekle).
+        self.hat = cfg.get("ev_hatti") or {"mod": "kapali"}
+        self.exit = "sunucu"
+        self._hat_checked = 0.0
+        self.conn.execute("CREATE TABLE IF NOT EXISTS hat_kullanim (day TEXT, cikis TEXT, n INTEGER, "
+                          "PRIMARY KEY (day, cikis))")
+        self.session = self._make_session()
         self.last_request = 0.0
         self.consecutive_errors = 0
         self.warm_market: str | None = None
@@ -425,10 +433,52 @@ class Fetcher:
         36 saat boyunca her istege ~20 KB dogrulama sayfasi dondu (IP engelli degildi: yeni oturum
         normal sayfa aliyordu). Artik engel gorulunce ve belirli araliklarla oturum yenilenir.
         """
-        self.session = requests.Session(impersonate="chrome")
+        self.session = self._make_session()
         self.warm_market = None
         self.session_requests = 0
-        log(f"yeni oturum: {reason}")
+        log(f"yeni oturum ({self.exit} hatti): {reason}")
+
+    def _tunnel_up(self) -> bool:
+        url = self.hat.get("proxy", "socks5h://127.0.0.1:1080")
+        host, port = url.split("://", 1)[-1].rsplit(":", 1)
+        try:
+            with socket.create_connection((host, int(port)), timeout=2):
+                return True
+        except OSError:
+            return False
+
+    def _wanted_exit(self) -> str | None:
+        mod = self.hat.get("mod", "kapali")
+        if mod == "kapali":
+            return "sunucu"
+        if self._tunnel_up():
+            return "ev"
+        return "sunucu" if mod == "tercih" else None
+
+    def _make_session(self):
+        """Hatti secer ve oturumu kurar. Hat degistiyse eski IP'ye ait engel beklemeleri kaldirilir."""
+        wanted = self._wanted_exit() or "yok"
+        if wanted != self.exit:
+            log(f"HAT DEGISTI: {self.exit} -> {wanted}; onceki IP'ye ait pazar beklemeleri ve genel duraklama kaldirildi")
+            self.market_cooldown = {}
+            self.market_strikes = {}
+            meta_set(self.conn, "paused_until", "")
+            self.exit = wanted
+        if wanted == "ev":
+            url = self.hat.get("proxy", "socks5h://127.0.0.1:1080")
+            return requests.Session(impersonate="chrome", proxies={"http": url, "https": url})
+        return requests.Session(impersonate="chrome")
+
+    def _check_hat(self) -> None:
+        """Dakikada bir: tunel acildi/kapandi mi. Degistiyse yeni oturum. Zorunlu modda tunel yoksa beklenir."""
+        if self.hat.get("mod", "kapali") == "kapali" or time.time() - self._hat_checked < 60:
+            return
+        self._hat_checked = time.time()
+        wanted = self._wanted_exit() or "yok"
+        if wanted != self.exit:
+            self.new_session("hat degisti")
+        if self.exit == "yok":
+            self._pause(10, "ev hatti kapali (zorunlu mod)")
 
     def _today(self) -> str:
         return now().strftime("%Y-%m-%d")
@@ -542,9 +592,12 @@ class Fetcher:
         """Sayfayi getirir. scan_limit verilirse JSON-LD bulununca indirme kesilir."""
         if self.budget_left() <= 0:
             raise BudgetExhausted()
+        self._check_hat()
         if self.paused_until():
             raise Paused()
         self._throttle()
+        self.conn.execute("INSERT INTO hat_kullanim VALUES (?,?,1) ON CONFLICT(day, cikis) DO UPDATE SET n=n+1",
+                          (now().strftime("%Y-%m-%d"), self.exit))
         self.last_status = None
         market = market_of(url)
         try:
@@ -1249,6 +1302,9 @@ def main() -> None:
         busy = stats["checked"] >= int(cfg["budget"].get("checks_per_cycle", 150)) or stats["cells"] > 0
         if fetcher.paused_until():
             wait = max(60, (fetcher.paused_until() - now()).total_seconds())
+            if fetcher.hat.get("mod", "kapali") != "kapali":
+                wait = min(wait, 300)          # ev hatti acilirsa 5 dk icinde devreye girsin
+                fetcher._hat_checked = 0.0
         elif busy and fetcher.budget_left() > 0:
             wait = 60
         else:

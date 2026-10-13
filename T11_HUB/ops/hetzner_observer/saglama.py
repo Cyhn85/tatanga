@@ -175,6 +175,18 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
     except sqlite3.OperationalError:
         pass
 
+    # T16 ev hatti: istekler hangi hattan cikti (son 24 saat). Mod 'kapali' iken bilgi amacli.
+    try:
+        rows = dict(conn.execute("SELECT cikis, SUM(n) FROM hat_kullanim WHERE day >= date('now','-1 day') "
+                                 "GROUP BY cikis").fetchall())
+        if rows:
+            total = sum(rows.values())
+            ev = rows.get("ev", 0)
+            out.append((OK, "T16", f"cikis hatti (24 saat): ev {ev} / sunucu {rows.get('sunucu', 0)}"
+                        f" (%{ev / total * 100:.0f} ev)"))
+    except sqlite3.OperationalError:
+        pass
+
     # T7 bilinmeyen ham durum degeri: platform yeni bir deger dondurmeye baslamis
     raws = [r[0] for r in conn.execute("SELECT DISTINCT avail_raw FROM listings WHERE avail_raw IS NOT NULL")]
     # 'SUCCESS:<dile gore baslik>' satildi demektir; baslik dili onemsiz, tema belirleyici
