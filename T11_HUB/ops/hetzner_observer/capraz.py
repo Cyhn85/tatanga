@@ -7,7 +7,10 @@ Capraz platform karlilik (PC'de, arsivler uzerinde). Karar vermez; her alis ilan
 ALIS ILANLARI: Kleinanzeigen (DE), eBay (7 AB ulkesi, satici ulkesi), Sellpy (DE).
 SATIS TAHMINI: YALNIZCA GERCEK SATISLARDAN. Bugun olculen satis Vinted'de (7 ulke). eBay satis takibi sonuc
   verdikce eBay ulkeleri ayni tabloya satis yonu olarak eklenecek; o zamana kadar eBay ILAN fiyati satis sayilmaz.
-  Hiyerarsi: marka+model (en az 5 satis) -> marka+tur (8) -> marka+kategori (20).
+  Hiyerarsi: marka+model (en az 5 satis) -> marka+seri (8; Air Max, Originals, WIP, Gel...) -> marka+tur (8)
+  -> marka+kategori (20).
+  ILAN FIYATI KALIBRASYONU KULLANILMAZ: satis/ilan orani markaya gore 0,48-1,25 arasi degisiyor (2026-10-13 olculdu,
+  16 grup, P25-P75 0,72-0,97); tek oran bazi markalarda satis fiyatini %50'ye kadar yanlis tahmin ettirir.
   SIRALAMA 7 ulkenin HAVUZUYLA yapilir (DE tabani). Ulke ancak KENDI satisi yeterliyse ayrica gosterilir;
   havuz tahmini ulke carpaniyla sisirilip "en iyi ulke" SECILMEZ (en yuksek gurultuyu secmek = kazananin laneti).
   KONDISYON: once ayni kondisyonda gercek satis aranir. Yoksa urun cok_iyi satis fiyatiyla hesaplanir
@@ -42,7 +45,7 @@ import motor as M  # noqa: E402
 ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "..", "istatistik"))
 VINTED_COUNTRIES = ("DE", "AT", "FR", "BE", "NL", "IT", "SE")
 # seviye basina en az gercek satis: karisik turden az satisla tahmin yapilmaz
-MIN_SALES = {"marka·model": 5, "marka·tur": 8, "marka·kategori": 20}
+MIN_SALES = {"marka·model": 5, "marka·seri": 8, "marka·tur": 8, "marka·kategori": 20}
 MIN_PRICE = 5.0
 CAT_MAP = {"hoodies": "oberteile"}            # Vinted hucre kategorisi -> ortak kategori
 KA_COND = {"neu mit etikett": "yeni_etiketli", "neu": "yeni", "sehr gut": "cok_iyi"}
@@ -92,11 +95,13 @@ def costs() -> dict:
     return {k: v["deger"] for k, v in raw.items() if not k.startswith("_")}
 
 
-def keys_for(brand: str, cat: str | None, model: str | None, typ: str | None) -> list[tuple]:
+def keys_for(brand: str, cat: str | None, model: str | None, typ: str | None, line: str | None = None) -> list[tuple]:
     b = brand.lower()
     out = []
     if model:
         out.append(("marka·model", b, model.lower()))
+    if line:
+        out.append(("marka·seri", b, line.lower()))
     if typ:
         out.append(("marka·tur", b, typ))
     if cat:
@@ -126,11 +131,11 @@ class SellRef:
             price = r["p"] / rate
             if price < MIN_PRICE:
                 continue
-            model, _ = matcher.match(brand, r["title"] or "")
+            model, line = matcher.match(brand, r["title"] or "")
             typ = A.match_type(A.norm_text(r["title"] or ""))
             cc = r["country"]
             pooled = price / self.f(market_f, cc)
-            for k in keys_for(brand, cat, model, typ):
+            for k in keys_for(brand, cat, model, typ, line):
                 g = self.ref[k]
                 g[(cc, tier)].append(price)
                 g[("*", tier)].append(pooled)
@@ -190,8 +195,8 @@ def load_buys(alis, matcher, rates, c) -> list[dict]:
             flags.append(f"kusur: {r['defect_words']}")
         if r["seller_since"] and r["seller_since"] > (now - timedelta(days=90)).strftime("%Y-%m-%d"):
             flags.append("yeni satici hesabi")
-        model, _ = matcher.match(r["brand"], r["title"] or "")
-        out.append({"platform": "Kleinanzeigen", "country": "DE", "url": r["url"], "brand": r["brand"],
+        model, line = matcher.match(r["brand"], r["title"] or "")
+        out.append({"platform": "Kleinanzeigen", "line": line, "country": "DE", "url": r["url"], "brand": r["brand"],
                     "cat": r["cat"], "gender": r["gender"], "title": r["title"], "model": model,
                     "type": A.match_type(A.norm_text(r["title"] or "")), "tier": tier, "size": r["groesse"],
                     "price": price, "cost": cost, "flags": flags, "structured": False})
@@ -210,8 +215,8 @@ def load_buys(alis, matcher, rates, c) -> list[dict]:
             flags.append("teklif verilebilir")
         if r["seller_pct"] is not None and r["seller_pct"] < 97:
             flags.append(f"satici puani %{r['seller_pct']:.0f}")
-        model, _ = matcher.match(r["brand"], r["title"] or "")
-        out.append({"platform": "eBay", "country": r["country"], "url": r["url"], "brand": r["brand"],
+        model, line = matcher.match(r["brand"], r["title"] or "")
+        out.append({"platform": "eBay", "line": line, "country": r["country"], "url": r["url"], "brand": r["brand"],
                     "cat": r["cat"], "gender": r["gender"], "title": r["title"], "model": model,
                     "type": A.match_type(A.norm_text(r["title"] or "")), "tier": tier, "size": None,
                     "price": price, "cost": price * (1 + c["ebay_alici_ucret_oran"]) + r["ship_cost"] / rate,
@@ -228,7 +233,7 @@ def load_buys(alis, matcher, rates, c) -> list[dict]:
         if r["defect_n"]:
             flags.append(f"kusur: {r['defects']}")
         title = f"{r['brand']} {r['type'] or ''}"
-        out.append({"platform": "Sellpy", "country": "DE", "url": r["url"], "brand": r["brand_q"], "cat": r["cat"],
+        out.append({"platform": "Sellpy", "line": None, "country": "DE", "url": r["url"], "brand": r["brand_q"], "cat": r["cat"],
                     "gender": r["gender"], "title": title, "model": None,
                     "type": A.match_type(A.norm_text(r["type"] or "")), "tier": tier, "size": r["size"],
                     "price": r["price"], "cost": r["price"] + c["sellpy_kargo"], "flags": flags, "structured": True})
@@ -278,7 +283,7 @@ def main() -> int:
         if chk == "baska":
             stats[b["platform"]]["kategori_uyusmaz"] += 1
             continue
-        keys = keys_for(b["brand"], b["cat"] if chk == "ok" else None, b["model"], b["type"])
+        keys = keys_for(b["brand"], b["cat"] if chk == "ok" else None, b["model"], b["type"], b["line"])
         prob30, plevel = p30(b)
         sell_cost = lambda sell: c["paketleme"] + (c["iade_payi_oran"] + c["satis_komisyonu_oran"]) * sell \
             + c["giden_kargo"]
@@ -314,7 +319,8 @@ def main() -> int:
             stats[b["platform"]]["kar>0"] += 1
         rows.append({
             "platform": b["platform"], "ulke": b["country"], "marka": b["brand"], "kategori": b["cat"],
-            "cinsiyet": b["gender"], "baslik": (b["title"] or "")[:80], "model": b["model"], "tur": b["type"],
+            "cinsiyet": b["gender"], "baslik": (b["title"] or "")[:80], "model": b["model"], "seri": b["line"],
+            "tur": b["type"],
             "kondisyon": b["tier"], "beden": b["size"], "fiyat": b["price"], "alis_toplam": b["cost"],
             "satis_yonu": "Vinted (7 ulke havuzu)", "satis_p25": best["low"], "satis_medyan": best["sell"],
             "net_kar_tutucu": best["net_low"], "net_kar_medyan": best["net"],
