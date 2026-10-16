@@ -28,6 +28,7 @@ from typing import Callable, Optional
 MIN_GAP: dict[str, float] = {
     "vinted": 1.5, "vinted_fr": 1.5, "vinted_be": 1.5,
     "vinted_pl": 1.5, "vinted_uk": 1.5,
+    "vinted_it": 1.5, "vinted_nl": 1.5, "vinted_at": 1.5, "vinted_es": 1.5, "vinted_se": 1.5,
     "markt": 1.5,                 # kendi JSON API'si, toleransli
     "kleinanzeigen": 3.0,
     "tradera": 3.0, "willhaben": 3.0,

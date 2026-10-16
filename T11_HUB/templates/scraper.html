@@ -58,12 +58,18 @@
 
                         <div class="mt-3">
                             <label class="form-label small">Platformlar <small class="text-muted">(tikla sec/kaldir)</small></label>
+                            <div class="d-flex flex-wrap gap-1 mb-2" style="font-size:.7rem;"><span class="text-muted me-1" style="font-size:.7rem;">Hazir gruplar:</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-platform', 'vinted,vinted_fr,vinted_be,vinted_it,vinted_nl,vinted_at,vinted_es,vinted_se,vinted_pl,vinted_uk')">Tum Vinted</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-platform', 'vinted,vinted_at,kleinanzeigen,ebay,willhaben,sellpy')">Almanca (DE+AT)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-platform', 'vinted_fr,vinted_be,leboncoin')">Fransizca (FR+BE)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-platform', 'vinted_be,vinted_nl,markt')">Benelux (BE+NL)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-platform', 'vinted_it,vinted_es,percentil')">Guney (IT+ES)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-platform', 'vinted_se,tradera')">Kuzey (SE)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-platform', 'vinted_uk,depop')">AB disi (UK)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-platform', '*')">Hepsi</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-platform', '')">Temizle</button></div>
                             <div class="platform-chips">
                                 <label class="chip active" data-platform="vinted"><input type="checkbox" checked hidden> Vinted.de</label>
                                 <label class="chip" data-platform="vinted_fr"><input type="checkbox" hidden> Vinted.fr</label>
                                 <label class="chip" data-platform="vinted_pl"><input type="checkbox" hidden> Vinted.pl</label>
                                 <label class="chip" data-platform="vinted_be"><input type="checkbox" hidden> Vinted.be</label>
                                 <label class="chip" data-platform="vinted_uk"><input type="checkbox" hidden> Vinted.uk</label>
+                                <label class="chip" data-platform="vinted_it"><input type="checkbox" hidden> Vinted.it</label>
+                                <label class="chip" data-platform="vinted_nl"><input type="checkbox" hidden> Vinted.nl</label>
+                                <label class="chip" data-platform="vinted_at"><input type="checkbox" hidden> Vinted.at</label>
+                                <label class="chip" data-platform="vinted_es"><input type="checkbox" hidden> Vinted.es</label>
+                                <label class="chip" data-platform="vinted_se"><input type="checkbox" hidden> Vinted.se</label>
                                 <label class="chip active" data-platform="kleinanzeigen"><input type="checkbox" checked hidden> Kleinanzeigen</label>
                                 <label class="chip active" data-platform="ebay"><input type="checkbox" checked hidden> eBay</label>
                                 <label class="chip" data-platform="sellpy"><input type="checkbox" hidden> Sellpy</label>
@@ -204,12 +210,18 @@
                         </div>
                         <div class="mt-3">
                             <label class="form-label small">Platformlar</label>
+                            <div class="d-flex flex-wrap gap-1 mb-2" style="font-size:.7rem;"><span class="text-muted me-1" style="font-size:.7rem;">Hazir gruplar:</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-smart-platform', 'vinted,vinted_fr,vinted_be,vinted_it,vinted_nl,vinted_at,vinted_es,vinted_se,vinted_pl,vinted_uk')">Tum Vinted</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-smart-platform', 'vinted,vinted_at,kleinanzeigen,ebay,willhaben,sellpy')">Almanca (DE+AT)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-smart-platform', 'vinted_fr,vinted_be,leboncoin')">Fransizca (FR+BE)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-smart-platform', 'vinted_be,vinted_nl,markt')">Benelux (BE+NL)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-smart-platform', 'vinted_it,vinted_es,percentil')">Guney (IT+ES)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-smart-platform', 'vinted_se,tradera')">Kuzey (SE)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-smart-platform', 'vinted_uk,depop')">AB disi (UK)</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-smart-platform', '*')">Hepsi</button><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:.68rem;" onclick="chipPreset('data-smart-platform', '')">Temizle</button></div>
                             <div class="platform-chips">
                                 <label class="chip active" data-smart-platform="vinted"><input type="checkbox" checked hidden> Vinted.de</label>
                                 <label class="chip" data-smart-platform="vinted_fr"><input type="checkbox" hidden> Vinted.fr</label>
                                 <label class="chip" data-smart-platform="vinted_pl"><input type="checkbox" hidden> Vinted.pl</label>
                                 <label class="chip" data-smart-platform="vinted_be"><input type="checkbox" hidden> Vinted.be</label>
                                 <label class="chip" data-smart-platform="vinted_uk"><input type="checkbox" hidden> Vinted.uk</label>
+                                <label class="chip" data-smart-platform="vinted_it"><input type="checkbox" hidden> Vinted.it</label>
+                                <label class="chip" data-smart-platform="vinted_nl"><input type="checkbox" hidden> Vinted.nl</label>
+                                <label class="chip" data-smart-platform="vinted_at"><input type="checkbox" hidden> Vinted.at</label>
+                                <label class="chip" data-smart-platform="vinted_es"><input type="checkbox" hidden> Vinted.es</label>
+                                <label class="chip" data-smart-platform="vinted_se"><input type="checkbox" hidden> Vinted.se</label>
                                 <label class="chip" data-smart-platform="kleinanzeigen"><input type="checkbox" hidden> Kleinanzeigen</label>
                                 <label class="chip" data-smart-platform="ebay"><input type="checkbox" hidden> eBay</label>
                                 <label class="chip" data-smart-platform="sellpy"><input type="checkbox" hidden> Sellpy</label>
@@ -470,11 +482,26 @@
 
 {% block scripts %}
 <script>
+// Hazir ulke/platform gruplari: listedeki chip'ler secilir, digerleri kaldirilir ('*' = hepsi, '' = temizle)
+function chipPreset(attr, list) {
+    const want = list === '*' ? null : new Set(list ? list.split(',') : []);
+    const key = attr.replace('data-', '').replace(/-([a-z])/g, (m, c) => c.toUpperCase());
+    document.querySelectorAll('.chip[' + attr + ']').forEach(c => {
+        const on = want === null ? true : want.has(c.dataset[key]);
+        c.classList.toggle('active', on);
+        const cb = c.querySelector('input'); if (cb) cb.checked = on;
+    });
+}
+
 // Platform chip toggle
+// <label> icindeki gizli kutu: tarayici etikete tiklaninca kutuya da tiklar ve olay etikete geri doner ->
+// isleyici IKI KEZ calisip secimi geri aliyordu (olculdu 2026-10-16: LABEL + INPUT). Kutudan gelen olay yok sayilir.
 document.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', function() {
+    chip.addEventListener('click', function(e) {
+        if (e.target.tagName === 'INPUT') return;
+        e.preventDefault();
         this.classList.toggle('active');
-        this.querySelector('input').checked = this.classList.contains('active');
+        const cb = this.querySelector('input'); if (cb) cb.checked = this.classList.contains('active');
     });
 });
 

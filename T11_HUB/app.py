@@ -2725,6 +2725,12 @@ async def scrape_platform(platform: str, keyword: str, max_pages: int, strategy:
         "vinted_pl": "www.vinted.pl",
         "vinted_be": "www.vinted.be",
         "vinted_uk": "www.vinted.co.uk",
+        # 2026-10-16: istatistik gozlemcisinin pazarlariyla ayni ulkeler
+        "vinted_it": "www.vinted.it",
+        "vinted_nl": "www.vinted.nl",
+        "vinted_at": "www.vinted.at",
+        "vinted_es": "www.vinted.es",
+        "vinted_se": "www.vinted.se",
     }
 
     # Yerel-dil arama: hedef site diline gore tip kelimelerini cevir (marka korunur).
@@ -3224,40 +3230,60 @@ def _fetch_html_via_browser(url: str, wait_seconds: float = 4.0) -> str | None:
         driver.quit()
 
 
+_VINTED_PARSER = None
+
+
+def _vinted_parser():
+    """Istatistik gozlemcisinin dogrulanmis katalog ayristiricisi (ops/hetzner_observer/observer.py:parse_catalog)."""
+    global _VINTED_PARSER
+    if _VINTED_PARSER is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "tatanga_observer_parser", str(BASE_DIR / "ops" / "hetzner_observer" / "observer.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _VINTED_PARSER = mod.parse_catalog
+    return _VINTED_PARSER
+
+
 def _vinted_fetch(domain: str, keyword: str, order: str, page: int,
                   session=None) -> tuple[dict | None, int, object]:
     """
-    Vinted katalog API'sine curl_cffi ile istek.
+    Vinted katalog SAYFASI (curl_cffi, Chrome TLS taklidi) -> sayfanin icindeki RSC ilan bloklari.
 
-    NEDEN curl_cffi: Python'un `requests` kutuphanesi TLS el sikismasinda kendine
-    ozgu bir JA3 parmak izi birakir; Datadome bunu Chrome'dan ayirt edip API'yi
-    403'le kesiyordu. curl_cffi (curl-impersonate sarmalayicisi) Chrome'un TLS ve
-    HTTP/2 parmak izini birebir taklit eder. Canli olculdu: eski yol (Selenium
-    tarayici icinden fetch) 4 denemede de bos dondu; bu yol ayni sorguda 20 urun
-    getirdi — ustelik tarayici hic acilmadan.
-
-    Session yeniden kullanilir: anasayfa ziyaretinde alinan access_token_web
-    cerezi sonraki sayfalarda tekrar tekrar alinmasin.
+    2026-10-16: eski /api/v2/catalog/items ucu KALKTI (tum alan adlarinda HTTP 404, HTML hata sayfasi; ayni
+    oturumla /catalog sayfasi 200 ve 96 ilan veriyordu). TATANGA'nin Vinted kazimasi bu yuzden her ulkede 0
+    donuyordu. Artik istatistik gozlemcisinin kanitlanmis ayristiricisi kullanilir; donus bicimi eski API ile
+    ayni ({"items": [...]}) tutuldu, scrape_vinted'in geri kalani degismedi.
+    Dogrulama/engel sayfasi (kucuk yanit, ilan blogu yok) None doner -> "vinted_blocked" olarak kaydedilir.
     """
     from curl_cffi import requests as cr
+    from urllib.parse import quote
     if session is None:
         session = cr.Session(impersonate="chrome")
         session.get(f"https://{domain}/", timeout=30)   # oturum cerezi
-
-    from urllib.parse import quote
-    url = (f"https://{domain}/api/v2/catalog/items"
-           f"?search_text={quote(keyword)}&page={page}&per_page=96&order={order}")
-    r = session.get(url, timeout=30, headers={
-        "Accept": "application/json, text/plain, */*",
-        "Referer": f"https://{domain}/catalog?search_text={quote(keyword)}",
-        "X-Requested-With": "XMLHttpRequest",
-    })
+    url = f"https://{domain}/catalog?search_text={quote(keyword)}&page={page}&order={order}"
+    r = session.get(url, timeout=40, headers={"Referer": f"https://{domain}/"})
     if r.status_code != 200:
         return None, r.status_code, session
-    try:
-        return r.json(), 200, session
-    except Exception:
-        return None, r.status_code, session
+    html = r.text
+    blocks = html.count('\\"productItem\\":')
+    if blocks == 0 and len(html) < 60_000:
+        return None, 200, session          # dogrulama / engel sayfasi
+    items = []
+    for it in _vinted_parser()(html):
+        items.append({
+            "id": it["item_id"],
+            "url": f"https://{domain}{it['url']}",
+            "title": it.get("title") or "",
+            "price": {"amount": it["price"], "currency_code": it.get("currency") or "EUR"},
+            "photos": [{"url": it["thumb"]}] if it.get("thumb") else [],
+            "brand_title": it.get("brand") or "",
+            "size_title": it.get("size") or "",
+            "status": it.get("condition") or "",
+            "favourite_count": it.get("favourites", 0),
+        })
+    return {"items": items, "blocks": blocks}, 200, session
 
 
 async def scrape_vinted(keyword: str, max_pages: int, headers: dict,
@@ -3585,65 +3611,46 @@ async def scrape_ebay(keyword: str, max_pages: int, headers: dict, strategy: str
     return products
 
 async def scrape_sellpy(keyword: str, max_pages: int, headers: dict, strategy: str = "single") -> list:
-    """Sellpy kazima. strategy=multi_order ile fiyat artan siralama da taranir."""
-    import requests
-    from bs4 import BeautifulSoup
-
-    orders = ["default", "price_asc"] if strategy == "multi_order" else ["default"]
-    order_param = {"default": "", "price_asc": "&sort=price_asc"}
-    seen_ids: set = set()
-    products: list = []
-
-    for order in orders:
-        sort_suffix = order_param.get(order, "")
-        for page in range(1, max_pages + 1):
-            try:
-                url = f"https://www.sellpy.de/search?query={keyword}&page={page}{sort_suffix}"
-                resp = requests.get(url, headers=headers, timeout=15)
-
-                if resp.status_code == 200:
-                    soup = BeautifulSoup(resp.text, "lxml")
-                    scripts = soup.select("script[type='application/ld+json']")
-                    new_this_page = 0
-                    for script in scripts:
-                        try:
-                            data = json.loads(script.string)
-                            items = [data] if isinstance(data, dict) and data.get("@type") == "Product" else (data if isinstance(data, list) else [])
-                            for item in items:
-                                if item.get("@type") != "Product":
-                                    continue
-                                item_id = item.get("sku", "") or item.get("url", "")
-                                if not item_id or item_id in seen_ids:
-                                    continue
-                                seen_ids.add(item_id)
-                                new_this_page += 1
-                                products.append({
-                                    "source_id": item.get("sku", ""),
-                                    "url": item.get("url", ""),
-                                    "title": item.get("name", ""),
-                                    "description": item.get("description", ""),
-                                    "price": float(item.get("offers", {}).get("price", 0)),
-                                    "currency": "EUR",
-                                    "brand": item.get("brand", {}).get("name", "") if isinstance(item.get("brand"), dict) else "",
-                                    "size": "",
-                                    "condition": "",
-                                    "category": "",
-                                    "images": [item.get("image", "")] if item.get("image") else [],
-                                    "views": 0,
-                                    "favorites": 0,
-                                })
-                        except:
-                            continue
-                    if new_this_page == 0:
-                        break
-                else:
-                    break
-
-                await asyncio.sleep(3)
-            except Exception as e:
-                await log_activity("sellpy_error", f"Sellpy {order} s.{page}: {str(e)}", "warning")
-                break
-
+    """
+    Sellpy: site tamamen JavaScript; duz istekle ilan verisi GELMEZ (5 KB iskelet; TATANGA'da hic Sellpy urunu
+    olmamasinin sebebi buydu, 2026-10-16). Bu yuzden sunucudaki gercek tarayicili Sellpy toplayicisinin verisinden
+    (istatistik/alis_arsiv.db, sp_items) aranir: yalniz HALA SATISTA (for_sale, rezerve degil, son 3 gunde goruldu).
+    Anahtar kelimenin her kelimesi marka / tur / kategori yolunda gecmeli.
+    """
+    import sqlite3 as _sq
+    db_path = BASE_DIR.parent / "istatistik" / "alis_arsiv.db"
+    if not db_path.exists():
+        await log_activity("sellpy_error", "Sellpy: alis arsivi yok (istatistik/alis_arsiv.db)", "warning")
+        return []
+    words = [w.lower() for w in (keyword or "").replace(",", " ").split() if len(w) > 1]
+    con = _sq.connect(f"file:{db_path}?mode=ro", uri=True)
+    con.row_factory = _sq.Row
+    cols = {r[1] for r in con.execute("PRAGMA table_info(sp_items)")}
+    img_col = "image_url" if "image_url" in cols else "NULL AS image_url"
+    rows = con.execute(
+        f"SELECT object_id, url, brand, brand_q, type, cat_path, condition, size, price, fav, defects, {img_col} "
+        "FROM sp_items WHERE for_sale=1 AND reserved=0 AND last_seen >= datetime('now','-3 day') "
+        "ORDER BY sale_started DESC").fetchall()
+    con.close()
+    products = []
+    limit = max(1, max_pages) * 60
+    for r in rows:
+        hay = " ".join(str(x or "") for x in (r["brand"], r["brand_q"], r["type"], r["cat_path"], r["condition"])).lower()
+        if words and not all(w in hay for w in words):
+            continue
+        size = (r["size"] or "").split("-")[-1]
+        products.append({
+            "source_id": r["object_id"], "url": r["url"],
+            "title": f"{r['brand'] or r['brand_q']}, {r['type'] or ''}" + (f", Größe: {size}" if size else ""),
+            "description": ("Mängel: " + r["defects"]) if r["defects"] else "",
+            "price": float(r["price"] or 0), "currency": "EUR",
+            "brand": r["brand"] or r["brand_q"] or "", "size": size, "condition": r["condition"] or "",
+            "category": r["cat_path"] or "", "images": [r["image_url"]] if r["image_url"] else [],
+            "views": 0, "favorites": r["fav"] or 0,
+        })
+        if len(products) >= limit:
+            break
+    await log_activity("sellpy_arsiv", f"Sellpy (toplayici verisi): '{keyword}' -> {len(products)} aktif ilan")
     return products
 
 async def scrape_willhaben(keyword: str, max_pages: int, headers: dict, strategy: str = "single") -> list:
@@ -4301,6 +4308,11 @@ SHIPPING_COSTS = {
     # Italya
     "IT_DE": {"small": 8.99, "medium": 13.99, "large": 19.99},
     "DE_IT": {"small": 8.99, "medium": 13.99, "large": 19.99},
+    # 2026-10-16 eklendi (varsayim: komsu AB ulkesi tarifeleri; gercek Vinted kargo fiyatiyla guncellenmeli)
+    "NL_DE": {"small": 6.99, "medium": 9.99, "large": 14.99},
+    "DE_NL": {"small": 6.99, "medium": 9.99, "large": 14.99},
+    "ES_DE": {"small": 9.99, "medium": 14.99, "large": 19.99},
+    "DE_ES": {"small": 9.99, "medium": 14.99, "large": 19.99},
 }
 
 # Platform ulkeleri (kaynak kazima platformlari + satis platformlari)
@@ -4310,6 +4322,7 @@ PLATFORM_COUNTRY = {
     "sellpy": "DE", "willhaben": "AT", "tradera": "SE", "leboncoin": "FR",
     # Vinted multi-country
     "vinted_fr": "FR", "vinted_pl": "PL", "vinted_be": "BE", "vinted_uk": "UK",
+    "vinted_it": "IT", "vinted_nl": "NL", "vinted_at": "AT", "vinted_es": "ES", "vinted_se": "SE",
     # Yeni platformlar
     # markt = Marktplaats.nl (Hollanda). Eskiden yanlislikla markt.de (DE)
     # olarak isaretliydi ama yerellestirici bu platforma Hollandaca kelime
@@ -4334,6 +4347,11 @@ SCRAPE_ORDERS = {
     "vinted_pl":     ["relevance", "newest_first", "price_low_to_high", "price_high_to_low"],
     "vinted_be":     ["relevance", "newest_first", "price_low_to_high", "price_high_to_low"],
     "vinted_uk":     ["relevance", "newest_first", "price_low_to_high", "price_high_to_low"],
+    "vinted_it":     ["relevance", "newest_first", "price_low_to_high", "price_high_to_low"],
+    "vinted_nl":     ["relevance", "newest_first", "price_low_to_high", "price_high_to_low"],
+    "vinted_at":     ["relevance", "newest_first", "price_low_to_high", "price_high_to_low"],
+    "vinted_es":     ["relevance", "newest_first", "price_low_to_high", "price_high_to_low"],
+    "vinted_se":     ["relevance", "newest_first", "price_low_to_high", "price_high_to_low"],
 }
 
 def get_shipping_cost(from_country: str, to_country: str, size: str = "medium") -> float:

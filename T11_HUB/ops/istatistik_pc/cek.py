@@ -170,11 +170,14 @@ def run_trends() -> None:
         ("capraz", [sys.executable, str(obs / "capraz.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
                     "--csv", str(TABLES_DIR)]),
         ("zeka-urunler", [sys.executable, str(obs / "zeka_urunler.py"), "--arsiv", str(ARCHIVE)]),
+        # gorsel arama dizini: yalniz YENI aktif ilanlar + aktiflik guncellemesi (gorsel saklanmaz)
+        ("gorsel-indeks", [sys.executable, str(obs / "gorsel_zeka.py"), "indeks"]),
         ("karne", [sys.executable, str(obs / "karne.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
                    "--csv", str(TABLES_DIR)]),
     ):
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=1200, **NO_WINDOW,
+            res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                                 timeout=5400 if name == "gorsel-indeks" else 1200, **NO_WINDOW,
                                  env={**__import__("os").environ, "PYTHONIOENCODING": "utf-8"})
             last = (res.stdout or res.stderr).strip().splitlines()[-1:] or ["-"]
             log(f"trend {name}: {'tamam' if res.returncode == 0 else 'HATA'} | {last[0][:120]}")

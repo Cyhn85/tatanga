@@ -36,9 +36,10 @@ STATIC_FALLBACK: dict[str, float] = {
 PLATFORM_CURRENCY: dict[str, str] = {
     "vinted": "EUR", "vinted_fr": "EUR", "vinted_be": "EUR",
     "vinted_pl": "PLN", "vinted_uk": "GBP",
+    "vinted_it": "EUR", "vinted_nl": "EUR", "vinted_at": "EUR", "vinted_es": "EUR", "vinted_se": "SEK",
     "kleinanzeigen": "EUR", "ebay": "EUR", "markt": "EUR",
     "willhaben": "EUR", "leboncoin": "EUR", "percentil": "EUR",
-    "tradera": "SEK", "sellpy": "SEK", "depop": "GBP",
+    "tradera": "SEK", "sellpy": "EUR", "depop": "GBP",   # sellpy: TATANGA sellpy.DE kullaniyor (EUR); eskiden SEK -> fiyat /11
 }
 
 
