@@ -86,6 +86,11 @@
         </ul>
     </div>
 
+    <button class="btn btn-sm d-flex align-items-center gap-2" style="border:1px solid #17a2b8;color:#17a2b8;"
+            onclick="document.getElementById('gs-file').click()" title="Kendi fotografinla sistemde ara">
+        <i class="fas fa-camera"></i><span style="font-size:.8rem;">Fotografla ara</span>
+    </button>
+    <input type="file" id="gs-file" accept="image/*" style="display:none" onchange="gorselYukle(this)">
     <span class="badge bg-info align-self-center">
         {{ pagination.total }} ürün
         {% if pagination.total_pages > 1 %}&nbsp;·&nbsp; s.{{ pagination.page }}/{{ pagination.total_pages }}{% endif %}
@@ -277,6 +282,8 @@
                 </button>
                 <button class="btn btn-sm btn-outline-success flex-fill" onclick="removeBg('{{ p.id }}')" title="BG Kaldir + Watermark"><i class="fas fa-magic"></i></button>
                 <button class="btn btn-sm btn-outline-warning flex-fill" onclick="checkSource('{{ p.id }}')" title="Kaynak Kontrol"><i class="fas fa-link"></i></button>
+                <button class="btn btn-sm flex-fill" style="border:1px solid #17a2b8;color:#17a2b8;" onclick="gorselBenzer('{{ p.id }}')"
+                        title="Gorselle benzerini bul (hala yayinda olan ilanlar)"><i class="fas fa-images"></i></button>
                 {% if p.source_url %}
                 <a href="{{ p.source_url }}" target="_blank" class="btn btn-sm btn-outline-info flex-fill" title="Kaynaga Git"><i class="fas fa-external-link-alt"></i></a>
                 {% endif %}
@@ -326,10 +333,75 @@
 </nav>
 {% endif %}
 
+<!-- GORSEL ARAMA PENCERESI -->
+<div class="modal fade" id="gsModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content" style="background:#15181d;color:#e4e6eb;border:1px solid rgba(255,255,255,.1);">
+      <div class="modal-header" style="border-color:rgba(255,255,255,.08);">
+        <h6 class="modal-title"><i class="fas fa-images me-2" style="color:#17a2b8"></i><span id="gs-title">Gorsel arama</span></h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="gs-info" style="font-size:.75rem;color:rgba(228,230,235,.65);" class="mb-2"></div>
+        <div class="row g-2" id="gs-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+// ---- GORSEL ARAMA (logic/gorsel_arama.py) ----
+const GS_COLOR = {"ayni fotograf": "#dc3545", "ayni urun olabilir": "#ffa500", "cok benzer": "#17a2b8", "benzer": "#6c757d"};
+function gsOpen(title) {
+    document.getElementById('gs-title').innerText = title;
+    document.getElementById('gs-grid').innerHTML = '';
+    document.getElementById('gs-info').innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Araniyor... (ilk aramada model ~30 sn yuklenir)';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('gsModal')).show();
+}
+function gsRender(d) {
+    const info = document.getElementById('gs-info'), grid = document.getElementById('gs-grid');
+    if (d.status !== 'ok') { info.innerHTML = '<span class="text-danger">' + (d.error || 'Arama basarisiz') + '</span>'; return; }
+    info.innerHTML = 'Hala yayinda olan <b>' + d.dizin_aktif + '</b> ilan icinde arandi. Benzerlik CLIP ile olculur; ' +
+        '"ayni urun" kaniti degil, goz kontrolu icindir. En benzer ' + d.sonuclar.length + ' sonuc:';
+    grid.innerHTML = d.sonuclar.map(r => {
+        const c = GS_COLOR[r.etiket] || '#6c757d';
+        const fiyat = (r.fiyat != null) ? Number(r.fiyat).toFixed(2) + ' ' + (r.para || 'EUR') : '-';
+        const img = r.gorsel_url || '/static/img/no-image.svg';
+        return `<div class="col-6 col-md-3 col-lg-2"><div class="card h-100" style="background:#1b1f24;border:1px solid ${c}55;color:#e4e6eb;">
+            <img src="${img}" referrerpolicy="no-referrer" loading="lazy" style="height:150px;object-fit:cover" class="card-img-top"
+                 onerror="this.src='/static/img/no-image.svg'">
+            <div class="card-body p-2" style="font-size:.68rem;">
+              <div><span class="badge" style="background:${c}">${r.etiket}</span> <b>%${Math.round(r.benzerlik * 100)}</b></div>
+              <div class="mt-1" style="font-weight:600;line-height:1.25">${(r.baslik || '').slice(0, 60)}</div>
+              <div style="color:rgba(228,230,235,.65)">${r.platform}${r.ulke ? ' · ' + r.ulke : ''} · ${r.kondisyon || ''}</div>
+              <div class="d-flex justify-content-between align-items-center mt-1"><b>${fiyat}</b>
+                ${r.ilan_url ? `<a href="${r.ilan_url}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-info py-0 px-1" style="font-size:.62rem">ilana git</a>` : ''}</div>
+            </div></div></div>`;
+    }).join('') || '<div class="text-muted">Sonuc yok</div>';
+}
+async function gorselBenzer(productId) {
+    gsOpen('Gorselle benzerleri: ' + productId);
+    try { gsRender(await (await fetch('/api/gorsel/benzer/' + productId + '?k=24')).json()); }
+    catch (e) { gsRender({status: 'error', error: e.message}); }
+}
+async function gorselYukle(input) {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    gsOpen('Fotografla arama: ' + f.name);
+    const reader = new FileReader();
+    reader.onload = async () => {
+        try {
+            const resp = await fetch('/api/gorsel/ara', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                     body: JSON.stringify({image: reader.result, k: 24})});
+            gsRender(await resp.json());
+        } catch (e) { gsRender({status: 'error', error: e.message}); }
+        input.value = '';
+    };
+    reader.readAsDataURL(f);
+}
+
 function applyFilters() {
     const status = document.getElementById('f-status').value;
     const platform = document.getElementById('f-platform').value;

@@ -5137,6 +5137,45 @@ async def get_watchlist():
     return {"watchlist": items, "count": len(items)}
 
 # ============================================
+# GORSEL ARAMA: urunun / yuklenen fotografin HALA YAYINDA olan benzerleri (istatistik/gorsel.db)
+# Goz kontrolu icindir: "eslesme yok" denen urunleri ve hoslanilan urunun aynilarini bulmak.
+# Model (CLIP) ilk aramada ~30 sn'de yuklenir; is parcaciginda calisir, hub'i dondurmaz.
+# ============================================
+@app.get("/api/gorsel/durum")
+async def gorsel_durum():
+    from logic import gorsel_arama as GA
+    return await asyncio.to_thread(GA.status)
+
+
+@app.get("/api/gorsel/benzer/{product_id}")
+async def gorsel_benzer(product_id: str, k: int = 24):
+    from logic import gorsel_arama as GA
+    async with aiosqlite.connect(DB_FILE) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute("SELECT id, title, source_url, images_json, raw_images_json, processed_images_json "
+                               "FROM products WHERE id=?", (product_id,))
+        row = await cur.fetchone()
+    if not row:
+        return JSONResponse({"status": "error", "error": "Urun yok"}, 404)
+    try:
+        return await asyncio.to_thread(GA.similar_to_product, dict(row), max(1, min(k, 60)))
+    except Exception as e:
+        return JSONResponse({"status": "error", "error": f"{type(e).__name__}: {str(e)[:150]}"}, 500)
+
+
+@app.post("/api/gorsel/ara")
+async def gorsel_ara(request: Request):
+    from logic import gorsel_arama as GA
+    body = await request.json()
+    if not body.get("image"):
+        return JSONResponse({"status": "error", "error": "Gorsel yok"}, 400)
+    try:
+        return await asyncio.to_thread(GA.similar_to_upload, body["image"], max(1, min(int(body.get("k", 24)), 60)))
+    except Exception as e:
+        return JSONResponse({"status": "error", "error": f"{type(e).__name__}: {str(e)[:150]}"}, 500)
+
+
+# ============================================
 # NOKTA ATIS: capraz platform degerlemeleri (istatistik/capraz.db, salt okunur)
 # Favori / yayin sureclerinin DISINDA. Karar vermez; kullanici "TATANGA'ya Al" derse urun olusur.
 # ============================================
