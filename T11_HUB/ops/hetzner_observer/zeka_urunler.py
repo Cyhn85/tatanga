@@ -44,7 +44,11 @@ KOND_EXTRA = {"neu mit etikett": "yeni_etiketli", "new_with_tags": "yeni_etiketl
               "neu": "yeni", "sehr gut": "cok_iyi", "very_good": "cok_iyi", "neuwertig": "cok_iyi",
               "new with tags": "yeni_etiketli", "new without tags": "yeni", "very good": "cok_iyi",
               "nowy z metka": "yeni_etiketli", "nowy bez metki": "yeni", "bardzo dobry": "cok_iyi",
-              "nieuw": "yeni", "zo goed als nieuw": "cok_iyi", "etat neuf": "cok_iyi"}
+              "nieuw": "yeni", "zo goed als nieuw": "cok_iyi", "etat neuf": "cok_iyi",
+              # Vinted ES / IT / NL / SE (2026-10-16 yeni ulkeler)
+              "muy bueno": "cok_iyi", "nuevo con etiquetas": "yeni_etiketli", "nuevo sin etiquetas": "yeni",
+              "nuovo senza cartellino": "yeni", "ottimo": "cok_iyi", "nieuw zonder prijskaartje": "yeni",
+              "ny med prislapp": "yeni_etiketli", "ny utan prislapp": "yeni", "mycket bra": "cok_iyi"}
 
 
 def brand_table() -> list[tuple[str, list[str]]]:
