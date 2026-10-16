@@ -219,6 +219,10 @@
                             <div style="font-size:0.55rem;color:#888;">tutucu net</div>
                         </div>
                     </div>
+                    {% if p.zeka_sirala == 0 and p.zeka_isaret %}
+                    <div style="font-size:0.58rem;color:#dc3545;margin-top:3px;" title="{{ p.zeka_isaret }}">
+                        <i class="fas fa-ban me-1"></i>Siralama disi: {{ p.zeka_isaret.split(';')[0][:70] }}</div>
+                    {% endif %}
                 </div>
                 {% elif p.zeka_tarih %}
                 <div class="mt-1" style="font-size:0.58rem;color:#7a8794;" title="{{ p.zeka_isaret }}">

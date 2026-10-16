@@ -32,7 +32,7 @@ import capraz as C  # noqa: E402
 HUB_DB = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "data", "hub.db"))
 COLS = {"zeka_net_kar": "REAL", "zeka_net_medyan": "REAL", "zeka_satis_p25": "REAL", "zeka_satis_medyan": "REAL",
         "zeka_p30": "REAL", "zeka_beklenen": "REAL", "zeka_n": "INTEGER", "zeka_seviye": "TEXT",
-        "zeka_alis_toplam": "REAL", "zeka_isaret": "TEXT", "zeka_tarih": "TEXT"}
+        "zeka_alis_toplam": "REAL", "zeka_isaret": "TEXT", "zeka_tarih": "TEXT", "zeka_sirala": "INTEGER"}
 EU = {"DE", "AT", "FR", "BE", "NL", "IT", "PL", "ES", "PT", "LU", "DK", "SE", "FI", "IE", "CZ", "SK", "SI", "HU",
       "RO", "BG", "HR", "GR", "CY", "MT", "EE", "LV", "LT"}
 # TATANGA kategori agaci -> ortak kategori
@@ -99,7 +99,7 @@ def main() -> int:
     now = datetime.now().isoformat(timespec="seconds")
     updates = []
     for p in hub.execute("SELECT id, source_platform, source_url, title, price, currency, brand, size, condition, "
-                         "category, shipping_cost FROM products"):
+                         "category, shipping_cost, description FROM products"):
         title = p["title"] or ""
         why = None
         platform, cc = platform_of(p["source_platform"])
@@ -127,7 +127,7 @@ def main() -> int:
             why = "cocuk urunu"
         if why:
             reasons[why] += 1
-            updates.append((None, None, None, None, None, None, None, None, None, why, now, p["id"]))
+            updates.append((None, None, None, None, None, None, None, None, None, why, now, 0, p["id"]))
             continue
         price = p["price"] / rate
         flags = []
@@ -148,24 +148,27 @@ def main() -> int:
         model, line = matcher.match(brand, title)
         b = {"platform": platform, "sid": p["id"], "img": None, "line": line, "country": cc, "url": p["source_url"],
              "brand": brand, "cat": cat, "gender": None, "title": title, "model": model, "type": typ, "tier": tier,
-             "size": p["size"], "price": price, "cost": cost, "flags": flags, "structured": False}
+             "size": p["size"], "price": price, "cost": cost, "flags": flags, "structured": False,
+             "descr": p["description"]}
         r = eng.evaluate(b, stats)
         if not r:
             reasons["gercek satis verisi yetersiz / kategori uyusmaz"] += 1
             updates.append((None, None, None, None, None, None, None, None, round(cost, 2),
-                            "gercek satis verisi yetersiz", now, p["id"]))
+                            "gercek satis verisi yetersiz", now, 0, p["id"]))
             continue
         updates.append((round(r["net_kar_tutucu"], 2), round(r["net_kar_medyan"], 2), round(r["satis_p25"], 2),
                         round(r["satis_medyan"], 2), r["p30"], r["beklenen_kar_30g"], r["satis_n"],
                         f"{r['tahmin_seviye']} ({r['tahmin_kapsam']})", round(cost, 2), r["isaretler"] or None,
-                        now, p["id"]))
+                        now, 0 if r["siralama_disi"] else 1, p["id"]))
     hub.executemany("UPDATE products SET zeka_net_kar=?, zeka_net_medyan=?, zeka_satis_p25=?, zeka_satis_medyan=?, "
                     "zeka_p30=?, zeka_beklenen=?, zeka_n=?, zeka_seviye=?, zeka_alis_toplam=?, zeka_isaret=?, "
-                    "zeka_tarih=? WHERE id=?", updates)
+                    "zeka_tarih=?, zeka_sirala=? WHERE id=?", updates)
     hub.commit()
     scored = sum(1 for u in updates if u[0] is not None)
-    profit = sum(1 for u in updates if u[0] is not None and u[0] > 0)
-    print(f"ZEKA URUNLER: {len(updates)} urun | gercek satisla puanlanan {scored} | tutucu kar > 0: {profit}")
+    profit = sum(1 for u in updates if u[0] is not None and u[0] > 0 and u[11] == 1)
+    weak = sum(1 for u in updates if u[0] is not None and u[11] == 0)
+    print(f"ZEKA URUNLER: {len(updates)} urun | gercek satisla puanlanan {scored} | siralama disi (yem fiyat/"
+          f"zayif karsilastirma/farkli amac) {weak} | siralamaya giren ve tutucu kar > 0: {profit}")
     for k, v in sorted(reasons.items(), key=lambda x: -x[1]):
         print(f"  puanlanamadi: {v:>5}  {k}")
     return 0

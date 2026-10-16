@@ -694,9 +694,10 @@ async def products_page(
             "yeni": "created_at DESC",
             "eski": "created_at ASC",
             # GERCEK SATIS ZEKASI (ops/hetzner_observer/zeka_urunler.py yazar). Puanlanamayan urun en altta.
-            "zeka_kar": "zeka_net_kar IS NULL, zeka_net_kar DESC",
-            "zeka_beklenen": "zeka_beklenen IS NULL, zeka_beklenen DESC",
-            "zeka_hiz": "zeka_p30 IS NULL OR zeka_net_kar IS NULL OR zeka_net_kar <= 0, zeka_p30 DESC, zeka_net_kar DESC",
+            # siralama disi (yem fiyat < 5 EUR, zayif karsilastirma, "once yaz" ilanlari) her zaman en sonda
+            "zeka_kar": "COALESCE(zeka_sirala,0)=0, zeka_net_kar IS NULL, zeka_net_kar DESC",
+            "zeka_beklenen": "COALESCE(zeka_sirala,0)=0, zeka_beklenen IS NULL, zeka_beklenen DESC",
+            "zeka_hiz": "COALESCE(zeka_sirala,0)=0 OR zeka_p30 IS NULL OR zeka_net_kar <= 0, zeka_p30 DESC, zeka_net_kar DESC",
             "kar_yuksek": "profit_euro IS NULL, profit_euro DESC",
             "kar_dusuk": "profit_euro IS NULL, profit_euro ASC",
             "marj_yuksek": "profit_margin IS NULL, profit_margin DESC",
@@ -714,7 +715,7 @@ async def products_page(
         for _c, _d in (("zeka_net_kar", "REAL"), ("zeka_net_medyan", "REAL"), ("zeka_satis_p25", "REAL"),
                        ("zeka_satis_medyan", "REAL"), ("zeka_p30", "REAL"), ("zeka_beklenen", "REAL"),
                        ("zeka_n", "INTEGER"), ("zeka_seviye", "TEXT"), ("zeka_alis_toplam", "REAL"),
-                       ("zeka_isaret", "TEXT"), ("zeka_tarih", "TEXT")):
+                       ("zeka_isaret", "TEXT"), ("zeka_tarih", "TEXT"), ("zeka_sirala", "INTEGER")):
             if _c not in _have:
                 await db.execute(f"ALTER TABLE products ADD COLUMN {_c} {_d}")
         await db.commit()

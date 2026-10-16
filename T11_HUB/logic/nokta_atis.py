@@ -56,7 +56,7 @@ def firsatlar(run_id: str, sadece_cok_karli: bool, platform: str = "", kategori:
     if sadece_cok_karli:
         where.append("cok_karli=1")
     else:
-        where.append("net_kar_tutucu > 0")
+        where.append("net_kar_tutucu > 0 AND COALESCE(siralama_disi,0)=0")
     if platform:
         where.append("platform=?")
         args.append(platform)
