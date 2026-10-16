@@ -169,6 +169,7 @@ def run_trends() -> None:
         ("firsat", [sys.executable, str(obs / "firsat.py"), "--db", str(ARCHIVE), "--csv", str(TABLES_DIR)]),
         ("capraz", [sys.executable, str(obs / "capraz.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
                     "--csv", str(TABLES_DIR)]),
+        ("zeka-urunler", [sys.executable, str(obs / "zeka_urunler.py"), "--arsiv", str(ARCHIVE)]),
         ("karne", [sys.executable, str(obs / "karne.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
                    "--csv", str(TABLES_DIR)]),
     ):

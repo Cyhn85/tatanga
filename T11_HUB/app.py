@@ -693,6 +693,10 @@ async def products_page(
             "": "created_at DESC",
             "yeni": "created_at DESC",
             "eski": "created_at ASC",
+            # GERCEK SATIS ZEKASI (ops/hetzner_observer/zeka_urunler.py yazar). Puanlanamayan urun en altta.
+            "zeka_kar": "zeka_net_kar IS NULL, zeka_net_kar DESC",
+            "zeka_beklenen": "zeka_beklenen IS NULL, zeka_beklenen DESC",
+            "zeka_hiz": "zeka_p30 IS NULL OR zeka_net_kar IS NULL OR zeka_net_kar <= 0, zeka_p30 DESC, zeka_net_kar DESC",
             "kar_yuksek": "profit_euro IS NULL, profit_euro DESC",
             "kar_dusuk": "profit_euro IS NULL, profit_euro ASC",
             "marj_yuksek": "profit_margin IS NULL, profit_margin DESC",
@@ -706,6 +710,14 @@ async def products_page(
             "baslik": "title COLLATE NOCASE ASC",
         }
         order_by = SIRALAMA.get(sort, SIRALAMA[""])
+        _have = {r[1] for r in await (await db.execute("PRAGMA table_info(products)")).fetchall()}
+        for _c, _d in (("zeka_net_kar", "REAL"), ("zeka_net_medyan", "REAL"), ("zeka_satis_p25", "REAL"),
+                       ("zeka_satis_medyan", "REAL"), ("zeka_p30", "REAL"), ("zeka_beklenen", "REAL"),
+                       ("zeka_n", "INTEGER"), ("zeka_seviye", "TEXT"), ("zeka_alis_toplam", "REAL"),
+                       ("zeka_isaret", "TEXT"), ("zeka_tarih", "TEXT")):
+            if _c not in _have:
+                await db.execute(f"ALTER TABLE products ADD COLUMN {_c} {_d}")
+        await db.commit()
 
         cursor = await db.execute(
             f"SELECT * FROM products {where} ORDER BY {order_by} LIMIT ? OFFSET ?",
@@ -786,10 +798,15 @@ async def products_page(
     # Siralama menusu: is anlamina gore gruplanmis. Kullanici "hangi urunu
     # once alayim" sorusunu farkli aciardan sorar; menu o sorulari yansitir.
     sort_groups = [
-        ("Karlilik", [
-            ("kar_yuksek",  "En yuksek kar",      "Net kar (EUR) buyukten kucuge"),
-            ("marj_yuksek", "En yuksek marj",     "Yuzde kar marji buyukten kucuge"),
-            ("kar_dusuk",   "En dusuk kar",       "Zarar edenleri gormek icin"),
+        ("Gercek satis zekasi", [
+            ("zeka_kar",      "En karli (gercek satislara gore)", "Tutucu net kar: ayni urun grubunun gercek satislarinin alt ceyregi (P25)"),
+            ("zeka_beklenen", "Beklenen 30 gun kar",              "Tutucu net kar x 30 gunde satilma olasiligi"),
+            ("zeka_hiz",      "En hizli satilir (karlilar)",      "Karli urunler, 30 gunde satilma olasiligina gore"),
+        ]),
+        ("Karlilik (eski kaba tahmin)", [
+            ("kar_yuksek",  "Kar - eski tahmin",  "Eski hesap: satis = alis x ~1,4 (pahali urunu karli gosterir)"),
+            ("marj_yuksek", "Marj - eski tahmin", "Eski hesap"),
+            ("kar_dusuk",   "En dusuk kar (eski)", "Eski hesap"),
         ]),
         ("Fiyat", [
             ("fiyat_dusuk",  "Ucuzdan pahaliya",  "Ilan fiyati artan"),

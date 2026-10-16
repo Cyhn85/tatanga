@@ -60,7 +60,7 @@
                 type="button" data-bs-toggle="dropdown" data-bs-auto-close="true"
                 aria-expanded="false" style="border-color:rgba(255,255,255,.18);">
             <i class="fas fa-arrow-down-wide-short" style="color:#ffa500;"></i>
-            <span class="d-none d-sm-inline" style="font-size:.8rem;">
+            <span style="font-size:.8rem;">
                 {{ sort_labels.get(filters.sort, 'Sırala') }}
             </span>
         </button>
@@ -200,12 +200,38 @@
                     </div>
                 </div>
 
-                <!-- ARBITRAJ BLOGU: En iyi satis platformu -->
+                <!-- GERCEK SATIS ZEKASI (zeka_urunler.py): tutucu kar, gercek satislardan -->
+                {% if p.zeka_net_kar is not none %}
+                <div class="mt-1 p-2" style="background:{% if p.zeka_net_kar > 0 %}rgba(255,165,0,0.10){% else %}rgba(220,53,69,0.08){% endif %};
+                     border:1px solid {% if p.zeka_net_kar > 0 %}rgba(255,165,0,0.35){% else %}rgba(220,53,69,0.3){% endif %};border-radius:8px;"
+                     title="{{ p.zeka_seviye }}{% if p.zeka_isaret %} | {{ p.zeka_isaret }}{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div style="font-size:0.6rem;color:#ffa500;">ZEKA · GERCEK SATIS (n={{ p.zeka_n }})</div>
+                            <div style="font-size:0.68rem;color:#c8d0d8;">
+                                satis {{ "%.0f"|format(p.zeka_satis_p25) }} / {{ "%.0f"|format(p.zeka_satis_medyan) }}&euro;
+                                {% if p.zeka_p30 is not none %} · 30g %{{ "%.0f"|format(p.zeka_p30 * 100) }}{% endif %}
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div style="font-size:1rem;font-weight:700;color:{% if p.zeka_net_kar > 0 %}#ffa500{% else %}#dc3545{% endif %};">
+                                {{ "%+.2f"|format(p.zeka_net_kar) }} &euro;</div>
+                            <div style="font-size:0.55rem;color:#888;">tutucu net</div>
+                        </div>
+                    </div>
+                </div>
+                {% elif p.zeka_tarih %}
+                <div class="mt-1" style="font-size:0.58rem;color:#7a8794;" title="{{ p.zeka_isaret }}">
+                    <i class="fas fa-circle-question"></i> Zeka: {{ (p.zeka_isaret or 'puanlanamadi')[:48] }}
+                </div>
+                {% endif %}
+
+                <!-- ARBITRAJ BLOGU: En iyi satis platformu (ESKI kaba tahmin) -->
                 {% if p.best_sell_platform and p.profit_euro and p.profit_euro > 0 %}
                 <div class="mt-1 p-2" style="background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.3);border-radius:8px;">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div style="font-size:0.6rem;color:#28a745;">EN KARLI PLATFORM</div>
+                            <div style="font-size:0.6rem;color:#28a745;">EN KARLI PLATFORM <span style="color:#7a8794">(eski tahmin)</span></div>
                             <div style="font-size:0.8rem;font-weight:600;color:#fff;">
                                 <i class="fas fa-store" style="color:#28a745;"></i> {{ p.best_sell_platform }}
                             </div>

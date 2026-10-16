@@ -312,28 +312,23 @@ def save_db(rows: list[dict], n_sales: int, n_buys: int, stats: dict, late: bool
     return run_id
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--arsiv", default=os.path.join(ROOT, "arsiv.db"))
-    ap.add_argument("--alis", default=os.path.join(ROOT, "alis_arsiv.db"))
-    ap.add_argument("--csv", metavar="KLASOR")
-    args = ap.parse_args()
+class Engine:
+    """Gercek satis zekasi: bir kez kurulur, her alis ilanini ayni kurallarla degerlendirir (Nokta Atis + TATANGA urunleri)."""
 
-    conn = A.connect(args.arsiv)
-    alis = sqlite3.connect(args.alis)
-    alis.row_factory = sqlite3.Row
-    matcher = A.ModelMatcher()
-    rates = A.fx_rates(conn)
-    c = costs()
-    samples, _ = A.samples(conn, matcher, rates)
-    cond_f, market_f, _ = A.factors(samples)
-    ref = SellRef(conn, matcher, rates, cond_f, market_f)
+    def __init__(self, conn):
+        self.conn = conn
+        matcher = A.ModelMatcher()
+        rates = A.fx_rates(conn)
+        c = costs()
+        samples, _ = A.samples(conn, matcher, rates)
+        cond_f, market_f, _ = A.factors(samples)
+        ref = SellRef(conn, matcher, rates, cond_f, market_f)
+        from saglama import FAIL, run_checks
+        late = any(code == "T14" and lvl == FAIL for lvl, code, _ in run_checks(conn))
+        prob = {(r["seviye"], r["grup"].lower()): r for r in M.build(M.load(conn, matcher, rates))}
+        self.matcher, self.rates, self.c, self.ref, self.late, self.prob = matcher, rates, c, ref, late, prob
 
-    from saglama import FAIL, run_checks
-    late = any(code == "T14" and lvl == FAIL for lvl, code, _ in run_checks(conn))
-    prob = {(r["seviye"], r["grup"].lower()): r for r in M.build(M.load(conn, matcher, rates))}
-
-    def p30(b) -> tuple[float | None, str | None]:
+    def p30(self, b) -> tuple[float | None, str | None]:
         brand = b["brand"].lower()
         cands = []
         if b["model"]:
@@ -342,27 +337,26 @@ def main() -> int:
             cands.append(("marka·kategori·tip", f"{brand} · {b['cat']} · {b['type']}"))
         cands += [("marka·kategori", f"{brand} · {b['cat']}"), ("kategori", b["cat"])]
         for lv, g in cands:
-            r = prob.get((lv, g))
+            r = self.prob.get((lv, g))
             if r:
                 return r["p30_duzeltilmis"], lv
         return None, None
 
-    buys = [b for b in load_buys(alis, matcher, rates, c) if not CHILD_TITLE_RE.search(b["title"] or "")]
-    rows, stats = [], defaultdict(lambda: defaultdict(int))
-    for b in buys:
+    def evaluate(self, b, stats) -> dict | None:
+        ref, c, late = self.ref, self.c, self.late
         stats[b["platform"]]["ilan"] += 1
         chk = category_check(b["cat"], b["type"], b["title"], b["structured"])
         if chk == "baska":
             stats[b["platform"]]["kategori_uyusmaz"] += 1
-            continue
+            return None
         keys = keys_for(b["brand"], b["cat"] if chk == "ok" else None, b["model"], b["type"], b["line"])
-        prob30, plevel = p30(b)
+        prob30, plevel = self.p30(b)
         sell_cost = lambda sell: c["paketleme"] + (c["iade_payi_oran"] + c["satis_komisyonu_oran"]) * sell \
             + c["giden_kargo"]
         est = ref.estimate(keys, b["tier"], "*")
         if not est:
             stats[b["platform"]]["tahmin_yok"] += 1
-            continue
+            return None
         vals, n, level, scope = est
         kanit = sorted(round(v) for v in vals)
         sell, low = statistics.median(vals), quantile(vals, 0.25)
@@ -390,7 +384,7 @@ def main() -> int:
             flags.append(f"satis fiyatlari dagınık (P25 {best['low']:.0f} / medyan {best['sell']:.0f})")
         if best["net_low"] > 0:
             stats[b["platform"]]["kar>0"] += 1
-        rows.append({
+        return {
             "platform": b["platform"], "ulke": b["country"], "marka": b["brand"], "kategori": b["cat"],
             "cinsiyet": b["gender"], "baslik": (b["title"] or "")[:80], "model": b["model"], "seri": b["line"],
             "tur": b["type"],
@@ -403,7 +397,28 @@ def main() -> int:
                                               sorted(per_country.items(), key=lambda x: -x[1][0])),
             "isaretler": "; ".join(flags), "durum": "on sonuc (kontrol gecikmesi)" if late else "olculdu",
             "url": b["url"], "firsat_id": b["sid"], "gorsel": b["img"], "kanit": kanit,
-        })
+        }
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--arsiv", default=os.path.join(ROOT, "arsiv.db"))
+    ap.add_argument("--alis", default=os.path.join(ROOT, "alis_arsiv.db"))
+    ap.add_argument("--csv", metavar="KLASOR")
+    args = ap.parse_args()
+
+    conn = A.connect(args.arsiv)
+    alis = sqlite3.connect(args.alis)
+    alis.row_factory = sqlite3.Row
+    eng = Engine(conn)
+    matcher, rates, c, ref, late = eng.matcher, eng.rates, eng.c, eng.ref, eng.late
+
+    buys = [b for b in load_buys(alis, matcher, rates, c) if not CHILD_TITLE_RE.search(b["title"] or "")]
+    rows, stats = [], defaultdict(lambda: defaultdict(int))
+    for b in buys:
+        r = eng.evaluate(b, stats)
+        if r:
+            rows.append(r)
 
     def rank(r):
         return r["beklenen_kar_30g"] if r["beklenen_kar_30g"] is not None else r["net_kar_tutucu"] * 0.1
