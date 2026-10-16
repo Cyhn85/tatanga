@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% set active_page = "nokta_atis" %}
+
+{% block title %}Nokta Atis - TATANGA Hub{% endblock %}
+{% block page_title %}<i class="fas fa-crosshairs me-2 text-warning"></i>Nokta Atis{% endblock %}
+
+{% block content %}
+<style>
+  /* Bootstrap kart yazisi koyu (rgb 33,37,41) geliyor; koyu temada okunmuyordu -> sayfanin acik rengi */
+  #na-grid .card { color: #e4e6eb; }
+  #na-grid .card .text-muted, .na-note { color: rgba(228,230,235,0.62) !important; }
+  #na-grid details summary { cursor: pointer; }
+</style>
+{% if not taramalar %}
+<div class="text-center py-5">
+    <i class="fas fa-crosshairs fa-4x text-muted mb-3 d-block"></i>
+    <h5 class="text-muted">Henuz tarama yok</h5>
+    <p class="text-muted">Capraz degerleme her gun 08:00 ve 20:00 cekiminde calisir (istatistik/capraz.db).</p>
+</div>
+{% else %}
+
+<!-- TARAMA OZETI -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-2"><div class="stat-card">
+        <div class="stat-icon bg-info-soft"><i class="fas fa-fingerprint text-info"></i></div>
+        <div class="stat-value" style="font-size:0.95rem;">{{ secili.run_id }}</div>
+        <div class="stat-label">Tarama · {{ secili.ts[:16] }} UTC</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card">
+        <div class="stat-icon bg-primary-soft"><i class="fas fa-search text-primary"></i></div>
+        <div class="stat-value">{{ "{:,}".format(secili.alis_ilan).replace(",", ".") }}</div>
+        <div class="stat-label">Taranan alis ilani</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card">
+        <div class="stat-icon bg-secondary-soft"><i class="fas fa-balance-scale text-secondary"></i></div>
+        <div class="stat-value">{{ "{:,}".format(secili.tahminli).replace(",", ".") }}</div>
+        <div class="stat-label">Degerlenebilen</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card">
+        <div class="stat-icon bg-success-soft"><i class="fas fa-coins text-success"></i></div>
+        <div class="stat-value">{{ secili.karli }}</div>
+        <div class="stat-label">Tutucu karli</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card">
+        <div class="stat-icon bg-warning-soft"><i class="fas fa-fire text-warning"></i></div>
+        <div class="stat-value">{{ secili.cok_karli }}</div>
+        <div class="stat-label">Cok karli</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card">
+        <div class="stat-icon bg-danger-soft"><i class="fas fa-receipt text-danger"></i></div>
+        <div class="stat-value">{{ secili.vinted_satis }}</div>
+        <div class="stat-label">Referans gercek satis</div></div></div>
+</div>
+
+{% if secili.durum != 'olculdu' %}
+<div class="alert alert-warning py-2 small mb-3">
+    <i class="fas fa-exclamation-triangle me-1"></i>
+    <b>On sonuc:</b> Vinted kontrolleri gecikmeli ({{ secili.durum }}). Satis tahminleri {{ secili.vinted_satis }} gercek satisa dayaniyor.
+    Kararlar sende; tahmin, satislarin alt ceyregi (P25) ile tutucu hesaplanir.
+</div>
+{% endif %}
+
+<!-- SEKMELER -->
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link {% if sekme == 'cok_karli' %}active{% endif %}"
+        href="/nokta-atis?sekme=cok_karli&run={{ run_id }}"><i class="fas fa-fire me-1 text-warning"></i>Cok Karli</a></li>
+    <li class="nav-item"><a class="nav-link {% if sekme == 'tarama' %}active{% endif %}"
+        href="/nokta-atis?sekme=tarama&run={{ run_id }}"><i class="fas fa-list me-1"></i>Taramalar (tum karli)</a></li>
+</ul>
+
+{% if sekme == 'tarama' %}
+<div class="table-responsive mb-3">
+<table class="table table-sm table-dark table-hover small mb-0">
+    <thead><tr><th>Tarama</th><th>Zaman (UTC)</th><th class="text-end">Alis ilani</th><th class="text-end">Degerlenen</th>
+        <th class="text-end">Karli</th><th class="text-end">Cok karli</th><th class="text-end">Referans satis</th><th>Durum</th></tr></thead>
+    <tbody>
+    {% for t in taramalar %}
+    <tr {% if t.run_id == run_id %}class="table-active"{% endif %} style="cursor:pointer"
+        onclick="location.href='/nokta-atis?sekme=tarama&run={{ t.run_id }}'">
+        <td><code>{{ t.run_id }}</code></td><td>{{ t.ts[:16] }}</td><td class="text-end">{{ t.alis_ilan }}</td>
+        <td class="text-end">{{ t.tahminli }}</td><td class="text-end">{{ t.karli }}</td><td class="text-end">{{ t.cok_karli }}</td>
+        <td class="text-end">{{ t.vinted_satis }}</td><td>{{ t.durum }}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endif %}
+
+<!-- FILTRE -->
+<form class="d-flex flex-wrap gap-2 mb-3 align-items-end" method="get" action="/nokta-atis">
+    <input type="hidden" name="sekme" value="{{ sekme }}"><input type="hidden" name="run" value="{{ run_id }}">
+    <select name="platform" class="form-select form-select-sm" style="width:auto">
+        <option value="">Tum platformlar</option>
+        {% for p in facets.platform %}<option {% if f.platform == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+    </select>
+    <select name="kategori" class="form-select form-select-sm" style="width:auto">
+        <option value="">Tum kategoriler</option>
+        {% for k in facets.kategori %}<option {% if f.kategori == k %}selected{% endif %}>{{ k }}</option>{% endfor %}
+    </select>
+    <input name="marka" value="{{ f.marka }}" placeholder="Marka" class="form-control form-control-sm" style="width:130px">
+    <input name="min_net" value="{{ f.min_net }}" placeholder="Min net €" class="form-control form-control-sm" style="width:100px">
+    <select name="sira" class="form-select form-select-sm" style="width:auto">
+        <option value="beklenen" {% if f.sira == 'beklenen' %}selected{% endif %}>Beklenen 30 gun kar</option>
+        <option value="net" {% if f.sira == 'net' %}selected{% endif %}>Tutucu net kar</option>
+        <option value="hiz" {% if f.sira == 'hiz' %}selected{% endif %}>Satis hizi (30 gun)</option>
+        <option value="ucuz" {% if f.sira == 'ucuz' %}selected{% endif %}>En ucuz alis</option>
+    </select>
+    <button class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Filtrele</button>
+    <span class="na-note small ms-2">{{ items|length }} ilan</span>
+</form>
+
+{% if sekme == 'cok_karli' %}
+<p class="na-note small mb-3">
+    <i class="fas fa-info-circle me-1"></i>Cok karli = tutucu net kar (gercek satislarin alt ceyregiyle) <b>en az 20 €</b> VE tahmin
+    <b>ayni marka + ayni modelin</b> gercek satislarindan; supheli / replika riskli degil. Daha dusuk karli ya da model
+    eslesmesi olmayan karli ilanlar "Taramalar" sekmesinde.
+</p>
+{% endif %}
+
+<!-- KARTLAR -->
+{% if items %}
+<div class="row g-3" id="na-grid">
+    {% for it in items %}
+    <div class="col-6 col-md-4 col-lg-3" id="na-{{ it.firsat_id }}">
+        <div class="card h-100" style="border:1px solid rgba(255,255,255,0.08);">
+            <div style="position:relative;">
+                <img src="{{ it.gorsel or '/static/img/no-image.svg' }}" class="card-img-top" loading="lazy"
+                     style="height:180px;object-fit:cover;" referrerpolicy="no-referrer"
+                     onerror="this.src='/static/img/no-image.svg'" alt="{{ it.baslik }}">
+                <div style="position:absolute;top:6px;left:6px;display:flex;flex-direction:column;gap:3px;">
+                    <span class="badge bg-dark" style="font-size:0.6rem;">{{ it.platform }} · {{ it.ulke }}</span>
+                    <span class="badge bg-secondary" style="font-size:0.6rem;">{{ it.kondisyon_tr }}</span>
+                    {% if it.tatanga %}<span class="badge bg-primary" style="font-size:0.6rem;"><i class="fas fa-check me-1"></i>TATANGA'da</span>{% endif %}
+                </div>
+                <div style="position:absolute;top:6px;right:6px;">
+                    <span class="badge {% if it.cok_karli %}bg-warning text-dark{% else %}bg-success{% endif %}" style="font-size:0.65rem;">
+                        +{{ '%.0f'|format(it.net_kar_tutucu) }}€</span>
+                </div>
+                <div style="position:absolute;bottom:4px;right:6px;">
+                    <span class="badge bg-dark" style="font-size:0.55rem;opacity:0.85">{{ it.firsat_id }}</span>
+                </div>
+            </div>
+            <div class="card-body p-2 d-flex flex-column">
+                <a href="{{ it.url }}" target="_blank" rel="noopener" class="text-decoration-none"
+                   style="font-size:0.8rem;font-weight:600;color:inherit;line-height:1.3;display:block;margin-bottom:4px;">
+                    {{ (it.baslik or it.marka)[:60] }}</a>
+                <div class="text-muted mb-1" style="font-size:0.68rem;">
+                    {{ it.marka }} · {{ it.model or it.seri or it.tur or it.kategori }}{% if it.beden %} · {{ it.beden }}{% endif %}
+                </div>
+
+                <!-- ALIS -> SATIS -->
+                <div style="font-size:0.72rem;" class="mb-1">
+                    <div class="d-flex justify-content-between"><span>Alis (kargo+ucret)</span><b>{{ '%.2f'|format(it.alis_toplam) }}€</b></div>
+                    <div class="d-flex justify-content-between"><span>Vinted satis P25 / medyan</span>
+                        <b>{{ '%.0f'|format(it.satis_p25) }} / {{ '%.0f'|format(it.satis_medyan) }}€</b></div>
+                    <div class="d-flex justify-content-between" style="color:rgba(40,167,69,0.95)"><span>Net kar (tutucu / medyan)</span>
+                        <b>+{{ '%.0f'|format(it.net_kar_tutucu) }} / +{{ '%.0f'|format(it.net_kar_medyan) }}€</b></div>
+                    <div class="d-flex justify-content-between"><span>30 gunde satilma</span>
+                        <b>{% if it.p30 is not none %}%{{ '%.0f'|format(it.p30 * 100) }}{% else %}-{% endif %}</b></div>
+                    <div class="d-flex justify-content-between"><span>Beklenen 30 gun kar</span>
+                        <b>{% if it.beklenen_kar_30g is not none %}+{{ '%.1f'|format(it.beklenen_kar_30g) }}€{% else %}-{% endif %}</b></div>
+                </div>
+
+                <!-- KANIT -->
+                <details class="mb-1" style="font-size:0.65rem;">
+                    <summary class="text-info">Kanit: {{ it.satis_n }} gercek satis · {{ it.tahmin_seviye }}</summary>
+                    <div class="text-muted mt-1">{{ it.tahmin_kapsam }}</div>
+                    <div class="mt-1">Satis fiyatlari (€): {{ it.kanit|join(', ') }}</div>
+                    {% if it.ulke_net %}<div class="mt-1">Ulke bazli net (kendi verisi): {{ it.ulke_net }}</div>{% endif %}
+                </details>
+                {% for w in it.isaret_list %}
+                <div style="font-size:0.62rem;" class="text-warning"><i class="fas fa-flag me-1"></i>{{ w[:70] }}</div>
+                {% endfor %}
+
+                <!-- BUTONLAR -->
+                <div class="mt-auto pt-1" id="na-actions-{{ it.firsat_id }}">
+                    {% if it.tatanga %}
+                        {% set pid = it.tatanga.product_id %}
+                        <div class="d-flex gap-1 flex-wrap mb-1">
+                            <a href="/product/{{ pid }}" class="btn btn-outline-info btn-sm flex-fill" title="Detay" style="font-size:0.65rem;padding:3px 6px;"><i class="fas fa-eye"></i></a>
+                            <button class="btn btn-sm flex-fill" title="Arka Plan Kaldir" style="font-size:0.65rem;padding:3px 6px;border:1px solid #9b59b6;color:#9b59b6;" onclick="removeBg('{{ pid }}')"><i class="fas fa-magic"></i></button>
+                            <button class="btn btn-outline-warning btn-sm flex-fill" title="Baslik / Aciklama / SEO Uret" style="font-size:0.65rem;padding:3px 6px;" onclick="generateSeo('{{ pid }}')"><i class="fas fa-star"></i></button>
+                        </div>
+                        {% if it.tatanga.status != 'published' %}
+                        <button class="btn btn-primary btn-sm w-100" style="font-size:0.7rem;"
+                                onclick="publishNow('{{ pid }}', {{ '%.2f'|format(it.satis_medyan) }}, '{{ 'new_with_tags' if it.kondisyon != 'cok_iyi' else 'very_good' }}', '{{ it.firsat_id }}', '{{ 'schuhe' if it.kategori == 'schuhe' else (it.cinsiyet or 'herren') }}')">
+                            <i class="fas fa-rocket me-1"></i> cssberlin.de'de yayinla ({{ '%.0f'|format(it.satis_medyan) }}€)</button>
+                        {% else %}
+                        <a href="/published" class="btn btn-outline-primary btn-sm w-100" style="font-size:0.7rem;"><i class="fas fa-external-link-alt me-1"></i> Yayinda</a>
+                        {% endif %}
+                    {% else %}
+                        <div class="d-flex gap-1">
+                            <a href="{{ it.url }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" style="font-size:0.7rem;" title="Kaynak ilana git"><i class="fas fa-external-link-alt"></i></a>
+                            <button class="btn btn-success btn-sm flex-fill" style="font-size:0.7rem;"
+                                    onclick="alTatanga('{{ run_id }}', '{{ it.firsat_id }}', this)">
+                                <i class="fas fa-download me-1"></i> TATANGA'ya Al</button>
+                        </div>
+                    {% endif %}
+                    <div id="na-res-{{ it.firsat_id }}" class="mt-1" style="display:none;font-size:0.68rem;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="fas fa-search fa-3x mb-3 d-block"></i>
+    {% if sekme == 'cok_karli' %}Su an bu siki kosulu (model eslesmeli, tutucu net &ge; 20 €) gecen guvenilir ilan yok.<br>
+    Model duzeyinde gercek satis verisi arttikca bu ekran dolacak. Tum karli ilanlar "Taramalar" sekmesinde.
+    {% else %}Bu filtreyle ilan yok.{% endif %}
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function alTatanga(runId, firsatId, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Aliniyor...';
+    try {
+        const resp = await fetch('/api/nokta-atis/al', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                 body: JSON.stringify({run_id: runId, firsat_id: firsatId})});
+        const d = await resp.json();
+        if (d.status !== 'ok') throw new Error(d.error || 'alinamadi');
+        showToast(d.created ? 'Urun TATANGA\'ya eklendi' : 'Bu urun zaten TATANGA\'da', 'success');
+        setTimeout(() => location.reload(), 700);
+    } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-download me-1"></i> TATANGA\'ya Al';
+        showToast('Hata: ' + e.message, 'danger');
+    }
+}
+async function removeBg(productId) {
+    try { await fetch('/api/product/' + productId + '/remove-bg', {method: 'POST'}); showToast('Arka plan kaldirma baslatildi', 'info'); }
+    catch (e) { showToast('Hata: ' + e.message, 'danger'); }
+}
+async function generateSeo(productId) {
+    try { await fetch('/api/product/' + productId + '/generate-seo', {method: 'POST'}); showToast('Baslik / aciklama / SEO uretiliyor...', 'info'); }
+    catch (e) { showToast('Hata: ' + e.message, 'danger'); }
+}
+async function publishNow(productId, price, cond, firsatId, catSlug) {
+    const p = prompt('cssberlin.de satis fiyati (€) - oneri: gercek satislarin medyani', price.toFixed(2));
+    if (p === null) return;
+    const val = parseFloat(String(p).replace(',', '.'));
+    if (!val || val <= 0) { showToast('Gecerli bir fiyat girin', 'warning'); return; }
+    const res = document.getElementById('na-res-' + firsatId);
+    res.style.display = 'block';
+    res.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Yayinlaniyor...';
+    try {
+        const resp = await fetch('/api/product/' + productId + '/publish', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                 body: JSON.stringify({sell_price: val, condition: cond, category_slug: catSlug})});
+        const d = await resp.json();
+        if (d.status === 'published' || d.cssberlin_id) { res.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-1"></i>Yayinlandi</span>'; setTimeout(() => location.reload(), 1200); }
+        else {
+            // yayin engellendiyse eksik adimlar (SEO / islenmis gorsel) acikca gosterilir
+            const miss = (d.missing || []).map(m => '<div>• ' + m.split('→')[0] + '</div>').join('');
+            res.innerHTML = '<span class="text-danger"><i class="fas fa-times me-1"></i>' + (d.error || 'Yayin basarisiz') + '</span>' + miss;
+        }
+    } catch (e) { res.innerHTML = '<span class="text-danger">' + e.message + '</span>'; }
+}
+</script>
+{% endblock %}

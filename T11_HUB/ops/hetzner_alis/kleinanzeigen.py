@@ -186,6 +186,8 @@ def connect() -> sqlite3.Connection:
         conn.execute("ALTER TABLE ka_ads ADD COLUMN views INTEGER")
     if "tries" not in {r[1] for r in conn.execute("PRAGMA table_info(ka_ads)")}:
         conn.execute("ALTER TABLE ka_ads ADD COLUMN tries INTEGER DEFAULT 0")
+    if "image_url" not in {r[1] for r in conn.execute("PRAGMA table_info(ka_ads)")}:
+        conn.execute("ALTER TABLE ka_ads ADD COLUMN image_url TEXT")   # yalniz adres; gorsel saklanmaz
     return conn
 
 
@@ -222,6 +224,8 @@ CARDS_JS = r"""
     adid: a.dataset.adid, href: a.dataset.href,
     top: !!(li && li.querySelector('svg path[fill="#5A33AE"]')),
     title: (a.querySelector('h3')?.textContent || '').trim(),
+    img: (() => { try { return JSON.parse(a.querySelector('script[type="application/ld+json"]').textContent).contentUrl || null; }
+                  catch (e) { return null; } })(),
     price: priceEl ? priceEl.textContent.trim() : null,
     place: spans.find(s => /^\d{5}\b/.test(s)) || null,
     date: spans.find(s => /^(Heute|Gestern|\d{2}\.\d{2}\.\d{4})/.test(s)) || null,
@@ -445,6 +449,8 @@ async def visit_cell(br: Browser, conn, cell: dict) -> dict:
             (c["adid"], cell["id"], cell["brand"], cell["cat"], cell["gender"], SITE + c["href"], c["title"],
              price, ptype, size, plz, place, parse_card_date(c["date"], now_b), int(c["top"]),
              int("Direkt kaufen" in badges), shipping, 1 if is_first else 0, has_brand))
+        if c.get("img"):
+            conn.execute("UPDATE ka_ads SET image_url=? WHERE adid=?", (c["img"], c["adid"]))
         out["kart"] += 1
         out["yeni"] += 1 if c["adid"] not in seen and not is_first else 0
     conn.commit()

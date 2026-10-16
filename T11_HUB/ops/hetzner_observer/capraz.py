@@ -90,6 +90,15 @@ def quantile(vals: list[float], q: float) -> float:
     return v[lo] + (v[hi] - v[lo]) * (pos - lo)
 
 
+# Basliktaki cocuk isareti: eBay'de beden alani yok, beden kurali tek basina yetmiyor
+# (2026-10-16: "Jeansjacke Levis For Girls Gr. S" karli listeye girdi). Cocuk beden numaralari 104-176.
+CHILD_TITLE_RE = re.compile(
+    r"\b(kinder\w*|kids?|girls?|boys?|jungen|madchen|mädchen|maedchen|baby|babies|enfants?|fille|garcon|garçon|"
+    r"bambin[oai]|ragazz[oai]|junior|teen|youth|kinderjacke|kindermantel)\b|"
+    r"\b(gr\.?|größe|grosse|size|taille|taglia)\s*(104|110|116|122|128|134|140|146|152|158|164|170|176)\b",
+    re.I)
+
+
 def costs() -> dict:
     raw = json.load(open(os.path.join(BASE_DIR, "maliyet.json"), encoding="utf-8"))
     return {k: v["deger"] for k, v in raw.items() if not k.startswith("_")}
@@ -174,6 +183,10 @@ class SellRef:
         return None
 
 
+def col(row, name):
+    return row[name] if name in row.keys() else None
+
+
 def load_buys(alis, matcher, rates, c) -> list[dict]:
     out = []
     now = datetime.utcnow()
@@ -196,7 +209,8 @@ def load_buys(alis, matcher, rates, c) -> list[dict]:
         if r["seller_since"] and r["seller_since"] > (now - timedelta(days=90)).strftime("%Y-%m-%d"):
             flags.append("yeni satici hesabi")
         model, line = matcher.match(r["brand"], r["title"] or "")
-        out.append({"platform": "Kleinanzeigen", "line": line, "country": "DE", "url": r["url"], "brand": r["brand"],
+        out.append({"platform": "Kleinanzeigen", "sid": "KA-" + r["adid"], "img": col(r, "image_url"),
+                    "line": line, "country": "DE", "url": r["url"], "brand": r["brand"],
                     "cat": r["cat"], "gender": r["gender"], "title": r["title"], "model": model,
                     "type": A.match_type(A.norm_text(r["title"] or "")), "tier": tier, "size": r["groesse"],
                     "price": price, "cost": cost, "flags": flags, "structured": False})
@@ -213,10 +227,15 @@ def load_buys(alis, matcher, rates, c) -> list[dict]:
         flags = []
         if "BEST_OFFER" in (r["buying"] or ""):
             flags.append("teklif verilebilir")
-        if r["seller_pct"] is not None and r["seller_pct"] < 97:
+        # Satis gecmisi olmayan satici (puan 0 / degerlendirme yok): replika riski. 2026-10-16: Estonya'dan
+        # puansiz satici "Arc'teryx Beta LT"yi ayni ilanla 7 adet satiyordu (gercek fiyatin cok altinda).
+        if (r["seller_score"] is not None and r["seller_score"] <= 0) or r["seller_pct"] == 0:
+            flags.append("REPLIKA RISKI: saticinin satis gecmisi yok")
+        elif r["seller_pct"] is not None and r["seller_pct"] < 97:
             flags.append(f"satici puani %{r['seller_pct']:.0f}")
         model, line = matcher.match(r["brand"], r["title"] or "")
-        out.append({"platform": "eBay", "line": line, "country": r["country"], "url": r["url"], "brand": r["brand"],
+        out.append({"platform": "eBay", "sid": "EB-" + r["item_id"].replace("|", "-"), "img": col(r, "image_url"),
+                    "line": line, "country": r["country"], "url": r["url"], "brand": r["brand"],
                     "cat": r["cat"], "gender": r["gender"], "title": r["title"], "model": model,
                     "type": A.match_type(A.norm_text(r["title"] or "")), "tier": tier, "size": None,
                     "price": price, "cost": price * (1 + c["ebay_alici_ucret_oran"]) + r["ship_cost"] / rate,
@@ -233,11 +252,64 @@ def load_buys(alis, matcher, rates, c) -> list[dict]:
         if r["defect_n"]:
             flags.append(f"kusur: {r['defects']}")
         title = f"{r['brand']} {r['type'] or ''}"
-        out.append({"platform": "Sellpy", "line": None, "country": "DE", "url": r["url"], "brand": r["brand_q"], "cat": r["cat"],
+        out.append({"platform": "Sellpy", "sid": "SP-" + r["object_id"], "img": col(r, "image_url"),
+                    "line": None, "country": "DE", "url": r["url"], "brand": r["brand_q"], "cat": r["cat"],
                     "gender": r["gender"], "title": title, "model": None,
                     "type": A.match_type(A.norm_text(r["type"] or "")), "tier": tier, "size": r["size"],
                     "price": r["price"], "cost": r["price"] + c["sellpy_kargo"], "flags": flags, "structured": True})
     return out
+
+
+DB_OUT = os.path.join(ROOT, "capraz.db")
+KEEP_RUNS = 10
+# 'Cok karli' (Nokta Atis ana ekrani): kullanici karari 2026-10-16 -> TUTUCU net kar >= 20 EUR VE tahmin
+# KESIN marka+model eslesmesinden (ayni marka ve modelin gercek satislari). Tur/seri/kategori ortalamasi girmez.
+COK_KARLI = {"net_min": 20.0, "seviye": "marka·model"}
+
+
+def save_db(rows: list[dict], n_sales: int, n_buys: int, stats: dict, late: bool) -> str:
+    """
+    Her calisma bir TARAMA kimligi alir (TRM-YYYYMMDD-HHMM). TATANGA 'Nokta Atis' ekrani bu tabloyu SALT OKUR.
+    Son 10 tarama tutulur.
+    """
+    from datetime import datetime as _dt, timezone as _tz
+    run_id = "TRM-" + _dt.now(_tz.utc).strftime("%Y%m%d-%H%M")
+    db = sqlite3.connect(DB_OUT)
+    db.executescript("""
+    CREATE TABLE IF NOT EXISTS taramalar (run_id TEXT PRIMARY KEY, ts TEXT, alis_ilan INTEGER, tahminli INTEGER,
+        karli INTEGER, cok_karli INTEGER, vinted_satis INTEGER, durum TEXT, platform_json TEXT);
+    CREATE TABLE IF NOT EXISTS firsatlar (run_id TEXT, firsat_id TEXT, platform TEXT, ulke TEXT, marka TEXT,
+        kategori TEXT, cinsiyet TEXT, baslik TEXT, model TEXT, seri TEXT, tur TEXT, kondisyon TEXT, beden TEXT,
+        fiyat REAL, alis_toplam REAL, satis_p25 REAL, satis_medyan REAL, net_kar_tutucu REAL, net_kar_medyan REAL,
+        p30 REAL, beklenen_kar_30g REAL, tahmin_seviye TEXT, tahmin_kapsam TEXT, satis_n INTEGER,
+        ulke_net TEXT, isaretler TEXT, durum TEXT, url TEXT, gorsel TEXT, kanit_json TEXT, cok_karli INTEGER,
+        PRIMARY KEY (run_id, firsat_id));
+    CREATE INDEX IF NOT EXISTS ix_firsat_run ON firsatlar (run_id, cok_karli, beklenen_kar_30g);
+    """)
+    def is_top(r):
+        return (r["net_kar_tutucu"] >= COK_KARLI["net_min"] and r["tahmin_seviye"] == COK_KARLI["seviye"]
+                and "supheli" not in r["isaretler"] and "REPLIKA" not in r["isaretler"])
+    karli = sum(1 for r in rows if r["net_kar_tutucu"] > 0)
+    top = sum(1 for r in rows if is_top(r))
+    db.execute("INSERT OR REPLACE INTO taramalar VALUES (?,?,?,?,?,?,?,?,?)",
+               (run_id, _dt.now(_tz.utc).strftime("%Y-%m-%d %H:%M:%S"), n_buys, len(rows), karli, top, n_sales,
+                "on sonuc (kontrol gecikmesi)" if late else "olculdu",
+                json.dumps({p: dict(v) for p, v in stats.items()}, ensure_ascii=False)))
+    for r in rows:
+        db.execute("INSERT OR REPLACE INTO firsatlar VALUES (" + ",".join("?" * 31) + ")", (
+            run_id, r["firsat_id"], r["platform"], r["ulke"], r["marka"], r["kategori"], r["cinsiyet"], r["baslik"],
+            r["model"], r["seri"], r["tur"], r["kondisyon"], r["beden"], r["fiyat"], r["alis_toplam"], r["satis_p25"],
+            r["satis_medyan"], r["net_kar_tutucu"], r["net_kar_medyan"], r["p30"], r["beklenen_kar_30g"],
+            r["tahmin_seviye"], r["tahmin_kapsam"], r["satis_n"], r["ulke_net_kendi_verisi"], r["isaretler"],
+            r["durum"], r["url"], r["gorsel"], json.dumps(r["kanit"][:60]), 1 if is_top(r) else 0))
+    old = [x[0] for x in db.execute("SELECT run_id FROM taramalar ORDER BY run_id DESC").fetchall()[KEEP_RUNS:]]
+    for o in old:
+        db.execute("DELETE FROM firsatlar WHERE run_id=?", (o,))
+        db.execute("DELETE FROM taramalar WHERE run_id=?", (o,))
+    db.commit()
+    db.close()
+    print(f"TARAMA {run_id}: {len(rows)} degerleme, {karli} karli, {top} cok karli -> {DB_OUT}")
+    return run_id
 
 
 def main() -> int:
@@ -275,7 +347,7 @@ def main() -> int:
                 return r["p30_duzeltilmis"], lv
         return None, None
 
-    buys = load_buys(alis, matcher, rates, c)
+    buys = [b for b in load_buys(alis, matcher, rates, c) if not CHILD_TITLE_RE.search(b["title"] or "")]
     rows, stats = [], defaultdict(lambda: defaultdict(int))
     for b in buys:
         stats[b["platform"]]["ilan"] += 1
@@ -292,6 +364,7 @@ def main() -> int:
             stats[b["platform"]]["tahmin_yok"] += 1
             continue
         vals, n, level, scope = est
+        kanit = sorted(round(v) for v in vals)
         sell, low = statistics.median(vals), quantile(vals, 0.25)
         spread = (quantile(vals, 0.75) - low) / sell if sell else 0
         net = sell - b["cost"] - sell_cost(sell)
@@ -329,7 +402,7 @@ def main() -> int:
             "ulke_net_kendi_verisi": " ".join(f"{k}:{v[0]:+.0f}(n{v[1]})" for k, v in
                                               sorted(per_country.items(), key=lambda x: -x[1][0])),
             "isaretler": "; ".join(flags), "durum": "on sonuc (kontrol gecikmesi)" if late else "olculdu",
-            "url": b["url"],
+            "url": b["url"], "firsat_id": b["sid"], "gorsel": b["img"], "kanit": kanit,
         })
 
     def rank(r):
@@ -351,15 +424,16 @@ def main() -> int:
               f"{r['net_kar_tutucu']:>6.0f}€"
               f"{(r['p30'] or 0)*100:>4.0f}%{(r['beklenen_kar_30g'] or 0):>5.0f}€  "
               f"{r['tahmin_seviye']} ({r['tahmin_kapsam']}) n={r['satis_n']} | ulke: {r['ulke_net_kendi_verisi'] or '-'}")
+    save_db(rows, ref.n_sales, len(buys), stats, late)
     if args.csv:
         os.makedirs(args.csv, exist_ok=True)
-        cols = list(rows[0].keys()) if rows else []
+        cols = [k for k in (rows[0].keys() if rows else []) if k != "kanit"]
         with open(os.path.join(args.csv, "capraz_firsatlar.csv"), "w", encoding="utf-8-sig", newline="") as fh:
             w = csv.writer(fh, delimiter=";")
             w.writerow(cols)
             for r in rows:
                 w.writerow([str(round(v * 100, 1) if k == "p30" else round(v, 2)).replace(".", ",")
-                            if isinstance(v, float) else ("" if v is None else v) for k, v in r.items()])
+                            if isinstance(v, float) else ("" if v is None else v) for k, v in r.items() if k != "kanit"])
     return 0
 
 

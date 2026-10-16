@@ -61,6 +61,8 @@ def connect():
         last_total INTEGER, visits INTEGER DEFAULT 0);
     CREATE TABLE IF NOT EXISTS sp_budget (day TEXT PRIMARY KEY, pages INTEGER);
     """)
+    if "image_url" not in {r[1] for r in conn.execute("PRAGMA table_info(sp_items)")}:
+        conn.execute("ALTER TABLE sp_items ADD COLUMN image_url TEXT")   # yalniz adres; gorsel saklanmaz
     return conn
 
 
@@ -134,7 +136,10 @@ def save_hits(conn, cell: dict, hits: list[dict], baseline: bool) -> tuple[int, 
         lvl = (h.get("categories") or {})
         path = (lvl.get("lvl3") or lvl.get("lvl2") or lvl.get("lvl1") or [None])[0]
         conn.execute(
-            "INSERT INTO sp_items VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"
+            "INSERT INTO sp_items (object_id, cell, brand_q, brand, brand_ok, gender, cat, cat_path, type, "
+            "condition, defects, defect_n, size, color, material, season, price, old_price, fav, first_offered, "
+            "sale_started, created, reserved, for_sale, sale_type, p2p, price_point, url, baseline, first_seen, "
+            "last_seen) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"
             "datetime('now'),datetime('now')) ON CONFLICT(object_id) DO UPDATE SET last_seen=datetime('now'), "
             "price=excluded.price, old_price=excluded.old_price, fav=excluded.fav, reserved=excluded.reserved, "
             "for_sale=excluded.for_sale",
@@ -148,6 +153,8 @@ def save_hits(conn, cell: dict, hits: list[dict], baseline: bool) -> tuple[int, 
              int(bool(h.get("isReserved"))), int(bool(h.get("isForSale"))), h.get("saleType"),
              int(bool(h.get("p2p"))), (h.get("brandClassification") or {}).get("pricePoint"),
              f"{SITE}/item/{h['objectID']}", 1 if baseline else 0))
+        if h.get("images"):
+            conn.execute("UPDATE sp_items SET image_url=? WHERE object_id=?", (h["images"][0], h["objectID"]))
     conn.commit()
     return len(hits) - off, len(set(ids) - seen), off
 

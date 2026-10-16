@@ -144,7 +144,7 @@ def connect():
     CREATE TABLE IF NOT EXISTS eb_track_raw (status TEXT PRIMARY KEY, n INTEGER, example TEXT);
     """)
     cols = {r[1] for r in conn.execute("PRAGMA table_info(eb_items)")}
-    for name, decl in (("market", "TEXT"), ("bid_count", "INTEGER")):
+    for name, decl in (("market", "TEXT"), ("bid_count", "INTEGER"), ("image_url", "TEXT")):
         if name not in cols:
             conn.execute(f"ALTER TABLE eb_items ADD COLUMN {name} {decl}")
     # ulke bazina gecmeden onceki kayitlar yalnizca EBAY_DE'den gelmisti
@@ -213,6 +213,9 @@ def visit_cell(api: Api, conn, cell: dict) -> dict:
              (it.get("categories") or [{}])[0].get("categoryId"),
              1 if K.title_has_brand(it.get("title", ""), cell["aliases"]) else 0, 1 if first else 0,
              cell["market"], it.get("bidCount")))
+        img = (it.get("image") or {}).get("imageUrl") or ((it.get("thumbnailImages") or [{}])[0]).get("imageUrl")
+        if img:
+            conn.execute("UPDATE eb_items SET image_url=? WHERE item_id=?", (img, it["itemId"]))
         if not first and it["itemId"] not in seen:
             new_ids.append(it["itemId"])
     # takip: yalnizca takip basladiktan sonra ilk kez gorulen ilanlar (yasi bilinir); hucre basina sinirli

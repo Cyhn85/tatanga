@@ -5118,6 +5118,81 @@ async def get_watchlist():
         items = [dict(zip(cols, row)) for row in await cursor.fetchall()]
     return {"watchlist": items, "count": len(items)}
 
+# ============================================
+# NOKTA ATIS: capraz platform degerlemeleri (istatistik/capraz.db, salt okunur)
+# Favori / yayin sureclerinin DISINDA. Karar vermez; kullanici "TATANGA'ya Al" derse urun olusur.
+# ============================================
+@app.get("/nokta-atis", response_class=HTMLResponse)
+async def nokta_atis_page(request: Request, sekme: str = "cok_karli", run: str = "", platform: str = "",
+                          kategori: str = "", marka: str = "", min_net: str = "", sira: str = "beklenen"):
+    from logic import nokta_atis as NA
+    taramalar = NA.runs()
+    run_id = run or (taramalar[0]["run_id"] if taramalar else "")
+    secili = next((t for t in taramalar if t["run_id"] == run_id), None)
+    try:
+        mn = float(min_net) if min_net else None
+    except ValueError:
+        mn = None
+    items = NA.firsatlar(run_id, sekme == "cok_karli", platform, kategori, marka, mn, sira) if run_id else []
+    alinan = {}
+    async with aiosqlite.connect(DB_FILE) as db:
+        await db.execute("CREATE TABLE IF NOT EXISTS nokta_atis_alinan (firsat_id TEXT PRIMARY KEY, "
+                         "product_id TEXT, run_id TEXT, alindi TEXT)")
+        await db.commit()
+        cur = await db.execute("SELECT a.firsat_id, a.product_id, p.status FROM nokta_atis_alinan a "
+                               "LEFT JOIN products p ON p.id = a.product_id")
+        alinan = {r[0]: {"product_id": r[1], "status": r[2]} for r in await cur.fetchall()}
+    for it in items:
+        it["tatanga"] = alinan.get(it["firsat_id"])
+    return templates.TemplateResponse("nokta_atis.html", {
+        "request": request, "sekme": sekme, "taramalar": taramalar, "secili": secili, "run_id": run_id,
+        "items": items, "facets": NA.facets(run_id) if run_id else {},
+        "f": {"platform": platform, "kategori": kategori, "marka": marka, "min_net": min_net, "sira": sira},
+    })
+
+
+@app.post("/api/nokta-atis/al")
+async def nokta_atis_al(request: Request):
+    """Secilen firsati TATANGA urunu yapar (kaniti arbitrage_json'da). Ayni kaynak varsa yeniden olusturmaz."""
+    from logic import nokta_atis as NA
+    body = await request.json()
+    f = NA.firsat(body.get("run_id", ""), body.get("firsat_id", ""))
+    if not f:
+        return JSONResponse({"status": "error", "error": "Firsat bulunamadi (tarama yenilenmis olabilir)"}, 404)
+    row = NA.product_row(f, gen_id)
+    async with aiosqlite.connect(DB_FILE) as db:
+        await db.execute("CREATE TABLE IF NOT EXISTS nokta_atis_alinan (firsat_id TEXT PRIMARY KEY, "
+                         "product_id TEXT, run_id TEXT, alindi TEXT, kanit_json TEXT)")
+        cur = await db.execute("SELECT id FROM products WHERE source_url=?", (row["source_url"],))
+        hit = await cur.fetchone()
+        if hit:
+            pid, created = hit[0], False
+        else:
+            pid, created = row["id"], True
+            await db.execute("""
+                INSERT INTO products (id, source_platform, source_url, source_id, title, price, currency, brand,
+                    size, condition, category, images_json, estimated_sell_price, profit_margin, profit_euro,
+                    total_cost, recommendation, best_sell_platform, arbitrage_json, scraped_at, status)
+                VALUES (?,?,?,?,?,?,'EUR',?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+                row["id"], row["source_platform"], row["source_url"], row["source_id"], row["title"], row["price"],
+                row["brand"], row["size"], row["condition"], row["category"], row["images_json"],
+                row["estimated_sell_price"], row["profit_margin"], row["profit_euro"], row["total_cost"],
+                row["recommendation"], row["best_sell_platform"], row["arbitrage_json"], row["scraped_at"],
+                row["status"]))
+        cols = {r[1] for r in await (await db.execute("PRAGMA table_info(nokta_atis_alinan)")).fetchall()}
+        if "kanit_json" not in cols:
+            await db.execute("ALTER TABLE nokta_atis_alinan ADD COLUMN kanit_json TEXT")
+        await db.execute("INSERT OR REPLACE INTO nokta_atis_alinan (firsat_id, product_id, run_id, alindi, kanit_json) "
+                         "VALUES (?,?,?,?,?)", (f["firsat_id"], pid, f["run_id"], datetime.now().isoformat(),
+                                                row["kanit_json"]))
+        await db.commit()
+    if created:
+        await log_activity("nokta_atis", f"Nokta atis -> urun: {row['title'][:50]} ({f['platform']}, "
+                                         f"tutucu net {row['profit_euro']} EUR)")
+    return {"status": "ok", "product_id": pid, "created": created,
+            "sell_price": row["estimated_sell_price"], "publish_condition": row["publish_condition"]}
+
+
 @app.get("/watchlist", response_class=HTMLResponse)
 async def watchlist_page(request: Request):
     """Takip listesi sayfasi"""

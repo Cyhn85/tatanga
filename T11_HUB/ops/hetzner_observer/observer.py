@@ -1046,17 +1046,20 @@ def check_listing(conn: sqlite3.Connection, fetcher: Fetcher, row: sqlite3.Row) 
     # Kontrol, o anki oturumun alan adindan yapilir: her ilan icin ulke degistirmek her seferinde ek bir
     # oturum istegi demekti (istek sayisi ikiye katlaniyordu). Oturumun alani beklemedeyse saglikli biri secilir.
     orig_market, url = row["market"], row["url"]
+    # Hat kontrolu ISTEKTEN ONCE: 2026-10-16'da tum pazarlar sunucu IP'si cezasiyla beklemedeyken istek hic
+    # atilmadigi icin gozlemci 10 saat boyunca acik ev tunelini fark etmedi.
+    fetcher._check_hat()
     cooling = fetcher.cooling_markets()
     if fetcher.warm_market and fetcher.warm_market not in cooling:
         market = fetcher.warm_market
     else:
         market = next((m for m in ALT_MARKETS if m not in cooling), None)
         if market is None:
-            return "error"
+            return "skip"    # istek atilmadi: "kontrol edildi" SAYILMAZ
     url = url.replace(f"www.{orig_market}", f"www.{market}")
     fetcher.warm(market)
     if market in fetcher.cooling_markets():
-        return "error"   # oturum acilisi az once reddedildi
+        return "skip"   # oturum acilisi az once reddedildi
     html = fetcher.get(url, scan_limit=ITEM_PAGE_SCAN_LIMIT, stage="ilan")
     ts = iso(now())
 
@@ -1159,6 +1162,10 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
         limit = min(fetcher.budget_left(), int(cfg["budget"].get("checks_per_cycle", 200)))
         for row in due_listings(conn, cfg, limit):
             state = check_listing(conn, fetcher, row)
+            if state == "skip":
+                if len(fetcher.cooling_markets()) >= len(ALT_MARKETS) or fetcher.paused_until():
+                    break        # hicbir pazar kullanilamiyor: 150 satiri bosuna dolasma
+                continue
             stats["checked"] += 1
             if state == "sold":
                 stats["sold"] += 1
@@ -1167,6 +1174,7 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
 
         # Sonra kesif, yalnizca kontrol payi korunuyorsa. Takip kapasitesi doluysa da kesif
         # SURER: ornek havuzu (fiyat iskeleti) beslenir, sadece yeni ilan takibe alinmaz.
+        fetcher._check_hat()
         for cell in build_cells(cfg):
             if fetcher.budget_left() <= reserve:
                 break
