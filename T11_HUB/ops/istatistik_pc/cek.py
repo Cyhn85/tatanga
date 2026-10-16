@@ -35,6 +35,10 @@ LOG = ROOT / "cek.log"
 ALIS_ARCHIVE = ROOT / "alis_arsiv.db"
 ALIS_REMOTE = "/opt/tatanga-alis"
 
+# Gorev pythonw ile (konsolsuz) calisir; ssh/scp gibi konsol programlari her cagrida bos bir pencere acip
+# kapatiyordu (kullanici 2026-10-16'da fark etti). Windows'ta alt surecler pencere acmadan calistirilir.
+NO_WINDOW = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+
 # tablo -> (benzersiz anahtar, cakisma davranisi). listings/health guncellenir, digerleri bir kez yazilir.
 KEYS = {
     "catalog_samples": ("item_id", "IGNORE"),
@@ -63,7 +67,7 @@ def log(msg: str) -> None:
 
 def ssh(cmd: str, timeout: int = 600) -> str:
     res = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ServerAliveInterval=30", SERVER, cmd],
-                         capture_output=True, text=True, encoding="utf-8", timeout=timeout)
+                         capture_output=True, text=True, encoding="utf-8", timeout=timeout, **NO_WINDOW)
     if res.returncode != 0:
         raise RuntimeError(f"ssh hatasi ({res.returncode}): {res.stderr.strip()[:300]}")
     return res.stdout
@@ -71,7 +75,7 @@ def ssh(cmd: str, timeout: int = 600) -> str:
 
 def scp(remote: str, local: Path) -> None:
     res = subprocess.run(["scp", "-q", "-o", "BatchMode=yes", f"{SERVER}:{remote}", str(local)],
-                         capture_output=True, text=True, timeout=1800)
+                         capture_output=True, text=True, timeout=1800, **NO_WINDOW)
     if res.returncode != 0:
         raise RuntimeError(f"scp hatasi: {res.stderr.strip()[:300]}")
 
@@ -169,7 +173,7 @@ def run_trends() -> None:
                    "--csv", str(TABLES_DIR)]),
     ):
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=1200,
+            res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=1200, **NO_WINDOW,
                                  env={**__import__("os").environ, "PYTHONIOENCODING": "utf-8"})
             last = (res.stdout or res.stderr).strip().splitlines()[-1:] or ["-"]
             log(f"trend {name}: {'tamam' if res.returncode == 0 else 'HATA'} | {last[0][:120]}")

@@ -280,7 +280,8 @@ async def run(max_pages: int | None) -> None:
                 await asyncio.sleep(900)
                 continue
             cell = todo[0]
-            res = await visit_cell(br, lst, conn, cell, budget_left)
+            res = await br.guarded(visit_cell(br, lst, conn, cell, budget_left), f"sellpy {cell['id']}") \
+                or {"sayfa": 0, "kayit": 0, "yeni": 0, "okundu": False}
             log(f"{cell['id']}: {res}")
         await br.close()
     log("bitti")

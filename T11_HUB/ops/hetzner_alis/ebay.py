@@ -99,11 +99,11 @@ class Api:
                 "Authorization": "Bearer " + self._token(), "X-EBAY-C-MARKETPLACE-ID": MARKETS[market],
                 "X-EBAY-C-ENDUSERCTX": BUYER_CTX})
             data = json.load(urllib.request.urlopen(req, timeout=30))
-            K.count_page(self.conn)
+            # sayac: health tablosu (calls_today). K.count_page KULLANILMAZ: o Kleinanzeigen'in sayfa butcesi;
+            # 2026-10-13/14'te eBay cagrilari onu doldurup Kleinanzeigen'i 48 saat durdurdu.
             K.note(self.conn, stage, "ok")
             return 200, data
         except urllib.error.HTTPError as exc:
-            K.count_page(self.conn)
             raw = exc.read()[:600].decode("utf-8", "replace")
             try:
                 body = json.loads(raw)

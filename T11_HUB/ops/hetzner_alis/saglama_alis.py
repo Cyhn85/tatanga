@@ -124,6 +124,12 @@ def run_checks(conn) -> list[tuple[str, str, str]]:
                         "doluluk " + ", ".join(f"{k} %{v*100:.0f}" for k, v in fill.items()) + f" (n={n})"))
     except sqlite3.OperationalError:
         out.append((WARN, "S1", "Sellpy tablolari henuz yok"))
+    # B1 bekci: zaman siniri asilip tarayici yeniden kurulan isler (donma belirtisi)
+    try:
+        hung = one(conn, "SELECT COALESCE(SUM(n),0) FROM health WHERE stage='bekci' AND day >= date('now','-1 day')")
+        out.append((OK if hung == 0 else WARN if hung < 5 else FAIL, "B1", f"bekci mudahalesi (24 saat): {hung}"))
+    except sqlite3.OperationalError:
+        pass
     return out
 
 

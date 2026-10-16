@@ -321,10 +321,24 @@ class Browser:
     async def close(self) -> None:
         if self.browser:
             try:
-                await self.browser.close()
+                # cokmus bir tarayicida close() da asili kalabilir: 30 sn sinir
+                await asyncio.wait_for(self.browser.close(), timeout=30)
             except Exception:
                 pass
         self.browser = self.ctx = self.page = None
+
+    async def guarded(self, coro, what: str, minutes: int = 15):
+        """
+        Bekci: bir is en fazla `minutes` dakika surer. 2026-10-15'te Sellpy toplayicisi bir okuma hatasindan sonra
+        zaman siniri olmayan bir beklemede 20 saat dondu (surec canli, is yok). Asilirsa tarayici yeniden kurulur.
+        """
+        try:
+            return await asyncio.wait_for(coro, timeout=minutes * 60)
+        except asyncio.TimeoutError:
+            note(self.conn, "bekci", "zaman_asimi", f"{what}: {minutes} dk asildi, tarayici yeniden kuruldu")
+            log(f"BEKCI: {what} {minutes} dk'yi asti; tarayici kapatilip yeniden acilacak")
+            await self.close()
+            return None
 
     async def human(self) -> None:
         for _ in range(random.randint(1, 3)):
@@ -532,14 +546,15 @@ async def run(max_pages: int | None) -> None:
                     break
                 continue
             cell = due[0]
-            res = await visit_cell(br, conn, cell)
+            res = await br.guarded(visit_cell(br, conn, cell), f"liste {cell['id']}") \
+                or {"kart": 0, "yeni": 0, "okundu": False}
             log(f"{cell['id']}: kart {res['kart']}, yeni {res['yeni']}, okundu {res['okundu']}")
             if not res["okundu"]:
                 continue
             for row in pending_details(conn, cell["id"], DETAILS_PER_CELL):
                 if max_pages is not None and pages_today(conn) - start_pages >= max_pages:
                     break
-                await visit_detail(br, conn, row, by_id[cell["id"]]["aliases"])
+                await br.guarded(visit_detail(br, conn, row, by_id[cell["id"]]["aliases"]), f"ilan {row['adid']}", 5)
         await br.close()
     log("bitti")
 
