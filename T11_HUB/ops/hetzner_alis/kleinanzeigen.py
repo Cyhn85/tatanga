@@ -36,9 +36,9 @@ BRAND_CONFIG = os.environ.get("TATANGA_BRAND_CONFIG", "/opt/tatanga-observer/con
 BERLIN = ZoneInfo("Europe/Berlin")
 SITE = "https://www.kleinanzeigen.de"
 
-PAGES_PER_DAY = 1500            # liste + ilan sayfasi toplami
+PAGES_PER_DAY = 2200            # liste + ilan sayfasi toplami (2026-10-19: 1500 ile 308 hucre + detay yetismiyordu, K1)
 ACTIVE_HOURS = (7, 23)          # Berlin saati; gece insan gibi uyur
-DELAY = (15, 40)                # sayfalar arasi saniye
+DELAY = (12, 30)                # sayfalar arasi saniye (insan hizi; saatte ~140 sayfa)
 BREAK_EVERY = (25, 45)          # bu kadar sayfada bir mola
 BREAK_MINUTES = (2, 6)
 SESSION_PAGES = (60, 110)       # tarayici baglami bu kadar sayfada bir yenilenir (yeni ziyaretci)

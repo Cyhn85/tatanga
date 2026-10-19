@@ -107,8 +107,15 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
         out.append((lvl, "T5", f"hata orani %{p*100:.1f} ({err}/{req})"))
 
     # T6 takip durmus mu: son kontrolden bu yana 2 saatten fazla gectiyse dongu takilmistir
+    try:
+        _hb = conn.execute("SELECT value FROM meta WHERE key='heartbeat'").fetchone()
+        hb_age = ((utcnow() - datetime.strptime(_hb[0], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc))
+                  .total_seconds() / 60) if _hb and _hb[0] else None
+    except sqlite3.OperationalError:
+        hb_age = None
+    down = hb_age is not None and hb_age > 45      # gozlemci calismiyor (PC kapali) -> yalniz T10 alarm verir
     last = conn.execute("SELECT MAX(last_check) FROM listings").fetchone()[0]
-    if last:
+    if last and not down:
         age_h = (utcnow() - datetime.strptime(last, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
                  ).total_seconds() / 3600
         paused_row = conn.execute("SELECT value FROM meta WHERE key='paused_until'").fetchone()
@@ -203,16 +210,23 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
     if paused and paused[0] and paused[0] > utcnow().strftime("%Y-%m-%d %H:%M:%S"):
         out.append((WARN, "T8", f"engel korumasi aktif: {paused[0]} UTC'ye kadar"))
 
-    # T9 akis hizi: gunun bu saatinde beklenenin cok altindaysa sistem yavaslamis/takilmis
-    try:
-        budget = json.load(open(CONFIG_FILE, encoding="utf-8"))["budget"]["max_requests_per_day"]
-        hours = utcnow().hour + utcnow().minute / 60
-        expected = budget * hours / 24 * 0.25
-        if hours > 2 and day == utcnow().strftime("%Y-%m-%d"):
-            out.append((WARN if req < expected else OK, "T9",
-                        f"akis {req} istek (bu saate kadar beklenen en az {expected:.0f})"))
-    except Exception:
-        pass
+    # T9 takilma: gozlemci calisiyor, duraklamada degil ve butcesi varken 60 dk'dir istek yoksa takilmistir.
+    # (Eski test "bu saate kadar beklenen istek"i olcuyordu: PC kapali gecen saatleri yavaslama saniyordu.)
+    if not down:
+        try:
+            budget = json.load(open(CONFIG_FILE, encoding="utf-8"))["budget"]["max_requests_per_day"]
+            last_req = conn.execute("SELECT MAX(x) FROM (SELECT MAX(last_check) x FROM listings "
+                                    "UNION ALL SELECT MAX(ts) FROM catalog_samples)").fetchone()[0]
+            paused = conn.execute("SELECT value FROM meta WHERE key='paused_until'").fetchone()
+            in_pause = bool(paused and paused[0] and paused[0] > utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+            if last_req:
+                idle = (utcnow() - datetime.strptime(last_req, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                        ).total_seconds() / 60
+                stuck = idle > 60 and not in_pause and req < budget
+                out.append((FAIL if stuck else OK, "T9", f"son istek {idle:.0f} dk once | bugun {req}/{budget}"
+                            + (" (planli duraklama)" if in_pause else "") + (" -> TAKILMIS" if stuck else "")))
+        except Exception:
+            pass
 
     # T12 bot korumasi: HTTP 200 ama dogrulama sayfasi (2026-10-07'de 36 saat boyunca oldu)
     eng = _one(conn, "SELECT SUM(n) FROM health WHERE day=? AND outcome='engel'", day)

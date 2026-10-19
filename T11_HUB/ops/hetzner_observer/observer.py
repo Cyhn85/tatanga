@@ -601,6 +601,10 @@ class Fetcher:
         self._throttle()
         self.conn.execute("INSERT INTO hat_kullanim VALUES (?,?,1) ON CONFLICT(day, cikis) DO UPDATE SET n=n+1",
                           (now().strftime("%Y-%m-%d"), self.exit))
+        # canlilik: bir tur ~100 dk surebilir; T10 (45 dk esigi) yanlis alarm vermesin diye istek basina, en sik 2 dk'da bir
+        if time.time() - getattr(self, "_hb_at", 0) > 120:
+            meta_set(self.conn, "heartbeat", iso(now()))
+            self._hb_at = time.time()
         self.last_status = None
         market = market_of(url)
         try:
