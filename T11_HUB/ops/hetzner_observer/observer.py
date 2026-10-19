@@ -413,7 +413,8 @@ class Fetcher:
         # EV HATTI: PC'den acilan ters SSH tuneli (sunucuda 127.0.0.1:1080 SOCKS). Vinted istegi ev IP'sinden cikar.
         # mod: "kapali" (yalnizca sunucu IP), "tercih" (tunel varsa ev, yoksa sunucu), "zorunlu" (tunel yoksa bekle).
         self.hat = cfg.get("ev_hatti") or {"mod": "kapali"}
-        self.exit = "sunucu"
+        # Son kullanilan hat kalici: yeniden baslatma "hat degisti" sayilip gercek engel duraklamasini silmesin
+        self.exit = meta_get(conn, "hat_cikis") or "sunucu"
         self._hat_checked = 0.0
         self.conn.execute("CREATE TABLE IF NOT EXISTS hat_kullanim (day TEXT, cikis TEXT, n INTEGER, "
                           "PRIMARY KEY (day, cikis))")
@@ -467,6 +468,7 @@ class Fetcher:
             self.market_strikes = {}
             meta_set(self.conn, "paused_until", "")
             self.exit = wanted
+            meta_set(self.conn, "hat_cikis", wanted)
         if wanted == "ev" and self.hat.get("mod") != "dogrudan":
             url = self.hat.get("proxy", "socks5h://127.0.0.1:1080")
             return requests.Session(impersonate="chrome", proxies={"http": url, "https": url})

@@ -1,16 +1,51 @@
 {
   "_aciklama": "Firsat ve capraz karlilik maliyetleri. 'kaynak' her degerin nereden geldigini yazar; 'varsayim' / 'dogrulanmadi' olanlar gercek veriyle guncellenmelidir.",
-  "alici_koruma_sabit": {"deger": 0.70, "kaynak": "Vinted DE alici koruma ucreti (sabit kisim)"},
-  "alici_koruma_oran": {"deger": 0.05, "kaynak": "Vinted DE alici koruma ucreti (urun fiyatinin %5'i)"},
-  "gelen_kargo": {"deger": 5.00, "kaynak": "varsayim: Vinted DE paket kargo ortalamasi"},
-  "paketleme": {"deger": 1.00, "kaynak": "varsayim"},
-  "iade_payi_oran": {"deger": 0.03, "kaynak": "varsayim: gercek iade orani olculunce guncellenecek"},
-  "satis_komisyonu_oran": {"deger": 0.00, "kaynak": "Vinted Pro: saticidan komisyon alinmaz"},
-  "giden_kargo": {"deger": 0.00, "kaynak": "Vinted: giden kargoyu alici oder"},
-
-  "ka_koruma_sabit": {"deger": 0.50, "kaynak": "dogrulanmadi: Kleinanzeigen 'Sicher bezahlen' alici servis ucreti 0,50 EUR (monsterdealz, Agustos 2026); eski kaynaklar 0,35 EUR"},
-  "ka_koruma_oran": {"deger": 0.045, "kaynak": "dogrulanmadi: Kleinanzeigen 'Sicher bezahlen' %4,5 (ayni kaynak)"},
-  "ka_abholung_ucret": {"deger": 0.00, "kaynak": "elden teslim: kargo ve koruma ucreti yok (koruma da yok); yol masrafi dahil degil"},
-  "ebay_alici_ucret_oran": {"deger": 0.00, "kaynak": "eBay DE: alici ucreti yok; FR/IT alici koruma ucreti ilan fiyatinin icinde gosteriliyor (shopifreaks, Eylul 2026)"},
-  "sellpy_kargo": {"deger": 5.99, "kaynak": "Sellpy ilan sayfasi: 'Versand ab 5,99 EUR' (2026-10-12); ilk sipariste 30 EUR ustu ucretsiz -> hesaba katilmaz (tutucu)"}
+  "alici_koruma_sabit": {
+    "deger": 0.7,
+    "kaynak": "OLCULDU 2026-10-19: 60 EUR ilanda Vinted alici koruma 3,70 EUR = 0,70 + %5"
+  },
+  "alici_koruma_oran": {
+    "deger": 0.05,
+    "kaynak": "OLCULDU 2026-10-19 (ayni ilan): %5"
+  },
+  "gelen_kargo": {
+    "deger": 5.0,
+    "kaynak": "OLCULDU 2026-10-19: vinted.de ilan sayfalarinda Alman aliciya gosterilen kargo, 15 ilan (NL/IT/FR/ES/DE saticilar) 3,99-5,39 EUR, medyan 4,80; ulkeden bagimsiz. 5,00 tutucu deger."
+  },
+  "paketleme": {
+    "deger": 1.0,
+    "kaynak": "varsayim"
+  },
+  "iade_payi_oran": {
+    "deger": 0.03,
+    "kaynak": "varsayim: gercek iade orani olculunce guncellenecek"
+  },
+  "satis_komisyonu_oran": {
+    "deger": 0.0,
+    "kaynak": "Vinted Pro: saticidan komisyon alinmaz"
+  },
+  "giden_kargo": {
+    "deger": 0.0,
+    "kaynak": "Vinted: giden kargoyu alici oder"
+  },
+  "ka_koruma_sabit": {
+    "deger": 0.5,
+    "kaynak": "dogrulanmadi (resmi yardim sayfasi aramada cikmadi): monsterdealz Agustos 2026 0,50 EUR; e-recht24 eski 0,35 EUR. Tutucu olan 0,50 kullaniliyor. Koruma yalniz DE ici kargoda gecerli."
+  },
+  "ka_koruma_oran": {
+    "deger": 0.045,
+    "kaynak": "dogrulanmadi: Kleinanzeigen 'Sicher bezahlen' %4,5 (ayni kaynak)"
+  },
+  "ka_abholung_ucret": {
+    "deger": 0.0,
+    "kaynak": "elden teslim: kargo ve koruma ucreti yok (koruma da yok); yol masrafi dahil degil"
+  },
+  "ebay_alici_ucret_oran": {
+    "deger": 0.0,
+    "kaynak": "eBay DE: alici ucreti yok; FR/IT alici koruma ucreti ilan fiyatinin icinde gosteriliyor (shopifreaks, Eylul 2026)"
+  },
+  "sellpy_kargo": {
+    "deger": 5.99,
+    "kaynak": "Sellpy ilan sayfasi: 'Versand ab 5,99 EUR' (2026-10-12); ilk sipariste 30 EUR ustu ucretsiz -> hesaba katilmaz (tutucu)"
+  }
 }

@@ -4308,12 +4308,20 @@ SHIPPING_COSTS = {
     # Italya
     "IT_DE": {"small": 8.99, "medium": 13.99, "large": 19.99},
     "DE_IT": {"small": 8.99, "medium": 13.99, "large": 19.99},
-    # 2026-10-16 eklendi (varsayim: komsu AB ulkesi tarifeleri; gercek Vinted kargo fiyatiyla guncellenmeli)
-    "NL_DE": {"small": 6.99, "medium": 9.99, "large": 14.99},
-    "DE_NL": {"small": 6.99, "medium": 9.99, "large": 14.99},
-    "ES_DE": {"small": 9.99, "medium": 14.99, "large": 19.99},
-    "DE_ES": {"small": 9.99, "medium": 14.99, "large": 19.99},
+    # Vinted DISI NL/ES kaynaklar (Marktplaats, Percentil...): satici kendi postasiyla gonderir.
+    # NL: PostNL resmi sayfasi "Duitsland vanaf 8,50 EUR" (postnl.nl, 2026-10-19). ES: Correos Paq Light 1 kg
+    # Almanya 12,10 EUR (Packlink, tarih belirsiz; resmi tablo okunamadi). medium/large tutucu.
+    "NL_DE": {"small": 8.50, "medium": 9.99, "large": 14.99},
+    "DE_NL": {"small": 8.50, "medium": 9.99, "large": 14.99},
+    "ES_DE": {"small": 12.10, "medium": 14.99, "large": 19.99},
+    "DE_ES": {"small": 12.10, "medium": 14.99, "large": 19.99},
 }
+
+# Vinted'den alis (HER ulke): Vinted kendi entegre kargosunu alici ulkesine gore fiyatlar; ulkeden bagimsizdir.
+# OLCUM 2026-10-19: vinted.de'de (Alman alici) acilan 15 ilanin ilan sayfasindaki "shipping" fiyati:
+# NL saticilar 3,99 / 4,95 | IT-FR-ES saticilar 4,59-5,39 | DE 4,85-4,95 (medyan 4,80, en yuksek 5,39).
+# Tutucu deger 5,00 (ornegin %80'inden yuksek). Alici koruma ucreti ayri: 0,70 + %5 (60 EUR ilanda 3,70 olculdu).
+VINTED_INBOUND_DE = 5.00
 
 # Platform ulkeleri (kaynak kazima platformlari + satis platformlari)
 PLATFORM_COUNTRY = {
@@ -4391,8 +4399,9 @@ def analyze_profit(product: dict, source_platform: str) -> dict:
 
     source_country = PLATFORM_COUNTRY.get(source_platform, "DE")
 
-    # Gelen kargo: kaynak -> bize (DE)
-    inbound_shipping = get_shipping_cost(source_country, "DE", "medium")
+    # Gelen kargo: kaynak -> bize (DE). Vinted'de kargo ulkeden bagimsiz olculdu (VINTED_INBOUND_DE).
+    inbound_shipping = (VINTED_INBOUND_DE if source_platform.startswith("vinted")
+                        else get_shipping_cost(source_country, "DE", "medium"))
 
     # Sabit dropshipping maliyetleri
     fixed_costs = PACKAGING_COST + BROCHURE_COST   # 1.50 + 0.20 = 1.70 EUR
