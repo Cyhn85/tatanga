@@ -169,7 +169,9 @@ TYPES = {
     "esofman":    ["trainingsjacke", "track jacket", "track top", "survetement", "veste de survetement",
                    "tuta", "trainingsanzug"],
     "kot_ceket":  ["jeansjacke", "veste en jean", "veste en denim", "denim jacket", "giacca di jeans", "spijkerjas",
-                   "jeansjacka", "giubbotto di jeans", "denim", "jeans jacke"],
+                   "jeansjacka", "giubbotto di jeans", "jeans jacke", "denim jacke", "veste jean"],
+    # 2026-10-19: tek basina "denim" KALDIRILDI: "Levi's 501 ... Jeans ... Denim" kot ceket sayiliyordu
+    # (esit uzunluktaki "jeans"ten once eslesiyordu) ve kot pantolon kot ceket satislariyla degerleniyordu.
     "kot_pantolon": ["jeans", "jean", "jeanshose", "spijkerbroek", "pantalon en jean", "denim pants",
                      "straight jeans", "slim jeans", "mom jeans", "baggy jeans"],
     "kapusonlu":  ["hoodie", "kapuzenpullover", "sweat a capuche", "felpa con cappuccio", "huvtroja", "hoody",

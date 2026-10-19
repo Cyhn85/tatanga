@@ -2704,6 +2704,84 @@ def _is_relevant(title: str, keyword: str, threshold: float = 0.7) -> bool:
     return matched >= required
 
 
+# ============================================
+# ARSIV ARAMASI: Kleinanzeigen ve eBay (2026-10-19)
+# TATANGA bu iki platforma ARTIK ev IP'sinden duz istek atmaz. Sebep (canli olculdu, 9 grupluk oneri kazimasi):
+#  - Kleinanzeigen duz HTML: kondisyon/marka yok, "VB" fiyatli ilan atiliyor, Akamai riski; sonuc puanlanamiyordu.
+#  - eBay HTML: kondisyon secicisi bos (553 urunun 553'u kondisyonsuz) -> hicbiri puanlanamadi.
+# Yerine insansi toplayicilarin (sunucu: gercek tarayicili KA + eBay Browse API) dogrulanmis arsivi aranir:
+# kondisyon, marka, detay fiyati, gorsel tam. Yalniz HALA YAYINDA olanlar (son 3 gunde goruldu, kapanmadi).
+# ============================================
+_EB_COND_TXT = {"1000": "Neu mit Etikett", "1500": "Neu", "2990": "Sehr gut", "3000": "Gebraucht"}
+
+
+def _alis_arsiv_rows(sql: str, params: tuple, keyword: str) -> list:
+    import sqlite3 as _sq
+    db_path = BASE_DIR.parent / "istatistik" / "alis_arsiv.db"
+    if not db_path.exists():
+        return []
+    tokens = [t for t in re.findall(r"[a-z0-9]+", (keyword or "").lower()) if len(t) > 1]
+    con = _sq.connect(f"file:{db_path}?mode=ro", uri=True)
+    con.row_factory = _sq.Row
+    try:
+        # on suzgec: ilk (genelde marka) kelime baslik/markada gecmeli; asil esleme _is_relevant ile (cok dilli)
+        like = f"%{tokens[0]}%" if tokens else "%"
+        return [r for r in con.execute(sql, params + (like, like)).fetchall()]
+    finally:
+        con.close()
+
+
+async def scrape_kleinanzeigen_arsiv(keyword: str, max_pages: int) -> list:
+    rows = _alis_arsiv_rows(
+        "SELECT adid, url, title, COALESCE(detail_price, price) p, COALESCE(marke, brand) b, zustand, groesse, cat, "
+        "descr, image_url, views FROM ka_ads WHERE detail_status='ok' AND COALESCE(marke_ok,1)=1 "
+        "AND last_seen >= datetime('now','-3 day') AND (lower(title) LIKE ? OR lower(COALESCE(marke, brand)) LIKE ?) "
+        "ORDER BY last_seen DESC", (), keyword)
+    out = []
+    for r in rows:
+        title = r["title"] or ""
+        if not _is_relevant(f"{r['b'] or ''} {title}", keyword) or not r["p"]:
+            continue
+        out.append({"source_id": str(r["adid"]), "url": r["url"], "title": title,
+                    "description": r["descr"] or "", "price": float(r["p"]), "currency": "EUR",
+                    "brand": r["b"] or "", "size": r["groesse"] or "", "condition": r["zustand"] or "",
+                    "category": r["cat"] or "", "images": [r["image_url"]] if r["image_url"] else [],
+                    "views": r["views"] or 0, "favorites": 0})
+        if len(out) >= max(1, max_pages) * 60:
+            break
+    await log_activity("ka_arsiv", f"Kleinanzeigen (toplayici verisi): '{keyword}' -> {len(out)} aktif ilan")
+    return out
+
+
+async def scrape_ebay_arsiv(keyword: str, max_pages: int) -> list:
+    rows = _alis_arsiv_rows(
+        "SELECT e.item_id, e.url, e.title, e.price, e.currency, e.brand, e.condition_id, e.cat, e.image_url "
+        "FROM eb_items e LEFT JOIN eb_track t USING(item_id) "
+        "WHERE e.market='DE' AND e.country='DE' AND e.last_seen >= datetime('now','-3 day') "
+        "AND (e.end_date IS NULL OR e.end_date > datetime('now')) AND COALESCE(t.state,'active')='active' "
+        "AND COALESCE(t.sinif,'ikinci_el')<>'sifir_talep' "
+        "AND (lower(e.title) LIKE ? OR lower(e.brand) LIKE ?) ORDER BY e.last_seen DESC", (), keyword)
+    out = []
+    for r in rows:
+        title = r["title"] or ""
+        if not _is_relevant(f"{r['brand'] or ''} {title}", keyword) or not r["price"]:
+            continue
+        out.append({"source_id": str(r["item_id"]), "url": r["url"], "title": title, "description": "",
+                    "price": float(r["price"]), "currency": r["currency"] or "EUR", "brand": r["brand"] or "",
+                    "size": "", "condition": _EB_COND_TXT.get(str(r["condition_id"]), ""),
+                    "category": r["cat"] or "", "images": [r["image_url"]] if r["image_url"] else [],
+                    "views": 0, "favorites": 0})
+        if len(out) >= max(1, max_pages) * 60:
+            break
+    await log_activity("ebay_arsiv", f"eBay (Browse API toplayici verisi): '{keyword}' -> {len(out)} aktif ilan")
+    return out
+
+
+# Kendi arsivimizden okunan platformlar: dis istek yok -> hiz korumasi/soguma uygulanmaz
+# (2026-10-19: 'sonuc yok' soguma sayilip Sellpy ve KA 9 aramanin 8'inde atlanmisti).
+ARSIV_PLATFORMLARI = {"kleinanzeigen", "ebay", "sellpy"}
+
+
 async def scrape_platform(platform: str, keyword: str, max_pages: int, strategy: str = "single") -> list:
     """Platform bazli kazima - requests + BeautifulSoup
     strategy: "single" = standart siralama, "multi_order" = tum siralamalari dolas (daha fazla urun)
@@ -2746,7 +2824,7 @@ async def scrape_platform(platform: str, keyword: str, max_pages: int, strategy:
     # Hiz koruyucusu: platform sogumadaysa HIC istek atma. Engelli kapiyi
     # tekrar calmak engeli uzatir — bugun eBay ve Leboncoin tam olarak boyle
     # kaybedildi (555 ardisik istek -> "Error Page", sonra saatlerce kapali).
-    if _rate_guard:
+    if _rate_guard and platform not in ARSIV_PLATFORMLARI:
         izin, sebep = await asyncio.to_thread(_rate_guard.acquire, platform)
         if not izin:
             await log_activity("rate_cooldown", f"{platform}: {sebep} — atlandi", "warning")
@@ -2761,9 +2839,9 @@ async def scrape_platform(platform: str, keyword: str, max_pages: int, strategy:
             domain = vinted_domains[platform]
             products = await scrape_vinted(keyword, max_pages, headers, strategy=strategy, domain=domain)
         elif platform == "kleinanzeigen":
-            products = await scrape_kleinanzeigen(keyword, max_pages, headers, strategy=strategy)
+            products = await scrape_kleinanzeigen_arsiv(keyword, max_pages)
         elif platform == "ebay":
-            products = await scrape_ebay(keyword, max_pages, headers, strategy=strategy)
+            products = await scrape_ebay_arsiv(keyword, max_pages)
         elif platform == "sellpy":
             products = await scrape_sellpy(keyword, max_pages, headers, strategy=strategy)
         elif platform == "willhaben":
@@ -2786,7 +2864,7 @@ async def scrape_platform(platform: str, keyword: str, max_pages: int, strategy:
 
     # Sonucu koruyucuya bildir: hic urun gelmediyse bu bir engel sinyalidir,
     # platform sogumaya alinir ve bir sonraki turda bosuna denenmez.
-    if _rate_guard:
+    if _rate_guard and platform not in ARSIV_PLATFORMLARI:
         engellendi_mi = _rate_guard.report(
             platform, status=200,
             body=("engel" if (_ham_sayi == 0 and not _hata_sebep) else ""),

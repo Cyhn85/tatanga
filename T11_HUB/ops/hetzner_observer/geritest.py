@@ -79,7 +79,7 @@ def price_test(conn, matcher, rates, cond_f, market_f, sales) -> list[dict]:
             if not (T <= s["closed"] < T + PRICE_WINDOW):
                 continue
             keys = C.keys_for(s["brand"], s["cat"], s["model"], s["type"], s["line"])
-            est = ref.estimate(keys, s["tier"], "*")
+            est = ref.estimate(keys, s["tier"], "*", cat=s["cat"])
             if not est:
                 continue
             vals, n, level, scope = est

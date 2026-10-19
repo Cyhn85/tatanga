@@ -17,6 +17,7 @@ Tahmin yapilamayan urunde zeka_net_kar NULL kalir (siralamada en alta), zeka_isa
 from __future__ import annotations
 
 import argparse
+import re
 import json
 import os
 import sqlite3
@@ -90,6 +91,7 @@ def main() -> int:
     eng = C.Engine(A.connect(args.arsiv))
     c, rates, matcher = eng.c, eng.rates, eng.matcher
     table = brand_table()
+    model_cat = eng.ref.model_cat
     hub = sqlite3.connect(args.hub, timeout=60)
     hub.row_factory = sqlite3.Row
     have = {r[1] for r in hub.execute("PRAGMA table_info(products)")}
@@ -108,7 +110,10 @@ def main() -> int:
         why = None
         platform, cc = platform_of(p["source_platform"])
         brand = canonical_brand(p["brand"], title, table)
-        tier = A.norm_condition(p["condition"]) or KOND_EXTRA.get(A.norm_text(p["condition"] or ""))
+        # noktalama farki ("Neu, ohne Etikett" - Vinted DE/AT) kondisyonu taninmaz yapiyordu: 213 urun disarida kaliyordu
+        kond_txt = " ".join(re.findall(r"[^\W_]+", (p["condition"] or "").lower()))
+        tier = (A.norm_condition(p["condition"]) or KOND_EXTRA.get(A.norm_text(p["condition"] or ""))
+                or A.norm_condition(kond_txt) or KOND_EXTRA.get(kond_txt))
         rate = rates.get((p["currency"] or "EUR").upper()) or 0
         typ = A.match_type(A.norm_text(title))
         cat = next(iter(C.TYPE_CAT[typ]), None) if typ in C.TYPE_CAT and len(C.TYPE_CAT[typ]) == 1 else None
@@ -119,6 +124,11 @@ def main() -> int:
             # tur yoksa basliktaki genel kategori kelimesi (Veste / Jacke / Schuhe / Pullover / Jeans ...)
             nt = A.norm_text(title)
             cat = next((k for k, rx in C.CAT_WORDS.items() if rx.search(nt)), None)
+        if cat is None and brand and not C.OTHER_GARMENT_RE.search(title):
+            # basliktaki model adi kategorisini gercek veriden bilir (XT-6 -> schuhe, 501 -> jeans).
+            # Baslikta hedef disi bir giysi kelimesi varsa (pantolon/sort/etek...) ATANMAZ: "Firebird pants" ceket degil.
+            m0, _l0 = matcher.match(brand, title)
+            cat = model_cat.get((brand.lower(), m0.lower())) if m0 else None
         if not brand:
             why = "marka listemizde degil"
         elif not tier:
@@ -129,6 +139,9 @@ def main() -> int:
             why = "kategori belirlenemedi (mont/ayakkabi/kazak/kot disi olabilir)"
         elif C.CHILD_TITLE_RE.search(title) or A.is_child_size(p["size"], cat):
             why = "cocuk urunu"
+        elif C.OTHER_GARMENT_RE.search(title):
+            # "Levi's 501 denim shorts" kot satisiyla, "Firebird pants" ceket satisiyla degerlenmesin
+            why = "hedef disi giysi (sort/pantolon/etek/elbise/canta...)"
         if why:
             reasons[why] += 1
             updates.append((None, None, None, None, None, None, None, None, None, why, now, 0, p["id"]))

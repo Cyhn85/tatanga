@@ -69,7 +69,7 @@ CAT_WORDS = {
                          r"weste|gilet|blouson|anorak|chaqueta|abrigo)"),
     "schuhe": re.compile(r"(schuh|shoe|sneaker|chaussure|scarpe|schoen|skor|boot|stiefel|sandal|trainer|zapat)"),
     "oberteile": re.compile(r"(pullover|pulli|hoodie|sweat|strick|knit|maglion|felpa|\bpull\b|trui|troja|"
-                            r"cardigan|jumper|jersey)"),
+                            r"cardigan|jumper|jersey|sudadera|bluzka)"),
     "jeans": re.compile(r"(jeans|\bjean\b|denim)"),
 }
 
@@ -110,13 +110,49 @@ def quantile(vals: list[float], q: float) -> float:
 CHILD_TITLE_RE = re.compile(
     r"\b(kinder\w*|kids?|girls?|boys?|jungen|madchen|mädchen|maedchen|baby|babies|enfants?|fille|garcon|garçon|"
     r"bambin[oai]|ragazz[oai]|junior|teen|youth|kinderjacke|kindermantel)\b|"
-    r"\b(gr\.?|größe|grosse|size|taille|taglia)\s*(104|110|116|122|128|134|140|146|152|158|164|170|176)\b",
+    r"\b(gr\.?|größe|grosse|size|taille|taglia)\s*(104|110|116|122|128|134|140|146|152|158|164|170|176)\b"
+    # yas bedeni (2026-10-19, "Giacca ... 12-13 Anni" kacmisti): yas ARALIGI her dilde ("12-13 anni", "10-12 Jahre");
+    # tek yas yalniz FR/IT/ES beden yaziminda ("10 ans", "8 anni", "6 años"). "2 Jahre getragen" cocuk SAYILMAZ.
+    r"|\b\d{1,2}\s*[-/]\s*\d{1,2}\s*(?:anni|ans|jahre|years|yrs|lat|år|jaar|años|anos)\b"
+    r"|\b\d{1,2}\s*(?:anni|ans|años)\b",
     re.I)
 
 
 def costs() -> dict:
     raw = json.load(open(os.path.join(BASE_DIR, "maliyet.json"), encoding="utf-8"))
     return {k: v["deger"] for k, v in raw.items() if not k.startswith("_")}
+
+
+# Hedef kategorilerimiz disindaki giysiler (cok dilli). Modelden kategori atamasini engeller.
+OTHER_GARMENT_RE = re.compile(
+    r"\b(hose|hosen|pants|trousers|joggers?|jogging\w*|jogginghose|bottoms?|pantal[oó]n\w*|pantaloni|broek|byxor|"
+    r"spodnie|dresy|shorts?|bermuda|leggings?|tights|skirt|jupe|gonna|falda|spódnica|spodnica|kjol|dress|"
+    r"kleid|robe|vestido|abito|sukienka|bag|tasche|sac|borsa|bolso|mütze|mutze|beanie|socks?|socken|t-?shirts?|tees?|longsleeves?|long\s*sleeve|hemd|shirt|camiseta|maglietta|koszulka)\b",
+    re.I)
+
+
+def model_categories(conn, matcher) -> dict:
+    """
+    (marka, model) -> kategori, GERCEK Vinted verisinden: model adinin katalog orneklerinde ve takip ilanlarinda hangi
+    kategori hucresinde gectigi sayilir. >= 5 kayit ve >= %80 tek kategori sarti. (2026-10-19: basliginda yalniz model
+    adi olan 'Salomon XT-6', "Levi's 501" ilanlari tur kelimesi olmadigi icin puanlanmiyordu - 2.720 ilan.)
+    """
+    cnt = defaultdict(lambda: defaultdict(int))
+    for tbl in ("catalog_samples", "listings"):
+        for cell, title in conn.execute(f"SELECT cell, title FROM {tbl} WHERE title IS NOT NULL"):
+            brand, cat, _ = (cell.split("|") + ["", ""])[:3]
+            if not cat or cat.startswith("model:"):
+                continue
+            model, _line = matcher.match(brand, title)
+            if model:
+                cnt[(brand.lower(), model.lower())][CAT_MAP.get(cat, cat)] += 1
+    out = {}
+    for key, cats in cnt.items():
+        tot = sum(cats.values())
+        top, n = max(cats.items(), key=lambda kv: kv[1])
+        if (tot >= 5 and n / tot >= 0.8) or (tot >= 30 and n / tot >= 0.75):
+            out[key] = top
+    return out
 
 
 def keys_for(brand: str, cat: str | None, model: str | None, typ: str | None, line: str | None = None) -> list[tuple]:
@@ -142,6 +178,10 @@ class SellRef:
         # ref[grup][(ulke|'*', kondisyon|'*')] -> fiyatlar. '*' ulke: DE tabanina cevrilmis havuz;
         # '*' kondisyon: cok_iyi tabanina cevrilmis (yalnizca ASAGI cevirme: etiketli satis / 2.0 gibi).
         self.ref: dict[tuple, dict[tuple, list[float]]] = defaultdict(lambda: defaultdict(list))
+        # model/seri anahtarinin satislari hangi kategoride (hucre kategorisi ya da baslik turunun kategorisi):
+        # 2026-10-19 Firebird PANTOLON / sort / kazak, Firebird CEKET satislariyla degerlendiriliyordu.
+        self.key_cat: dict[tuple, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self.model_cat = model_categories(conn, matcher)
         n = 0
         sql = ("SELECT cell, title, size, condition, country, COALESCE(final_price, price) p, "
                "COALESCE(currency,'EUR') cur FROM listings WHERE state='sold'")
@@ -161,7 +201,10 @@ class SellRef:
             typ = A.match_type(A.norm_text(r["title"] or ""))
             cc = r["country"]
             pooled = price / self.f(market_f, cc)
+            sale_cat = cat or (next(iter(TYPE_CAT[typ])) if typ in TYPE_CAT and len(TYPE_CAT[typ]) == 1 else None)
             for k in keys_for(brand, cat, model, typ, line):
+                if sale_cat and k[0] in ("marka·model", "marka·seri"):
+                    self.key_cat[k][sale_cat] += 1
                 g = self.ref[k]
                 g[(cc, tier)].append(price)
                 g[("*", tier)].append(pooled)
@@ -174,14 +217,29 @@ class SellRef:
     def f(table: dict, key) -> float:
         return (table.get(key) or (1.0, 0))[0] or 1.0
 
-    def estimate(self, keys: list[tuple], tier: str, country: str = "*"):
+    def cat_ok(self, k: tuple, cat: str | None) -> bool:
+        """
+        Model/seri anahtari: urunun kategorisi, o anahtarin satislarinin kategorisiyle uyusuyor mu?
+        Satislarin kendi kategori bilgisi yetersizse (model hucresi, baslikta tur yok) modelin GERCEK veriden bilinen
+        kategorisi kullanilir (model_cat: katalog ornekleri). Ikisi de yoksa engellenmez.
+        """
+        if not cat or k[0] not in ("marka·model", "marka·seri"):
+            return True
+        mix = self.key_cat.get(k)
+        tot = sum(mix.values()) if mix else 0
+        if tot >= 3:
+            return mix.get(cat, 0) / tot >= 0.5
+        known = self.model_cat.get((k[1], k[2])) if k[0] == "marka·model" else None
+        return known is None or known == cat
+
+    def estimate(self, keys: list[tuple], tier: str, country: str = "*", cat: str | None = None):
         """
         (gercek satis fiyatlari listesi, satis sayisi, seviye, kondisyon kapsami) veya None.
         country='*' -> 7 ulke havuzu (DE tabani). Ayni kondisyon yoksa cok_iyi tabani, YUKARI carpan yok.
         """
         for k in keys:
             g = self.ref.get(k)
-            if not g:
+            if not g or not self.cat_ok(k, cat):
                 continue
             need = MIN_SALES[k[0]]
             same = g.get((country, tier), [])
@@ -387,6 +445,9 @@ class Engine:
     def evaluate(self, b, stats) -> dict | None:
         ref, c, late = self.ref, self.c, self.late
         stats[b["platform"]]["ilan"] += 1
+        if OTHER_GARMENT_RE.search(b["title"] or ""):
+            stats[b["platform"]]["kategori_uyusmaz"] += 1     # sort/pantolon/tisort...: hedef kategorilerimiz disi
+            return None
         chk = category_check(b["cat"], b["type"], b["title"], b["structured"])
         if chk == "baska":
             stats[b["platform"]]["kategori_uyusmaz"] += 1
@@ -395,7 +456,7 @@ class Engine:
         prob30, plevel = self.p30(b)
         sell_cost = lambda sell: c["paketleme"] + (c["iade_payi_oran"] + c["satis_komisyonu_oran"]) * sell \
             + c["giden_kargo"]
-        est = ref.estimate(keys, b["tier"], "*")
+        est = ref.estimate(keys, b["tier"], "*", cat=b["cat"])
         if not est:
             stats[b["platform"]]["tahmin_yok"] += 1
             return None
@@ -410,7 +471,7 @@ class Engine:
                 "net": net, "net_low": net_low, "exp": net_low * prob30 if prob30 is not None else None}
         per_country = {}
         for cc in VINTED_COUNTRIES:
-            e = ref.estimate(keys, b["tier"], cc)          # yalnizca o ulkenin KENDI satislari
+            e = ref.estimate(keys, b["tier"], cc, cat=b["cat"])   # yalnizca o ulkenin KENDI satislari
             if e:
                 m = statistics.median(e[0])
                 per_country[cc] = (m - b["cost"] - sell_cost(m), e[1])
