@@ -113,11 +113,15 @@ DATA_DIR = BASE_DIR / "data"
 # daha pahali.
 
 def _cssberlin_base() -> str:
-    """Yayin hedefinin kok adresi (sondaki / temizlenir)."""
-    base = os.getenv("CSSBERLIN_API_URL", "").rstrip("/")
-    if not base:
+    """Yayin hedefinin KOK adresi (https://cssberlin.de). CSSBERLIN_API_URL import yolunu da icerdiginden
+    (…/api/products/import) yalniz sema+alan adi alinir. 2026-10-19: eskiden tam URL donuyordu ve
+    silme/fiyat istekleri '…/api/products/import/api/products/{id}' adresine gidiyordu (hic calismadi)."""
+    from urllib.parse import urlparse
+    raw = os.getenv("CSSBERLIN_API_URL", "").strip()
+    if not raw:
         raise RuntimeError("CSSBERLIN_API_URL .env'de tanimli degil")
-    return base
+    u = urlparse(raw)
+    return f"{u.scheme}://{u.netloc}"
 
 
 def _cssberlin_key() -> str:
@@ -1000,14 +1004,16 @@ async def update_product_price(product_id: str, request: Request):
     # cssberlin.de API guncelle
     cssberlin_synced = False
     if cssberlin_id:
+        # Sitenin TATANGA koprusu: /api/products/reprice (x-api-key; yalniz FIYAT DUSURME kabul eder, tek seferde
+        # en fazla yari). Eski PUT /api/products/{id} yalniz oturumlu saticiya acikti -> hic calismadi.
         try:
-            resp = req.put(
-                f"{_cssberlin_base()}/api/products/{cssberlin_id}",
-                json={"price": new_price},
+            resp = req.post(
+                f"{_cssberlin_base()}/api/products/reprice",
+                json={"items": [{"hub_product_id": product_id, "price": float(new_price)}]},
                 headers={"x-api-key": _cssberlin_key()},
-                timeout=10
+                timeout=15
             )
-            cssberlin_synced = resp.status_code == 200
+            cssberlin_synced = resp.status_code == 200 and bool(resp.json().get("success"))
         except Exception:
             pass
 
@@ -1031,13 +1037,16 @@ async def unpublish_product(product_id: str):
     # cssberlin.de'den sil
     cssberlin_removed = False
     if cssberlin_id:
+        # Sitenin TATANGA koprusu: /api/products/withdraw (x-api-key; yalniz bizim importlarimiz; siparisli -> gizli).
         try:
-            resp = req.delete(
-                f"{_cssberlin_base()}/api/products/{cssberlin_id}",
+            resp = req.post(
+                f"{_cssberlin_base()}/api/products/withdraw",
+                json={"hub_product_ids": [product_id]},
                 headers={"x-api-key": _cssberlin_key()},
-                timeout=10
+                timeout=30
             )
-            cssberlin_removed = resp.status_code in (200, 204)
+            data = resp.json().get("data", {}) if resp.status_code == 200 else {}
+            cssberlin_removed = product_id in (data.get("deleted") or []) + (data.get("hidden_because_orders") or [])
         except Exception:
             pass
 
