@@ -81,6 +81,22 @@
             </div>
         </div>
 
+        <!-- VINTED SATIS ASISTANI (logic/vinted_ilan.py) -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-store me-1" style="color:#09b1ba"></i> Vinted ilani hazirla</h6>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-info" onclick="vintedIlan(0)">Taslak</button>
+                    <button class="btn btn-sm btn-outline-light" onclick="vintedIlan(1)" title="Groq yalniz dili duzeltir, yeni bilgi ekleyemez">Dili duzelt</button>
+                </div>
+            </div>
+            <div class="card-body" style="font-size:.8rem;">
+                <div style="color:#9aa4ae" class="mb-2">Bilinmeyen (olculer, kusur) <b>__</b> olarak kalir; doldurup Vinted uygulamasinda
+                    kendin yayinlarsin. Hicbir sey otomatik gonderilmez.</div>
+                <div id="vi-sonuc" style="color:#c8d0d8"></div>
+            </div>
+        </div>
+
         <!-- ETIKET / STIL KODU (logic/etiket.py) -->
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -225,7 +241,17 @@
             </div>
             <div class="card-body">
                 {% set arb = (product.arbitrage_json | default('[]') | fromjson) %}
-                {% if arb %}
+                {% if product.zeka_satis_medyan %}
+                <div style="font-size:.8rem;color:#c8d0d8">
+                    <b>Gercek satis zekasi:</b> Vinted satis medyani {{ "%.2f"|format(product.zeka_satis_medyan) }} €,
+                    alt ceyrek {{ "%.2f"|format(product.zeka_satis_p25 or 0) }} € (n={{ product.zeka_n }}, {{ product.zeka_seviye }}),
+                    tutucu net {{ "%+.2f"|format(product.zeka_net_kar or 0) }} €.
+                    <div style="color:#9aa4ae" class="mt-1">Eski platform tablosu (maliyet x sabit carpan tahmini) gizlendi:
+                        gercek satislarla celisiyordu (or. 23 € satilan mont icin ~200 € gosteriyordu).</div>
+                </div>
+                {% elif arb %}
+                <div class="text-warning mb-1" style="font-size:.72rem">Eski kaba tahmin (maliyet x sabit carpan) — gercek
+                    satis verisi yok; karar icin kullanma.</div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0" style="font-size:0.75rem;">
                         <thead>
@@ -448,6 +474,33 @@ async function checkSrc() {
     await fetch('/api/product/' + PRODUCT_ID + '/check-source', {method:'POST'});
     showToast('Kaynak kontrol basladi...', 'info');
     setTimeout(() => location.reload(), 4000);
+}
+
+// ---- VINTED SATIS ASISTANI ----
+function viKopya(id) { const t = document.getElementById(id); navigator.clipboard.writeText(t.value || t.innerText).then(() => showToast('Kopyalandi', 'success')); }
+async function vintedIlan(cila) {
+    const el = document.getElementById('vi-sonuc');
+    el.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Hazirlaniyor...';
+    const d = await (await fetch('/api/product/' + PRODUCT_ID + '/vinted-ilan?cila=' + cila)).json();
+    if (d.status !== 'ok') { el.innerHTML = '<span class="text-danger">' + (d.error || 'hata') + '</span>'; return; }
+    const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
+    const f = d.fiyat;
+    const fiyat = f ? `<div class="p-2 mb-2" style="background:rgba(9,177,186,.1);border:1px solid rgba(9,177,186,.4);border-radius:8px">
+        ${f.zayif ? '<span class="badge bg-warning text-dark me-1">zayif dayanak</span>' : ''}<b style="font-size:1.1rem;color:#09b1ba">${f.liste} €</b> liste fiyati · gercek satis medyani ${f.medyan} € (n=${f.satis_n}) ·
+        <b>en dusuk kabul ${f.alt_sinir} €</b>${f.p30 != null ? ' · 30 gunde satilma %' + Math.round(f.p30 * 100) : ''}
+        <div style="color:#9aa4ae">${esc(f.not)}</div></div>` : `<div class="mb-2 text-warning">Fiyat onerisi yok: ${esc(d.fiyat_yok_neden)}</div>`;
+    const sat = (k, v) => v ? `<div><span style="color:#9aa4ae">${k}:</span> ${esc(v)}</div>` : '';
+    el.innerHTML = fiyat +
+        `<label class="small" style="color:#9aa4ae">Baslik (${d.baslik.length}/60)</label>
+         <div class="input-group input-group-sm mb-2"><input id="vi-baslik" class="form-control" value="${esc(d.baslik)}">
+         <button class="btn btn-outline-light" onclick="viKopya('vi-baslik')">Kopyala</button></div>
+         <label class="small" style="color:#9aa4ae">Aciklama ${d.cila ? '· ' + esc(d.cila) : ''}</label>
+         <textarea id="vi-aciklama" class="form-control form-control-sm mb-1" rows="9" style="background:#0f1216;color:#e4e6eb">${esc(d.aciklama)}</textarea>
+         <button class="btn btn-sm btn-outline-light mb-2" onclick="viKopya('vi-aciklama')">Aciklamayi kopyala</button>` +
+        sat('Kategori', d.kategori_yolu) + sat('Kondisyon', d.kondisyon) + sat('Beden', d.beden) + sat('Marka', d.marka) +
+        sat('Model', d.model ? d.model + (d.model_kaynak === 'etiket' ? ' (etiketten)' : '') : '') +
+        (d.eksik.length ? `<div class="text-warning">Eksik: ${d.eksik.join(', ')} — Vinted'de elle sec</div>` : '') +
+        `<div style="color:#9aa4ae" class="mt-1">${esc(d.fotograf.not)}</div>`;
 }
 
 // ---- ETIKET ----

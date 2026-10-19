@@ -2299,6 +2299,25 @@ async def etiket_durum(product_id: str):
             "sonuc": json.loads(row[0]) if row and row[0] else None}
 
 
+@app.get("/api/product/{product_id}/vinted-ilan")
+async def vinted_ilan(product_id: str, cila: int = 0):
+    """Vinted (DE) ilan taslagi: baslik, aciklama, kategori, kondisyon, beden, gercek satislardan fiyat.
+    GONDERMEZ / GIRIS YAPMAZ: kullanici kopyalayip Vinted uygulamasinda yayinlar."""
+    from logic import vinted_ilan as V
+    async with aiosqlite.connect(DB_FILE) as db:
+        p = await _teklif_urun(db, product_id)
+    if not p:
+        return JSONResponse({"status": "error", "error": "Urun bulunamadi"}, 404)
+    t = await asyncio.to_thread(V.taslak, p)
+    if cila:
+        t = await asyncio.to_thread(V.groq_cila, t)
+    studio = [r for r in json.loads(p.get("studio_images_json") or "[]") if isinstance(r, dict) and r.get("ok")]
+    t["fotograf"] = {"studyo_gecen": len(studio),
+                     "not": "Vinted'de en az 5 fotograf: on, arka, etiket, detay, kusur (varsa)." +
+                            ("" if studio else " Henuz kendi fotografin yok: 'Kendi fotograflarin · studyo' bolumunden yukle.")}
+    return {"status": "ok", "product_id": product_id, **t}
+
+
 @app.post("/api/product/{product_id}/remove-bg")
 async def remove_bg_endpoint(product_id: str, background_tasks: BackgroundTasks):
     """Urun gorsellerinin arka planini kaldir. Urunun KENDI fotograflari varsa studyo hatti (BiRefNet) kullanilir."""
@@ -6035,7 +6054,7 @@ NUR JSON ausgeben, nichts anderes. Keine Platzhalter, keine "...", keine leeren 
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "qwen/qwen3.6-27b",
+                    "model": os.getenv("GROQ_TEXT_MODEL", "qwen/qwen3.8-27b"),  # 2026-10-19: qwen3.6 kaldirilmis (404)
                     "messages": [
                         {"role": "system", "content": "/no_think"},
                         {"role": "user", "content": prompt},
@@ -6053,7 +6072,7 @@ NUR JSON ausgeben, nichts anderes. Keine Platzhalter, keine "...", keine leeren 
                 resp = req.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                    json={"model": "qwen/qwen3.6-27b", "messages": [{"role": "system", "content": "/no_think"}, {"role": "user", "content": prompt}], "temperature": 0.3, "max_tokens": 2048},
+                    json={"model": os.getenv("GROQ_TEXT_MODEL", "qwen/qwen3.8-27b"), "messages": [{"role": "system", "content": "/no_think"}, {"role": "user", "content": prompt}], "temperature": 0.3, "max_tokens": 2048},
                     timeout=60,
                 )
             if resp.status_code != 200:

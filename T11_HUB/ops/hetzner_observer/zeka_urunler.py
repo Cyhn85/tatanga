@@ -92,6 +92,12 @@ def main() -> int:
     c, rates, matcher = eng.c, eng.rates, eng.matcher
     table = brand_table()
     model_cat = eng.ref.model_cat
+    # satis asistani (logic/vinted_ilan.py) ve digerleri icin: model -> kategori (gercek veriden), gunluk yenilenir
+    try:
+        json.dump({f"{k[0]}|{k[1]}": v for k, v in model_cat.items()},
+                  open(os.path.join(C.ROOT, "model_kategori.json"), "w", encoding="utf-8"), ensure_ascii=False)
+    except OSError:
+        pass
     hub = sqlite3.connect(args.hub, timeout=60)
     hub.row_factory = sqlite3.Row
     have = {r[1] for r in hub.execute("PRAGMA table_info(products)")}
