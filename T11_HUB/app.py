@@ -1322,6 +1322,44 @@ async def start_scrape(request: Request, background_tasks: BackgroundTasks):
 # ============================================
 # AKILLI KAZIMA — min_favorites filtreli (YENI, mevcut sisteme dokunmaz)
 # ============================================
+_VINTED_ITEM_RE = re.compile(r"vinted\.[a-z.]+/items/(\d+)", re.I)
+
+
+async def _ayni_ilan(db, source_url: str) -> tuple[str, str] | None:
+    """
+    Bu ilan zaten urunlerde mi? (id, para birimi) ya da None.
+    TEKRAR KORUMASI (2026-10-19): ayni Vinted ilani vinted.de/.fr/.be/.nl/.at/... alan adlarinin HEPSINDE gorunur
+    (tek pazaryeri). Eskiden yalniz birebir URL karsilastirildigi icin ayni ilan 5-6 ayri urun oluyordu
+    (oneri kazimasinda 7.789 kayit -> 4.739 tekil). Vinted'de anahtar ilan numarasidir, alan adi degil.
+    """
+    if not source_url:
+        return None
+    row = await (await db.execute("SELECT id, currency FROM products WHERE source_url=?", (source_url,))).fetchone()
+    if row:
+        return row[0], (row[1] or "EUR")
+    m = _VINTED_ITEM_RE.search(source_url)
+    if m:
+        iid = m.group(1)
+        row = await (await db.execute(
+            "SELECT id, currency FROM products WHERE source_url LIKE ? OR source_url LIKE ? LIMIT 1",
+            (f"%/items/{iid}-%", f"%/items/{iid}"))).fetchone()
+        if row:
+            return row[0], (row[1] or "EUR")
+    return None
+
+
+async def _ayni_ilani_tazele(db, hit: tuple[str, str], prod: dict, extra: dict | None = None) -> None:
+    """Var olan kaydi gunceller. Fiyat YALNIZ ayni para birimindeyse yazilir (vinted.se SEK fiyati EUR kaydi bozmasin)."""
+    sets, vals = ["updated_at=?", "source_status='active'"], [datetime.now().isoformat()]
+    if (prod.get("currency") or "EUR").upper() == (hit[1] or "EUR").upper() and prod.get("price"):
+        sets.append("price=?")
+        vals.append(prod.get("price"))
+    for k, v in (extra or {}).items():
+        sets.append(f"{k}=?")
+        vals.append(v)
+    await db.execute(f"UPDATE products SET {', '.join(sets)} WHERE id=?", vals + [hit[0]])
+
+
 async def run_smart_scrape_job(job_id: str, keyword: str, platforms: list, max_pages: int,
                                min_favorites: int, min_views: int, strategy: str = "single"):
     """
@@ -1370,16 +1408,12 @@ async def run_smart_scrape_job(job_id: str, keyword: str, platforms: list, max_p
 
                     async with aiosqlite.connect(DB_FILE) as db:
                         try:
-                            if source_url:
-                                cursor = await db.execute("SELECT id FROM products WHERE source_url=?", (source_url,))
-                                existing = await cursor.fetchone()
-                                if existing:
-                                    await db.execute(
-                                        "UPDATE products SET price=?, favorites=?, views=?, updated_at=?, source_status='active' WHERE source_url=?",
-                                        (prod.get("price", 0), fav_count, view_count, datetime.now().isoformat(), source_url))
-                                    await db.commit()
-                                    total_found += 1
-                                    continue
+                            hit = await _ayni_ilan(db, source_url)
+                            if hit:
+                                await _ayni_ilani_tazele(db, hit, prod, {"favorites": fav_count, "views": view_count})
+                                await db.commit()
+                                total_found += 1
+                                continue
 
                             await db.execute("""
                                 INSERT INTO products
@@ -1824,16 +1858,12 @@ async def _run_category_round(job_id: str, tasks, platforms: list,
 
                         async with aiosqlite.connect(DB_FILE) as db:
                             try:
-                                if source_url:
-                                    cursor = await db.execute("SELECT id FROM products WHERE source_url=?", (source_url,))
-                                    existing = await cursor.fetchone()
-                                    if existing:
-                                        await db.execute(
-                                            "UPDATE products SET price=?, updated_at=?, source_status='active' WHERE source_url=?",
-                                            (prod.get("price", 0), datetime.now().isoformat(), source_url))
-                                        await db.commit()
-                                        total_kept += 1
-                                        continue
+                                hit = await _ayni_ilan(db, source_url)
+                                if hit:
+                                    await _ayni_ilani_tazele(db, hit, prod)
+                                    await db.commit()
+                                    total_kept += 1
+                                    continue
 
                                 await db.execute("""
                                     INSERT INTO products
@@ -2664,18 +2694,13 @@ async def run_scrape_job(job_id: str, keyword: str, platforms: list, max_pages: 
 
                     async with aiosqlite.connect(DB_FILE) as db:
                         try:
-                            # Check if URL already exists
-                            if source_url:
-                                cursor = await db.execute("SELECT id FROM products WHERE source_url=?", (source_url,))
-                                existing = await cursor.fetchone()
-                                if existing:
-                                    # Update price/status for existing
-                                    await db.execute(
-                                        "UPDATE products SET price=?, updated_at=?, source_status='active' WHERE source_url=?",
-                                        (prod.get("price", 0), datetime.now().isoformat(), source_url))
-                                    await db.commit()
-                                    total_found += 1
-                                    continue
+                            # Ayni ilan zaten var mi (birebir URL ya da baska Vinted alan adindaki ayni ilan)
+                            hit = await _ayni_ilan(db, source_url)
+                            if hit:
+                                await _ayni_ilani_tazele(db, hit, prod)
+                                await db.commit()
+                                total_found += 1
+                                continue
 
                             await db.execute("""
                                 INSERT INTO products
@@ -5642,8 +5667,7 @@ async def nokta_atis_al(request: Request):
     async with aiosqlite.connect(DB_FILE) as db:
         await db.execute("CREATE TABLE IF NOT EXISTS nokta_atis_alinan (firsat_id TEXT PRIMARY KEY, "
                          "product_id TEXT, run_id TEXT, alindi TEXT, kanit_json TEXT)")
-        cur = await db.execute("SELECT id FROM products WHERE source_url=?", (row["source_url"],))
-        hit = await cur.fetchone()
+        hit = await _ayni_ilan(db, row["source_url"])     # baska Vinted alan adindaki ayni ilan da sayilir
         if hit:
             pid, created = hit[0], False
         else:
