@@ -331,13 +331,10 @@
                     <h6 class="small fw-bold mb-2">Yayin Kontrol Listesi:</h6>
                     <div class="d-flex flex-column gap-1" style="font-size:0.8rem;">
                         <div class="d-flex align-items-center gap-2">
-                            {% set has_images = (product.images_json | default('[]') | fromjson) | length > 0 %}
-                            <i class="fas fa-{% if has_images %}check-circle text-success{% else %}times-circle text-danger{% endif %}"></i>
-                            <span>Gorseller mevcut</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="fas fa-{% if product.bg_removed == 1 %}check-circle text-success{% else %}exclamation-circle text-warning{% endif %}"></i>
-                            <span>Arka plan {% if product.bg_removed == 1 %}kaldirildi{% else %}kaldirilmadi (opsiyonel){% endif %}</span>
+                            {% set studio_ok = (product.studio_images_json | default('[]') | fromjson) | selectattr('ok') | list %}
+                            <i class="fas fa-{% if studio_ok %}check-circle text-success{% else %}times-circle text-danger{% endif %}"></i>
+                            <span>Kendi fotograflarin (studyo kapisini gecen: {{ studio_ok | length }}) — zorunlu;
+                                kazinan ilan fotografi yayinda kullanilmaz</span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <i class="fas fa-{% if product.seo_title %}check-circle text-success{% else %}exclamation-circle text-warning{% endif %}"></i>
@@ -378,11 +375,8 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small">Kullanilacak Gorseller</label>
-                        <select class="form-select" id="pub-images">
-                            {% if processed %}
-                            <option value="processed" selected>Islenmis Gorseller ({{ processed | length }})</option>
-                            {% endif %}
-                            <option value="original" {% if not processed %}selected{% endif %}>Orijinal Gorseller ({{ images | length }})</option>
+                        <select class="form-select" id="pub-images" disabled>
+                            <option value="studio" selected>Kendi fotograflarim · studyo ({{ studio_ok | length }})</option>
                         </select>
                     </div>
                 </div>

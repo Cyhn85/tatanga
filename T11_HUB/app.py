@@ -2119,6 +2119,8 @@ async def _studio_isle(product_id: str) -> None:
                                  (json.dumps(sonuc, ensure_ascii=False), datetime.now().isoformat(), product_id))
             await db.commit()
         await log_activity("studio", f"{product_id}: {len(gecen)}/{len(sonuc)} kendi fotograf kalite kapisini gecti")
+        if gecen:
+            await _try_auto_publish(product_id)
         await broadcast_ws("studio_done", {"product_id": product_id, "gecen": len(gecen), "toplam": len(sonuc)})
     finally:
         _STUDIO_ISLENIYOR.discard(product_id)
@@ -2187,6 +2189,32 @@ async def remove_bg_endpoint(product_id: str, background_tasks: BackgroundTasks)
     background_tasks.add_task(process_background_removal, product_id)
     return {"status": "processing", "product_id": product_id, "hat": "eski (kaynak gorseller)"}
 
+def _yayin_gorselleri(product: dict) -> list[tuple[str, bytes, str]]:
+    """
+    YAYIN GORSEL KURALI (2026-10-19, kullanici karari): cssberlin.de'ye (ve ileride her satis kanalina) YALNIZ
+    kullanicinin KENDI cektigi ve studyo kalite kapisini gecmis fotograflar gider. Kazinan ilanin (baska saticinin)
+    fotografi, onun islenmis / arka plani degistirilmis turevi ya da kaynak URL'si ASLA gonderilmez.
+    """
+    try:
+        sonuc = json.loads(product.get("studio_images_json") or "[]")
+    except ValueError:
+        return []
+    out = []
+    for r in sonuc:
+        g = r.get("gorsel") if isinstance(r, dict) else None
+        if not (r.get("ok") and g and g.startswith("/data/images/studio/")):
+            continue
+        path = DATA_DIR / g[len("/data/"):]
+        if path.is_file():
+            out.append((path.name, path.read_bytes(), "image/jpeg"))
+    return out[:8]
+
+
+YAYIN_GORSEL_EKSIK = ("Yayin yalniz KENDI fotograflarinla yapilir: urun detayindaki 'Kendi fotograflarin · studyo' "
+                      "bolumunden fotograf yukle; kalite kapisini gecenler yayin gorseli olur. Kazinan ilanin "
+                      "fotografi yayinda kullanilmaz.")
+
+
 @app.post("/api/product/{product_id}/publish")
 async def publish_product(product_id: str, request: Request):
     """Urunu cssberlin.de'ye gercek olarak yayinla"""
@@ -2216,9 +2244,8 @@ async def publish_product(product_id: str, request: Request):
         eksikler.append("SEO basligi yok → once POST /api/product/{id}/generate-seo")
     if not product.get("seo_description"):
         eksikler.append("SEO aciklamasi yok → once POST /api/product/{id}/generate-seo")
-    processed = product.get("processed_images_json") or "[]"
-    if processed == "[]":
-        eksikler.append("Islenmis gorsel yok → once POST /api/product/{id}/remove-bg (BG kaldir + watermark + organik varyasyon)")
+    if not _yayin_gorselleri(product):
+        eksikler.append(YAYIN_GORSEL_EKSIK)
     if eksikler:
         return JSONResponse({
             "status": "error",
@@ -2239,29 +2266,8 @@ async def publish_product(product_id: str, request: Request):
             return "image/webp"
         return "image/jpeg"
 
-    if image_type == "processed" and product.get("processed_images_json") and product["processed_images_json"] != "[]":
-        for img in json.loads(product["processed_images_json"]):
-            if img.startswith("/data/"):
-                local_path = DATA_DIR / img[len("/data/"):]
-                if local_path.is_file():
-                    image_uploads.append((local_path.name, local_path.read_bytes(), _content_type_for(str(local_path))))
-            else:
-                # Gecmis platform gorseli (ham kaynak URL'si) - indirip gercek byte'i gonder.
-                try:
-                    dl = req.get(img, timeout=15)
-                    if dl.status_code == 200:
-                        image_uploads.append((img.rsplit("/", 1)[-1][:60] or "image.jpg", dl.content, _content_type_for(img)))
-                except req.RequestException:
-                    pass
-    else:
-        for img in json.loads(product.get("images_json", "[]")):
-            try:
-                dl = req.get(img, timeout=15)
-                if dl.status_code == 200:
-                    image_uploads.append((img.rsplit("/", 1)[-1][:60] or "image.jpg", dl.content, _content_type_for(img)))
-            except req.RequestException:
-                pass
-
+    # image_type parametresi artik yok sayilir: kaynak/islenmis kazima gorseli secenegi KALDIRILDI.
+    image_uploads = _yayin_gorselleri(product)
     image_uploads = image_uploads[:8]
 
     if not image_uploads:
@@ -5144,8 +5150,8 @@ async def _try_auto_publish(product_id: str):
         if not seo_desc or seo_desc.strip() in ("...", "None") or len(seo_desc.strip()) < 20:
             return
         is_update = bool(product.get("cssberlin_id"))
-        proc_imgs = product.get("processed_images_json") or "[]"
-        if proc_imgs == "[]":
+        image_uploads = _yayin_gorselleri(product)       # yalniz kendi fotograflar (studyo kapisi gecmis)
+        if not image_uploads:
             return
 
         CSSBERLIN_API_URL = os.getenv("CSSBERLIN_API_URL")
@@ -5153,16 +5159,6 @@ async def _try_auto_publish(product_id: str):
         if not CSSBERLIN_API_URL or not CSSBERLIN_API_KEY:
             return
 
-        image_uploads = []
-        for img in json.loads(proc_imgs):
-            if img.startswith("/data/"):
-                local_path = DATA_DIR / img[len("/data/"):]
-                if local_path.is_file():
-                    ct = "image/png" if str(local_path).endswith(".png") else "image/jpeg"
-                    image_uploads.append((local_path.name, local_path.read_bytes(), ct))
-        image_uploads = image_uploads[:8]
-        if not image_uploads:
-            return
 
         sell_price = product.get("estimated_sell_price") or (product.get("price", 0) * 1.5)
         aciklama = product.get("seo_description") or product.get("description", "") or ""
