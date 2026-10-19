@@ -98,6 +98,8 @@ def main() -> int:
     for name, decl in COLS.items():
         if name not in have:
             hub.execute(f"ALTER TABLE products ADD COLUMN {name} {decl}")
+    if "etiket_json" not in have:
+        hub.execute("ALTER TABLE products ADD COLUMN etiket_json TEXT")
     hub.commit()
 
     stats = defaultdict(lambda: defaultdict(int))
@@ -105,7 +107,7 @@ def main() -> int:
     now = datetime.now().isoformat(timespec="seconds")
     updates = []
     for p in hub.execute("SELECT id, source_platform, source_url, title, price, currency, brand, size, condition, "
-                         "category, shipping_cost, description FROM products"):
+                         "category, shipping_cost, description, etiket_json FROM products"):
         title = p["title"] or ""
         why = None
         platform, cc = platform_of(p["source_platform"])
@@ -115,6 +117,15 @@ def main() -> int:
         tier = (A.norm_condition(p["condition"]) or KOND_EXTRA.get(A.norm_text(p["condition"] or ""))
                 or A.norm_condition(kond_txt) or KOND_EXTRA.get(kond_txt))
         rate = rates.get((p["currency"] or "EUR").upper()) or 0
+        # ETIKET KANITI (logic/etiket.py): stil kodu -> gercek ilanlarda model cogunlugu, ya da etiket metni birebir
+        et_model, et_kaynak = None, None
+        if p["etiket_json"] and brand:
+            try:
+                et = json.loads(p["etiket_json"])
+                if et.get("durum") == "ok" and et.get("model") and (et.get("marka") or "").lower() == brand.lower():
+                    et_model, et_kaynak = et["model"], et.get("kaynak")
+            except ValueError:
+                pass
         typ = A.match_type(A.norm_text(title))
         cat = next(iter(C.TYPE_CAT[typ]), None) if typ in C.TYPE_CAT and len(C.TYPE_CAT[typ]) == 1 else None
         cat = cat or CAT_FROM_TATANGA.get((p["category"] or "").lower())
@@ -128,6 +139,7 @@ def main() -> int:
             # basliktaki model adi kategorisini gercek veriden bilir (XT-6 -> schuhe, 501 -> jeans).
             # Baslikta hedef disi bir giysi kelimesi varsa (pantolon/sort/etek...) ATANMAZ: "Firebird pants" ceket degil.
             m0, _l0 = matcher.match(brand, title)
+            m0 = m0 or et_model
             cat = model_cat.get((brand.lower(), m0.lower())) if m0 else None
         if not brand:
             why = "marka listemizde degil"
@@ -163,6 +175,9 @@ def main() -> int:
         if cc not in EU:
             flags.append(f"AB disi ({cc}): gumruk/ithalat KDV'si hesapta yok")
         model, line = matcher.match(brand, title)
+        if not model and et_model:
+            model = et_model
+            flags.append(f"model etiketten: {et_model} ({et_kaynak})")
         b = {"platform": platform, "sid": p["id"], "img": None, "line": line, "country": cc, "url": p["source_url"],
              "brand": brand, "cat": cat, "gender": None, "title": title, "model": model, "type": typ, "tier": tier,
              "size": p["size"], "price": price, "cost": cost, "flags": flags, "structured": False,

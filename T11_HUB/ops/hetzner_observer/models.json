@@ -1,1936 +1,1937 @@
 {
- "_aciklama": "Marka -> models (gercek model adi -> baslikta gecen yazimlar) ve lines (seri/teknoloji: fiyati etkiler ama model degildir). Eslestirme marka icinde yapilir, aksan ve tire yok sayilir, en uzun eslesen yazim kazanir. Model yoksa seri kullanilir. codes: stil kodu kaliplari (buyuk harfli ham metinde aranir); kod = renk dahil birebir kimlik, model adindan ustun.",
- "Nike": {
-  "models": {
-   "Air Max 1": [
-    "air max 1",
-    "airmax 1",
-    "am1"
-   ],
-   "Air Max 90": [
-    "air max 90",
-    "airmax 90",
-    "am90"
-   ],
-   "Air Max 95": [
-    "air max 95",
-    "airmax 95",
-    "am95"
-   ],
-   "Air Max 97": [
-    "air max 97",
-    "airmax 97",
-    "am97"
-   ],
-   "Air Max Plus": [
-    "air max plus",
-    "tn plus",
-    "air max tn",
-    "requin"
-   ],
-   "Air Max 270": [
-    "air max 270",
-    "airmax 270"
-   ],
-   "Air Force 1": [
-    "air force 1",
-    "air force one",
-    "af1",
-    "airforce 1"
-   ],
-   "Dunk Low": [
-    "dunk low",
-    "sb dunk low"
-   ],
-   "Dunk High": [
-    "dunk high",
-    "sb dunk high"
-   ],
-   "Blazer": [
-    "blazer mid",
-    "blazer low",
-    "blazer 77"
-   ],
-   "Cortez": [
-    "cortez"
-   ],
-   "Air Jordan 1": [
-    "air jordan 1",
-    "jordan 1",
-    "aj1"
-   ],
-   "Air Jordan 4": [
-    "air jordan 4",
-    "jordan 4",
-    "aj4"
-   ],
-   "Vomero": [
-    "vomero"
-   ],
-   "Pegasus": [
-    "pegasus"
-   ],
-   "P-6000": [
-    "p-6000",
-    "p6000"
-   ],
-   "Shox": [
-    "shox"
-   ],
-   "Killshot": [
-    "killshot"
-   ],
-   "Tech Fleece": [
-    "tech fleece",
-    "techfleece"
-   ],
-   "Windrunner": [
-    "windrunner",
-    "wind runner"
-   ]
+  "_aciklama": "Marka -> models (gercek model adi -> baslikta gecen yazimlar) ve lines (seri/teknoloji: fiyati etkiler ama model degildir). Eslestirme marka icinde yapilir, aksan ve tire yok sayilir, en uzun eslesen yazim kazanir. Model yoksa seri kullanilir. codes: stil kodu kaliplari (buyuk harfli ham metinde aranir); kod = renk dahil birebir kimlik, model adindan ustun.",
+  "Nike": {
+    "models": {
+      "Air Max 1": [
+        "air max 1",
+        "airmax 1",
+        "am1"
+      ],
+      "Air Max 90": [
+        "air max 90",
+        "airmax 90",
+        "am90"
+      ],
+      "Air Max 95": [
+        "air max 95",
+        "airmax 95",
+        "am95"
+      ],
+      "Air Max 97": [
+        "air max 97",
+        "airmax 97",
+        "am97"
+      ],
+      "Air Max Plus": [
+        "air max plus",
+        "tn plus",
+        "air max tn",
+        "requin"
+      ],
+      "Air Max 270": [
+        "air max 270",
+        "airmax 270"
+      ],
+      "Air Force 1": [
+        "air force 1",
+        "air force one",
+        "af1",
+        "airforce 1"
+      ],
+      "Dunk Low": [
+        "dunk low",
+        "sb dunk low"
+      ],
+      "Dunk High": [
+        "dunk high",
+        "sb dunk high"
+      ],
+      "Blazer": [
+        "blazer mid",
+        "blazer low",
+        "blazer 77"
+      ],
+      "Cortez": [
+        "cortez"
+      ],
+      "Air Jordan 1": [
+        "air jordan 1",
+        "jordan 1",
+        "aj1"
+      ],
+      "Air Jordan 4": [
+        "air jordan 4",
+        "jordan 4",
+        "aj4"
+      ],
+      "Vomero": [
+        "vomero"
+      ],
+      "Pegasus": [
+        "pegasus"
+      ],
+      "P-6000": [
+        "p-6000",
+        "p6000"
+      ],
+      "Shox": [
+        "shox"
+      ],
+      "Killshot": [
+        "killshot"
+      ],
+      "Tech Fleece": [
+        "tech fleece",
+        "techfleece"
+      ],
+      "Windrunner": [
+        "windrunner",
+        "wind runner"
+      ]
+    },
+    "lines": {
+      "ACG": [
+        "acg"
+      ],
+      "Therma-FIT": [
+        "therma fit",
+        "therma-fit"
+      ],
+      "Storm-FIT": [
+        "storm fit"
+      ],
+      "Air Max": [
+        "air max",
+        "airmax"
+      ],
+      "Jordan": [
+        "jordan",
+        "air jordan"
+      ],
+      "Air Force": [
+        "air force",
+        "airforce"
+      ],
+      "Dunk": [
+        "dunk"
+      ],
+      "Air Zoom": [
+        "air zoom",
+        "zoom"
+      ],
+      "React": [
+        "react"
+      ],
+      "Revolution": [
+        "revolution"
+      ],
+      "Court": [
+        "court vision",
+        "court"
+      ]
+    },
+    "codes": [
+      "\\b[A-Z]{2}\\d{4}[- ]\\d{3}\\b",
+      "\\b\\d{6}-\\d{3}\\b"
+    ]
   },
-  "lines": {
-   "ACG": [
-    "acg"
-   ],
-   "Therma-FIT": [
-    "therma fit",
-    "therma-fit"
-   ],
-   "Storm-FIT": [
-    "storm fit"
-   ],
-   "Air Max": [
-    "air max",
-    "airmax"
-   ],
-   "Jordan": [
-    "jordan",
-    "air jordan"
-   ],
-   "Air Force": [
-    "air force",
-    "airforce"
-   ],
-   "Dunk": [
-    "dunk"
-   ],
-   "Air Zoom": [
-    "air zoom",
-    "zoom"
-   ],
-   "React": [
-    "react"
-   ],
-   "Revolution": [
-    "revolution"
-   ],
-   "Court": [
-    "court vision",
-    "court"
-   ]
+  "Adidas": {
+    "models": {
+      "Samba": [
+        "samba"
+      ],
+      "Gazelle": [
+        "gazelle"
+      ],
+      "Spezial": [
+        "spezial",
+        "handball spezial"
+      ],
+      "Stan Smith": [
+        "stan smith"
+      ],
+      "Superstar": [
+        "superstar"
+      ],
+      "Campus": [
+        "campus 00s",
+        "campus"
+      ],
+      "Forum": [
+        "forum low",
+        "forum 84",
+        "forum mid"
+      ],
+      "SL 72": [
+        "sl 72",
+        "sl72"
+      ],
+      "Ultraboost": [
+        "ultraboost",
+        "ultra boost"
+      ],
+      "NMD": [
+        "nmd"
+      ],
+      "Yeezy": [
+        "yeezy"
+      ],
+      "Firebird": [
+        "firebird"
+      ],
+      "Beckenbauer": [
+        "beckenbauer"
+      ],
+      "SST": [
+        "sst track",
+        "sst"
+      ],
+      "Adilette": [
+        "adilette"
+      ],
+      "Taekwondo": [
+        "taekwondo"
+      ]
+    },
+    "lines": {
+      "Terrex": [
+        "terrex"
+      ],
+      "Originals": [
+        "originals"
+      ],
+      "Y-3": [
+        "y-3",
+        "y3"
+      ],
+      "Boost": [
+        "boost"
+      ],
+      "Runfalcon": [
+        "runfalcon"
+      ],
+      "Grand Court": [
+        "grand court"
+      ],
+      "Continental": [
+        "continental 80",
+        "continental"
+      ],
+      "Ozweego": [
+        "ozweego"
+      ]
+    },
+    "codes": [
+      "\\b[A-Z]{2}\\d{4}\\b",
+      "\\b[A-Z]\\d{5}\\b"
+    ]
   },
-  "codes": [
-   "\\b[A-Z]{2}\\d{4}[- ]\\d{3}\\b",
-   "\\b\\d{6}-\\d{3}\\b"
-  ]
- },
- "Adidas": {
-  "models": {
-   "Samba": [
-    "samba"
-   ],
-   "Gazelle": [
-    "gazelle"
-   ],
-   "Spezial": [
-    "spezial",
-    "handball spezial"
-   ],
-   "Stan Smith": [
-    "stan smith"
-   ],
-   "Superstar": [
-    "superstar"
-   ],
-   "Campus": [
-    "campus 00s",
-    "campus"
-   ],
-   "Forum": [
-    "forum low",
-    "forum 84",
-    "forum mid"
-   ],
-   "SL 72": [
-    "sl 72",
-    "sl72"
-   ],
-   "Ultraboost": [
-    "ultraboost",
-    "ultra boost"
-   ],
-   "NMD": [
-    "nmd"
-   ],
-   "Yeezy": [
-    "yeezy"
-   ],
-   "Firebird": [
-    "firebird"
-   ],
-   "Beckenbauer": [
-    "beckenbauer"
-   ],
-   "SST": [
-    "sst track",
-    "sst"
-   ],
-   "Adilette": [
-    "adilette"
-   ],
-   "Taekwondo": [
-    "taekwondo"
-   ]
+  "New Balance": {
+    "models": {
+      "550": [
+        "550",
+        "bb550"
+      ],
+      "574": [
+        "574",
+        "ml574",
+        "u574"
+      ],
+      "990": [
+        "990"
+      ],
+      "991": [
+        "991"
+      ],
+      "992": [
+        "992"
+      ],
+      "993": [
+        "993"
+      ],
+      "2002R": [
+        "2002r",
+        "2002 r"
+      ],
+      "9060": [
+        "9060"
+      ],
+      "530": [
+        "530",
+        "mr530"
+      ],
+      "327": [
+        "327",
+        "ms327"
+      ],
+      "1906R": [
+        "1906r",
+        "1906 r"
+      ],
+      "1500": [
+        "1500"
+      ],
+      "480": [
+        "480",
+        "bb480"
+      ],
+      "740": [
+        "740"
+      ]
+    },
+    "lines": {
+      "Fresh Foam": [
+        "fresh foam"
+      ],
+      "FuelCell": [
+        "fuelcell"
+      ]
+    },
+    "codes": [
+      "\\b(?:U|M|W|BB|ML|MR|MS|WL|GC|PC|CM|UXC)\\d{3,4}[A-Z]{2,4}\\d?\\b"
+    ]
   },
-  "lines": {
-   "Terrex": [
-    "terrex"
-   ],
-   "Originals": [
-    "originals"
-   ],
-   "Y-3": [
-    "y-3",
-    "y3"
-   ],
-   "Boost": [
-    "boost"
-   ],
-   "Runfalcon": [
-    "runfalcon"
-   ],
-   "Grand Court": [
-    "grand court"
-   ],
-   "Continental": [
-    "continental 80",
-    "continental"
-   ],
-   "Ozweego": [
-    "ozweego"
-   ]
+  "Asics": {
+    "models": {
+      "Gel-Kayano 14": [
+        "kayano 14",
+        "gel kayano 14"
+      ],
+      "Gel-1130": [
+        "gel 1130",
+        "gel1130"
+      ],
+      "Gel-NYC": [
+        "gel nyc"
+      ],
+      "GT-2160": [
+        "gt 2160",
+        "gt2160"
+      ],
+      "Gel-Lyte III": [
+        "gel lyte iii",
+        "gel lyte 3"
+      ],
+      "Gel-Nimbus": [
+        "nimbus"
+      ],
+      "Japan S": [
+        "japan s"
+      ],
+      "Gel-Kayano": [
+        "kayano"
+      ],
+      "Gel-Quantum": [
+        "quantum"
+      ]
+    },
+    "lines": {
+      "Gel": [
+        "gel"
+      ],
+      "Novablast": [
+        "novablast"
+      ]
+    },
+    "codes": [
+      "\\b1[012]\\d{2}[AB]\\d{3}[- ]\\d{3}\\b",
+      "\\b1[012]\\d{2}[AB]\\d{3}\\b"
+    ]
   },
-  "codes": [
-   "\\b[A-Z]{2}\\d{4}\\b",
-   "\\b[A-Z]\\d{5}\\b"
-  ]
- },
- "New Balance": {
-  "models": {
-   "550": [
-    "550",
-    "bb550"
-   ],
-   "574": [
-    "574",
-    "ml574",
-    "u574"
-   ],
-   "990": [
-    "990"
-   ],
-   "991": [
-    "991"
-   ],
-   "992": [
-    "992"
-   ],
-   "993": [
-    "993"
-   ],
-   "2002R": [
-    "2002r",
-    "2002 r"
-   ],
-   "9060": [
-    "9060"
-   ],
-   "530": [
-    "530",
-    "mr530"
-   ],
-   "327": [
-    "327",
-    "ms327"
-   ],
-   "1906R": [
-    "1906r",
-    "1906 r"
-   ],
-   "1500": [
-    "1500"
-   ],
-   "480": [
-    "480",
-    "bb480"
-   ],
-   "740": [
-    "740"
-   ]
+  "Puma": {
+    "models": {
+      "Suede": [
+        "suede"
+      ],
+      "Speedcat": [
+        "speedcat"
+      ],
+      "Palermo": [
+        "palermo"
+      ],
+      "Clyde": [
+        "clyde"
+      ],
+      "RS-X": [
+        "rs-x",
+        "rsx"
+      ],
+      "Mostro": [
+        "mostro"
+      ],
+      "Avanti": [
+        "avanti"
+      ]
+    },
+    "lines": {
+      "Cali": [
+        "cali"
+      ],
+      "Carina": [
+        "carina"
+      ],
+      "Smash": [
+        "smash"
+      ]
+    },
+    "codes": [
+      "\\b3\\d{5}[- ]\\d{2}\\b"
+    ]
   },
-  "lines": {
-   "Fresh Foam": [
-    "fresh foam"
-   ],
-   "FuelCell": [
-    "fuelcell"
-   ]
+  "Converse": {
+    "models": {
+      "Chuck 70": [
+        "chuck 70",
+        "chuck taylor 70",
+        "ct70"
+      ],
+      "Chuck Taylor All Star": [
+        "chuck taylor",
+        "all star"
+      ],
+      "Run Star Hike": [
+        "run star hike"
+      ],
+      "One Star": [
+        "one star"
+      ],
+      "Weapon": [
+        "weapon"
+      ]
+    },
+    "lines": {
+      "Chuck": [
+        "chuck"
+      ]
+    },
+    "codes": [
+      "\\b(?:A\\d{5}|\\d{6})C\\b"
+    ]
   },
-  "codes": [
-   "\\b(?:U|M|W|BB|ML|MR|MS|WL|GC|PC|CM|UXC)\\d{3,4}[A-Z]{2,4}\\d?\\b"
-  ]
- },
- "Asics": {
-  "models": {
-   "Gel-Kayano 14": [
-    "kayano 14",
-    "gel kayano 14"
-   ],
-   "Gel-1130": [
-    "gel 1130",
-    "gel1130"
-   ],
-   "Gel-NYC": [
-    "gel nyc"
-   ],
-   "GT-2160": [
-    "gt 2160",
-    "gt2160"
-   ],
-   "Gel-Lyte III": [
-    "gel lyte iii",
-    "gel lyte 3"
-   ],
-   "Gel-Nimbus": [
-    "nimbus"
-   ],
-   "Japan S": [
-    "japan s"
-   ],
-   "Gel-Kayano": [
-    "kayano"
-   ],
-   "Gel-Quantum": [
-    "quantum"
-   ]
+  "Vans": {
+    "models": {
+      "Old Skool": [
+        "old skool"
+      ],
+      "Sk8-Hi": [
+        "sk8 hi",
+        "sk8-hi"
+      ],
+      "Authentic": [
+        "authentic"
+      ],
+      "Era": [
+        "era"
+      ],
+      "Slip-On": [
+        "slip on",
+        "slip-on"
+      ],
+      "Knu Skool": [
+        "knu skool"
+      ]
+    },
+    "lines": {},
+    "codes": [
+      "\\bVN0[A-Z0-9]{5,9}\\b"
+    ]
   },
-  "lines": {
-   "Gel": [
-    "gel"
-   ],
-   "Novablast": [
-    "novablast"
-   ]
+  "Salomon": {
+    "models": {
+      "XT-6": [
+        "xt-6",
+        "xt6"
+      ],
+      "XT-4": [
+        "xt-4",
+        "xt4"
+      ],
+      "ACS Pro": [
+        "acs pro",
+        "acs+"
+      ],
+      "Speedcross": [
+        "speedcross"
+      ],
+      "XA Pro 3D": [
+        "xa pro"
+      ],
+      "X Ultra": [
+        "x ultra"
+      ],
+      "Quest": [
+        "quest"
+      ]
+    },
+    "lines": {
+      "GORE-TEX": [
+        "gore-tex",
+        "goretex",
+        "gtx"
+      ],
+      "Speedcross": [
+        "speedcross"
+      ]
+    },
+    "codes": [
+      "\\bL\\d{8}\\b"
+    ]
   },
-  "codes": [
-   "\\b1[012]\\d{2}[AB]\\d{3}[- ]\\d{3}\\b"
-  ]
- },
- "Puma": {
-  "models": {
-   "Suede": [
-    "suede"
-   ],
-   "Speedcat": [
-    "speedcat"
-   ],
-   "Palermo": [
-    "palermo"
-   ],
-   "Clyde": [
-    "clyde"
-   ],
-   "RS-X": [
-    "rs-x",
-    "rsx"
-   ],
-   "Mostro": [
-    "mostro"
-   ],
-   "Avanti": [
-    "avanti"
-   ]
+  "Dr. Martens": {
+    "models": {
+      "1460": [
+        "1460"
+      ],
+      "1461": [
+        "1461"
+      ],
+      "2976 Chelsea": [
+        "2976",
+        "chelsea"
+      ],
+      "Jadon": [
+        "jadon"
+      ],
+      "Sinclair": [
+        "sinclair"
+      ],
+      "Audrick": [
+        "audrick"
+      ],
+      "Adrian": [
+        "adrian"
+      ],
+      "1490": [
+        "1490"
+      ]
+    },
+    "lines": {
+      "Doc": [
+        "docs",
+        "doc martens"
+      ]
+    }
   },
-  "lines": {
-   "Cali": [
-    "cali"
-   ],
-   "Carina": [
-    "carina"
-   ],
-   "Smash": [
-    "smash"
-   ]
+  "Timberland": {
+    "models": {
+      "6-Inch Premium": [
+        "6 inch",
+        "6-inch",
+        "premium boot",
+        "yellow boot"
+      ],
+      "Euro Hiker": [
+        "euro hiker"
+      ],
+      "3-Eye Lug": [
+        "3 eye",
+        "3-eye"
+      ],
+      "Field Boot": [
+        "field boot"
+      ],
+      "Courma": [
+        "courma"
+      ]
+    },
+    "lines": {
+      "Earthkeepers": [
+        "earthkeepers"
+      ],
+      "Boot": [
+        "timberland boot",
+        "timbs"
+      ]
+    },
+    "codes": [
+      "\\bTB0[A-Z0-9]{5,8}\\b"
+    ]
   },
-  "codes": [
-   "\\b3\\d{5}[- ]\\d{2}\\b"
-  ]
- },
- "Converse": {
-  "models": {
-   "Chuck 70": [
-    "chuck 70",
-    "chuck taylor 70",
-    "ct70"
-   ],
-   "Chuck Taylor All Star": [
-    "chuck taylor",
-    "all star"
-   ],
-   "Run Star Hike": [
-    "run star hike"
-   ],
-   "One Star": [
-    "one star"
-   ],
-   "Weapon": [
-    "weapon"
-   ]
+  "UGG": {
+    "models": {
+      "Classic Ultra Mini": [
+        "classic ultra mini",
+        "ultra mini"
+      ],
+      "Classic Mini": [
+        "classic mini"
+      ],
+      "Classic Short": [
+        "classic short"
+      ],
+      "Classic Tall": [
+        "classic tall"
+      ],
+      "Tasman": [
+        "tasman"
+      ],
+      "Tazz": [
+        "tazz"
+      ],
+      "Lowmel": [
+        "lowmel"
+      ],
+      "Bailey Bow": [
+        "bailey bow"
+      ],
+      "Neumel": [
+        "neumel"
+      ]
+    },
+    "lines": {}
   },
-  "lines": {
-   "Chuck": [
-    "chuck"
-   ]
+  "Birkenstock": {
+    "models": {
+      "Arizona": [
+        "arizona"
+      ],
+      "Boston": [
+        "boston"
+      ],
+      "Gizeh": [
+        "gizeh"
+      ],
+      "Madrid": [
+        "madrid"
+      ],
+      "Milano": [
+        "milano"
+      ],
+      "Zürich": [
+        "zurich",
+        "zürich"
+      ],
+      "Mayari": [
+        "mayari"
+      ]
+    },
+    "lines": {}
   },
-  "codes": [
-   "\\b(?:A\\d{5}|\\d{6})C\\b"
-  ]
- },
- "Vans": {
-  "models": {
-   "Old Skool": [
-    "old skool"
-   ],
-   "Sk8-Hi": [
-    "sk8 hi",
-    "sk8-hi"
-   ],
-   "Authentic": [
-    "authentic"
-   ],
-   "Era": [
-    "era"
-   ],
-   "Slip-On": [
-    "slip on",
-    "slip-on"
-   ],
-   "Knu Skool": [
-    "knu skool"
-   ]
+  "Veja": {
+    "models": {
+      "V-10": [
+        "v-10",
+        "v10"
+      ],
+      "Campo": [
+        "campo"
+      ],
+      "Esplar": [
+        "esplar"
+      ],
+      "V-12": [
+        "v-12",
+        "v12"
+      ],
+      "Rio Branco": [
+        "rio branco"
+      ],
+      "Volley": [
+        "volley"
+      ]
+    },
+    "lines": {}
   },
-  "lines": {},
-  "codes": [
-   "\\bVN0[A-Z0-9]{5,9}\\b"
-  ]
- },
- "Salomon": {
-  "models": {
-   "XT-6": [
-    "xt-6",
-    "xt6"
-   ],
-   "XT-4": [
-    "xt-4",
-    "xt4"
-   ],
-   "ACS Pro": [
-    "acs pro",
-    "acs+"
-   ],
-   "Speedcross": [
-    "speedcross"
-   ],
-   "XA Pro 3D": [
-    "xa pro"
-   ],
-   "X Ultra": [
-    "x ultra"
-   ],
-   "Quest": [
-    "quest"
-   ]
+  "The North Face": {
+    "models": {
+      "Nuptse 1996": [
+        "1996 retro nuptse",
+        "retro nuptse",
+        "nuptse 1996",
+        "1996 nuptse"
+      ],
+      "Nuptse": [
+        "nuptse"
+      ],
+      "Himalayan": [
+        "himalayan"
+      ],
+      "McMurdo": [
+        "mcmurdo"
+      ],
+      "Denali": [
+        "denali"
+      ],
+      "Thermoball": [
+        "thermoball"
+      ],
+      "Mountain Jacket": [
+        "mountain jacket",
+        "1990 mountain",
+        "1986 mountain"
+      ],
+      "Diablo": [
+        "diablo"
+      ],
+      "Aconcagua": [
+        "aconcagua"
+      ],
+      "Arctic Parka": [
+        "arctic parka"
+      ],
+      "Resolve": [
+        "resolve"
+      ],
+      "Gotham": [
+        "gotham"
+      ],
+      "Saikuru": [
+        "saikuru"
+      ],
+      "Summit": [
+        "summit series",
+        "summit"
+      ]
+    },
+    "lines": {
+      "DryVent": [
+        "dryvent",
+        "dry vent"
+      ],
+      "HyVent": [
+        "hyvent",
+        "hy vent"
+      ],
+      "GORE-TEX": [
+        "gore-tex",
+        "goretex"
+      ],
+      "Steep Tech": [
+        "steep tech"
+      ]
+    }
   },
-  "lines": {
-   "GORE-TEX": [
-    "gore-tex",
-    "goretex",
-    "gtx"
-   ],
-   "Speedcross": [
-    "speedcross"
-   ]
+  "Patagonia": {
+    "models": {
+      "Retro-X": [
+        "retro-x",
+        "retro x",
+        "classic retro"
+      ],
+      "Better Sweater": [
+        "better sweater"
+      ],
+      "Synchilla": [
+        "synchilla",
+        "snap-t",
+        "snap t"
+      ],
+      "Nano Puff": [
+        "nano puff"
+      ],
+      "Down Sweater": [
+        "down sweater"
+      ],
+      "Torrentshell": [
+        "torrentshell"
+      ],
+      "Isthmus": [
+        "isthmus"
+      ],
+      "Los Gatos": [
+        "los gatos"
+      ],
+      "Micro Puff": [
+        "micro puff"
+      ],
+      "Das Parka": [
+        "das parka"
+      ],
+      "R1": [
+        "r1"
+      ]
+    },
+    "lines": {}
   },
-  "codes": [
-   "\\bL\\d{8}\\b"
-  ]
- },
- "Dr. Martens": {
-  "models": {
-   "1460": [
-    "1460"
-   ],
-   "1461": [
-    "1461"
-   ],
-   "2976 Chelsea": [
-    "2976",
-    "chelsea"
-   ],
-   "Jadon": [
-    "jadon"
-   ],
-   "Sinclair": [
-    "sinclair"
-   ],
-   "Audrick": [
-    "audrick"
-   ],
-   "Adrian": [
-    "adrian"
-   ],
-   "1490": [
-    "1490"
-   ]
+  "Columbia": {
+    "models": {
+      "Bugaboo": [
+        "bugaboo"
+      ],
+      "Interchange": [
+        "interchange"
+      ],
+      "Powder Lite": [
+        "powder lite"
+      ],
+      "Steens Mountain": [
+        "steens mountain",
+        "steens"
+      ],
+      "Pike Lake": [
+        "pike lake"
+      ],
+      "Puffect": [
+        "puffect"
+      ],
+      "Ballistic": [
+        "ballistic"
+      ],
+      "Watertight": [
+        "watertight"
+      ],
+      "Newton Ridge": [
+        "newton ridge"
+      ],
+      "Whirlibird": [
+        "whirlibird"
+      ],
+      "Fast Trek": [
+        "fast trek"
+      ],
+      "Delta Ridge": [
+        "delta ridge"
+      ]
+    },
+    "lines": {
+      "Omni-Heat": [
+        "omni-heat",
+        "omni heat",
+        "omniheat"
+      ],
+      "Omni-Tech": [
+        "omni-tech",
+        "omni tech"
+      ],
+      "Titanium": [
+        "titanium"
+      ]
+    }
   },
-  "lines": {
-   "Doc": [
-    "docs",
-    "doc martens"
-   ]
+  "Arc'teryx": {
+    "models": {
+      "Beta AR": [
+        "beta ar"
+      ],
+      "Beta LT": [
+        "beta lt"
+      ],
+      "Beta SL": [
+        "beta sl"
+      ],
+      "Beta": [
+        "beta"
+      ],
+      "Alpha SV": [
+        "alpha sv"
+      ],
+      "Alpha": [
+        "alpha"
+      ],
+      "Atom": [
+        "atom"
+      ],
+      "Cerium": [
+        "cerium"
+      ],
+      "Gamma": [
+        "gamma"
+      ],
+      "Squamish": [
+        "squamish"
+      ],
+      "Zeta": [
+        "zeta"
+      ],
+      "Thorium": [
+        "thorium"
+      ],
+      "Macai": [
+        "macai"
+      ],
+      "Kyanite": [
+        "kyanite"
+      ]
+    },
+    "lines": {
+      "GORE-TEX": [
+        "gore-tex",
+        "goretex"
+      ]
+    }
+  },
+  "Jack Wolfskin": {
+    "models": {
+      "Nanuk": [
+        "nanuk"
+      ],
+      "Glacier Canyon": [
+        "glacier canyon"
+      ],
+      "Troposphere": [
+        "troposphere"
+      ],
+      "Helium": [
+        "helium"
+      ],
+      "Kanata": [
+        "kanata"
+      ]
+    },
+    "lines": {
+      "Texapore": [
+        "texapore"
+      ],
+      "Stormlock": [
+        "stormlock"
+      ]
+    }
+  },
+  "Fjällräven": {
+    "models": {
+      "Kånken": [
+        "kanken",
+        "kånken"
+      ],
+      "Greenland": [
+        "greenland"
+      ],
+      "Keb": [
+        "keb"
+      ],
+      "Expedition Down": [
+        "expedition down",
+        "expedition pack"
+      ],
+      "Vidda": [
+        "vidda"
+      ],
+      "Abisko": [
+        "abisko"
+      ],
+      "Singi": [
+        "singi"
+      ],
+      "Övik": [
+        "ovik",
+        "övik"
+      ],
+      "Skogsö": [
+        "skogso",
+        "skogsö"
+      ],
+      "Barents": [
+        "barents"
+      ]
+    },
+    "lines": {
+      "G-1000": [
+        "g-1000",
+        "g1000"
+      ]
+    }
+  },
+  "Helly Hansen": {
+    "models": {
+      "Arctic Patrol": [
+        "arctic patrol"
+      ],
+      "Lifaloft": [
+        "lifaloft"
+      ],
+      "Odin": [
+        "odin"
+      ],
+      "Seven J": [
+        "seven j"
+      ],
+      "Banff": [
+        "banff"
+      ],
+      "Dubliner": [
+        "dubliner"
+      ],
+      "Crew": [
+        "crew jacket",
+        "crew midlayer"
+      ],
+      "Urban": [
+        "urban"
+      ]
+    },
+    "lines": {}
+  },
+  "Mammut": {
+    "models": {
+      "Ultimate": [
+        "ultimate"
+      ],
+      "Nordwand": [
+        "nordwand"
+      ],
+      "Albula": [
+        "albula"
+      ],
+      "Crater": [
+        "crater"
+      ],
+      "Convey": [
+        "convey"
+      ],
+      "Ayako": [
+        "ayako"
+      ]
+    },
+    "lines": {
+      "GORE-TEX": [
+        "gore-tex",
+        "goretex"
+      ]
+    }
+  },
+  "Napapijri": {
+    "models": {
+      "Skidoo": [
+        "skidoo"
+      ],
+      "Rainforest": [
+        "rainforest"
+      ],
+      "Aerons": [
+        "aerons"
+      ],
+      "Rainforest Pocket": [
+        "rainforest pocket"
+      ]
+    },
+    "lines": {}
+  },
+  "Peak Performance": {
+    "models": {
+      "Frost": [
+        "frost"
+      ],
+      "Rider": [
+        "rider"
+      ],
+      "Helium": [
+        "helium"
+      ],
+      "Maroon": [
+        "maroon"
+      ],
+      "Insulated": [
+        "insulated"
+      ]
+    },
+    "lines": {}
+  },
+  "Haglöfs": {
+    "models": {
+      "Spitz": [
+        "spitz"
+      ],
+      "L.I.M": [
+        "l.i.m",
+        "lim"
+      ],
+      "Roc": [
+        "roc"
+      ],
+      "Mimic": [
+        "mimic"
+      ]
+    },
+    "lines": {}
+  },
+  "Carhartt": {
+    "models": {
+      "Detroit Jacket": [
+        "detroit"
+      ],
+      "Active Jacket": [
+        "active jacket",
+        "veste active",
+        "active"
+      ],
+      "Michigan": [
+        "michigan"
+      ],
+      "Chore Coat": [
+        "chore coat"
+      ],
+      "Double Knee": [
+        "double knee"
+      ],
+      "Single Knee": [
+        "single knee"
+      ],
+      "Nimbus": [
+        "nimbus"
+      ],
+      "Santa Fe": [
+        "santa fe"
+      ],
+      "Chase": [
+        "chase"
+      ],
+      "Arctic": [
+        "arctic"
+      ],
+      "Skyler": [
+        "skyler"
+      ]
+    },
+    "lines": {
+      "WIP": [
+        "wip",
+        "work in progress"
+      ]
+    }
+  },
+  "Levi's": {
+    "models": {
+      "501": [
+        "501"
+      ],
+      "505": [
+        "505"
+      ],
+      "511": [
+        "511"
+      ],
+      "512": [
+        "512"
+      ],
+      "550": [
+        "550"
+      ],
+      "517": [
+        "517"
+      ],
+      "Sherpa Trucker": [
+        "sherpa trucker"
+      ],
+      "Trucker": [
+        "trucker",
+        "type iii"
+      ],
+      "Ribcage": [
+        "ribcage"
+      ]
+    },
+    "lines": {
+      "Premium": [
+        "premium"
+      ],
+      "Big E": [
+        "big e"
+      ],
+      "Vintage Clothing": [
+        "lvc",
+        "vintage clothing"
+      ]
+    }
+  },
+  "Diesel": {
+    "models": {
+      "1DR": [
+        "1dr"
+      ],
+      "D-Strukt": [
+        "d-strukt",
+        "strukt"
+      ],
+      "Krooley": [
+        "krooley"
+      ],
+      "Larkee": [
+        "larkee"
+      ],
+      "Sleenker": [
+        "sleenker"
+      ],
+      "Tepphar": [
+        "tepphar"
+      ],
+      "D-Fining": [
+        "d-fining"
+      ],
+      "Joggjeans": [
+        "joggjeans",
+        "jogg jeans"
+      ]
+    },
+    "lines": {}
+  },
+  "Ralph Lauren": {
+    "models": {
+      "Polo Bear": [
+        "polo bear"
+      ],
+      "Harrington": [
+        "harrington"
+      ],
+      "Big Pony": [
+        "big pony"
+      ],
+      "Cable Knit": [
+        "cable knit",
+        "cable-knit",
+        "zopfstrick"
+      ],
+      "Hi Tech": [
+        "hi tech",
+        "hi-tech"
+      ],
+      "Oxford": [
+        "oxford"
+      ],
+      "Custom Fit": [
+        "custom fit"
+      ]
+    },
+    "lines": {
+      "RLX": [
+        "rlx"
+      ],
+      "Polo Sport": [
+        "polo sport"
+      ],
+      "Purple Label": [
+        "purple label"
+      ]
+    }
+  },
+  "Tommy Hilfiger": {
+    "models": {
+      "Varsity": [
+        "varsity"
+      ],
+      "Flag": [
+        "flag logo",
+        "big flag"
+      ],
+      "Puffer": [
+        "puffer",
+        "down jacket"
+      ]
+    },
+    "lines": {
+      "Tommy Jeans": [
+        "tommy jeans"
+      ]
+    }
+  },
+  "Lacoste": {
+    "models": {
+      "L.12.12": [
+        "l.12.12",
+        "l1212",
+        "l 12 12"
+      ],
+      "Carnaby": [
+        "carnaby"
+      ],
+      "Graduate": [
+        "graduate"
+      ],
+      "Powercourt": [
+        "powercourt"
+      ],
+      "Elite Active": [
+        "elite active"
+      ]
+    },
+    "lines": {
+      "Live": [
+        "lacoste live"
+      ],
+      "Sport": [
+        "lacoste sport"
+      ]
+    }
+  },
+  "Hugo Boss": {
+    "models": {
+      "Saturn": [
+        "saturn"
+      ],
+      "Paddy": [
+        "paddy"
+      ]
+    },
+    "lines": {
+      "BOSS Orange": [
+        "boss orange"
+      ],
+      "BOSS Green": [
+        "boss green"
+      ],
+      "BOSS Black": [
+        "boss black"
+      ]
+    }
+  },
+  "Calvin Klein": {
+    "models": {
+      "Monogram": [
+        "monogram"
+      ],
+      "Puffer": [
+        "puffer"
+      ]
+    },
+    "lines": {
+      "CK Jeans": [
+        "calvin klein jeans",
+        "ck jeans"
+      ]
+    }
+  },
+  "Barbour": {
+    "models": {
+      "Bedale": [
+        "bedale"
+      ],
+      "Beaufort": [
+        "beaufort"
+      ],
+      "Ashby": [
+        "ashby"
+      ],
+      "International": [
+        "international"
+      ],
+      "Liddesdale": [
+        "liddesdale"
+      ],
+      "Border": [
+        "border"
+      ],
+      "Duke": [
+        "duke"
+      ],
+      "Transport": [
+        "transport"
+      ],
+      "Powell": [
+        "powell"
+      ],
+      "Spey": [
+        "spey"
+      ]
+    },
+    "lines": {
+      "Wax": [
+        "wachsjacke",
+        "wax jacket",
+        "waxed"
+      ]
+    }
+  },
+  "Gant": {
+    "models": {
+      "Rugger": [
+        "rugger"
+      ],
+      "Shield": [
+        "shield"
+      ]
+    },
+    "lines": {}
+  },
+  "Stone Island": {
+    "models": {
+      "Ghost": [
+        "ghost"
+      ],
+      "Shadow Project": [
+        "shadow project"
+      ],
+      "Crinkle Reps": [
+        "crinkle reps"
+      ],
+      "Soft Shell-R": [
+        "soft shell-r",
+        "soft shell r",
+        "softshell-r"
+      ],
+      "Membrana": [
+        "membrana"
+      ],
+      "Nylon Metal": [
+        "nylon metal"
+      ],
+      "David-TC": [
+        "david tc",
+        "david-tc"
+      ],
+      "Garment Dyed": [
+        "garment dyed"
+      ]
+    },
+    "lines": {}
+  },
+  "Paul & Shark": {
+    "models": {
+      "Typhoon": [
+        "typhoon"
+      ]
+    },
+    "lines": {
+      "Save The Sea": [
+        "save the sea"
+      ]
+    }
+  },
+  "Woolrich": {
+    "models": {
+      "Arctic Parka": [
+        "arctic parka"
+      ],
+      "Luxury Arctic": [
+        "luxury arctic"
+      ],
+      "Polar": [
+        "polar parka"
+      ],
+      "Military": [
+        "military parka"
+      ]
+    },
+    "lines": {}
+  },
+  "Moncler": {
+    "models": {
+      "Maya": [
+        "maya"
+      ],
+      "Montcla": [
+        "montcla"
+      ],
+      "Hermine": [
+        "hermine"
+      ],
+      "Grenoble": [
+        "grenoble"
+      ],
+      "Karakorum": [
+        "karakorum"
+      ],
+      "Acorus": [
+        "acorus"
+      ],
+      "Ever": [
+        "ever"
+      ],
+      "Lans": [
+        "lans"
+      ],
+      "Montgenevre": [
+        "montgenevre"
+      ],
+      "Cyclone": [
+        "cyclone"
+      ],
+      "Bady": [
+        "bady"
+      ],
+      "Chamonix": [
+        "chamonix"
+      ]
+    },
+    "lines": {
+      "Genius": [
+        "genius"
+      ]
+    }
+  },
+  "Canada Goose": {
+    "models": {
+      "Chilliwack": [
+        "chilliwack"
+      ],
+      "Expedition": [
+        "expedition"
+      ],
+      "Langford": [
+        "langford"
+      ],
+      "Wyndham": [
+        "wyndham"
+      ],
+      "Crofton": [
+        "crofton"
+      ],
+      "Freestyle": [
+        "freestyle"
+      ],
+      "Shelburne": [
+        "shelburne"
+      ],
+      "Rossclair": [
+        "rossclair"
+      ],
+      "Victoria": [
+        "victoria"
+      ],
+      "HyBridge": [
+        "hybridge"
+      ],
+      "Chateau": [
+        "chateau"
+      ],
+      "Mystique": [
+        "mystique"
+      ]
+    },
+    "lines": {}
+  },
+  "Burberry": {
+    "models": {
+      "Kensington": [
+        "kensington"
+      ],
+      "Chelsea": [
+        "chelsea"
+      ],
+      "Sandringham": [
+        "sandringham"
+      ],
+      "Waterloo": [
+        "waterloo"
+      ],
+      "Camden": [
+        "camden"
+      ]
+    },
+    "lines": {
+      "Nova Check": [
+        "nova check",
+        "novacheck"
+      ],
+      "Vintage Check": [
+        "vintage check"
+      ]
+    }
+  },
+  "Hoka": {
+    "models": {
+      "Clifton": [
+        "clifton"
+      ],
+      "Bondi": [
+        "bondi"
+      ],
+      "Speedgoat": [
+        "speedgoat"
+      ],
+      "Mach": [
+        "mach"
+      ],
+      "Arahi": [
+        "arahi"
+      ],
+      "Tor Ultra": [
+        "tor ultra"
+      ]
+    },
+    "lines": {}
+  },
+  "On Running": {
+    "models": {
+      "Cloud 5": [
+        "cloud 5"
+      ],
+      "Cloudmonster": [
+        "cloudmonster"
+      ],
+      "Cloudswift": [
+        "cloudswift"
+      ],
+      "Cloudnova": [
+        "cloudnova"
+      ],
+      "Cloudrunner": [
+        "cloudrunner"
+      ],
+      "Cloudtilt": [
+        "cloudtilt"
+      ],
+      "Cloud X": [
+        "cloud x"
+      ],
+      "Cloudsurfer": [
+        "cloudsurfer"
+      ]
+    },
+    "lines": {}
+  },
+  "Off-White": {
+    "models": {
+      "Out of Office": [
+        "out of office",
+        "ooo"
+      ],
+      "Vulcanized": [
+        "vulcanized"
+      ]
+    },
+    "lines": {
+      "Arrows": [
+        "arrows"
+      ]
+    }
+  },
+  "Michael Kors": {
+    "models": {
+      "Jet Set": [
+        "jet set"
+      ],
+      "Mercer": [
+        "mercer"
+      ]
+    },
+    "lines": {}
+  },
+  "Coach": {
+    "models": {
+      "Tabby": [
+        "tabby"
+      ],
+      "Willow": [
+        "willow"
+      ],
+      "Rogue": [
+        "rogue"
+      ]
+    },
+    "lines": {}
+  },
+  "Wellensteyn": {
+    "models": {
+      "Zermatt": [
+        "zermatt"
+      ],
+      "Schneezauber": [
+        "schneezauber"
+      ],
+      "Leuchtfeuer": [
+        "leuchtfeuer"
+      ],
+      "Chester": [
+        "chester"
+      ],
+      "Polarstar": [
+        "polarstar"
+      ]
+    },
+    "lines": {}
+  },
+  "Peuterey": {
+    "models": {
+      "Hurricane": [
+        "hurricane"
+      ]
+    },
+    "lines": {}
+  },
+  "Bogner": {
+    "models": {},
+    "lines": {
+      "Fire+Ice": [
+        "fire+ice",
+        "fire ice",
+        "fire and ice"
+      ]
+    }
+  },
+  "Icepeak": {
+    "models": {},
+    "lines": {}
+  },
+  "Ferre": {
+    "models": {},
+    "lines": {}
+  },
+  "Gucci": {
+    "models": {
+      "Ace": [
+        "ace sneaker",
+        "gucci ace"
+      ],
+      "Rhyton": [
+        "rhyton"
+      ],
+      "Screener": [
+        "screener"
+      ],
+      "Horsebit": [
+        "horsebit"
+      ],
+      "GG Marmont": [
+        "marmont"
+      ],
+      "Jackie": [
+        "jackie"
+      ],
+      "Dionysus": [
+        "dionysus"
+      ]
+    },
+    "lines": {
+      "GG Supreme": [
+        "gg supreme"
+      ]
+    }
+  },
+  "Louis Vuitton": {
+    "models": {
+      "Speedy": [
+        "speedy"
+      ],
+      "Neverfull": [
+        "neverfull"
+      ],
+      "Alma": [
+        "alma"
+      ],
+      "Keepall": [
+        "keepall"
+      ],
+      "Pochette Métis": [
+        "pochette metis"
+      ],
+      "LV Trainer": [
+        "lv trainer",
+        "trainer"
+      ]
+    },
+    "lines": {
+      "Monogram": [
+        "monogram"
+      ],
+      "Damier": [
+        "damier"
+      ]
+    }
+  },
+  "Prada": {
+    "models": {
+      "Re-Nylon": [
+        "re-nylon",
+        "re nylon"
+      ],
+      "Cloudbust": [
+        "cloudbust"
+      ],
+      "America's Cup": [
+        "americas cup",
+        "america's cup"
+      ],
+      "Monolith": [
+        "monolith"
+      ]
+    },
+    "lines": {}
+  },
+  "Balenciaga": {
+    "models": {
+      "Triple S": [
+        "triple s"
+      ],
+      "Track": [
+        "track"
+      ],
+      "Speed": [
+        "speed trainer",
+        "speed"
+      ],
+      "Defender": [
+        "defender"
+      ],
+      "Le Cagole": [
+        "cagole"
+      ],
+      "City": [
+        "city bag"
+      ],
+      "3XL": [
+        "3xl"
+      ]
+    },
+    "lines": {}
+  },
+  "Saint Laurent": {
+    "models": {
+      "Court Classic": [
+        "court classic"
+      ],
+      "Wyatt": [
+        "wyatt"
+      ],
+      "Loulou": [
+        "loulou"
+      ],
+      "Niki": [
+        "niki"
+      ]
+    },
+    "lines": {}
+  },
+  "Dior": {
+    "models": {
+      "B23": [
+        "b23"
+      ],
+      "B22": [
+        "b22"
+      ],
+      "B30": [
+        "b30"
+      ],
+      "Saddle": [
+        "saddle"
+      ],
+      "Book Tote": [
+        "book tote"
+      ],
+      "Lady Dior": [
+        "lady dior"
+      ]
+    },
+    "lines": {
+      "Oblique": [
+        "oblique"
+      ]
+    }
+  },
+  "Chanel": {
+    "models": {
+      "Classic Flap": [
+        "classic flap",
+        "timeless"
+      ],
+      "Boy": [
+        "boy bag"
+      ],
+      "2.55": [
+        "2.55"
+      ]
+    },
+    "lines": {}
+  },
+  "Hermes": {
+    "models": {
+      "Birkin": [
+        "birkin"
+      ],
+      "Kelly": [
+        "kelly"
+      ],
+      "Oran": [
+        "oran"
+      ],
+      "Evelyne": [
+        "evelyne"
+      ]
+    },
+    "lines": {}
+  },
+  "Valentino": {
+    "models": {
+      "Rockstud": [
+        "rockstud"
+      ]
+    },
+    "lines": {
+      "VLTN": [
+        "vltn"
+      ]
+    }
+  },
+  "Versace": {
+    "models": {
+      "Chain Reaction": [
+        "chain reaction"
+      ]
+    },
+    "lines": {
+      "Medusa": [
+        "medusa"
+      ],
+      "Barocco": [
+        "barocco"
+      ]
+    }
+  },
+  "Dolce & Gabbana": {
+    "models": {
+      "Portofino": [
+        "portofino"
+      ]
+    },
+    "lines": {}
+  },
+  "Fendi": {
+    "models": {
+      "Baguette": [
+        "baguette"
+      ],
+      "Peekaboo": [
+        "peekaboo"
+      ]
+    },
+    "lines": {
+      "FF Logo": [
+        "ff logo",
+        "zucca"
+      ]
+    }
+  },
+  "Givenchy": {
+    "models": {
+      "Antigona": [
+        "antigona"
+      ]
+    },
+    "lines": {}
+  },
+  "Bottega Veneta": {
+    "models": {
+      "Cassette": [
+        "cassette"
+      ],
+      "Jodie": [
+        "jodie"
+      ]
+    },
+    "lines": {
+      "Intrecciato": [
+        "intrecciato"
+      ]
+    }
+  },
+  "Alexander McQueen": {
+    "models": {
+      "Oversized Sneaker": [
+        "oversized sneaker",
+        "oversized"
+      ]
+    },
+    "lines": {}
+  },
+  "Balmain": {
+    "models": {
+      "Unicorn": [
+        "unicorn"
+      ]
+    },
+    "lines": {}
+  },
+  "Armani": {
+    "models": {},
+    "lines": {
+      "EA7": [
+        "ea7"
+      ],
+      "Emporio Armani": [
+        "emporio"
+      ],
+      "Armani Exchange": [
+        "armani exchange"
+      ]
+    }
   }
- },
- "Timberland": {
-  "models": {
-   "6-Inch Premium": [
-    "6 inch",
-    "6-inch",
-    "premium boot",
-    "yellow boot"
-   ],
-   "Euro Hiker": [
-    "euro hiker"
-   ],
-   "3-Eye Lug": [
-    "3 eye",
-    "3-eye"
-   ],
-   "Field Boot": [
-    "field boot"
-   ],
-   "Courma": [
-    "courma"
-   ]
-  },
-  "lines": {
-   "Earthkeepers": [
-    "earthkeepers"
-   ],
-   "Boot": [
-    "timberland boot",
-    "timbs"
-   ]
-  },
-  "codes": [
-   "\\bTB0[A-Z0-9]{5,8}\\b"
-  ]
- },
- "UGG": {
-  "models": {
-   "Classic Ultra Mini": [
-    "classic ultra mini",
-    "ultra mini"
-   ],
-   "Classic Mini": [
-    "classic mini"
-   ],
-   "Classic Short": [
-    "classic short"
-   ],
-   "Classic Tall": [
-    "classic tall"
-   ],
-   "Tasman": [
-    "tasman"
-   ],
-   "Tazz": [
-    "tazz"
-   ],
-   "Lowmel": [
-    "lowmel"
-   ],
-   "Bailey Bow": [
-    "bailey bow"
-   ],
-   "Neumel": [
-    "neumel"
-   ]
-  },
-  "lines": {}
- },
- "Birkenstock": {
-  "models": {
-   "Arizona": [
-    "arizona"
-   ],
-   "Boston": [
-    "boston"
-   ],
-   "Gizeh": [
-    "gizeh"
-   ],
-   "Madrid": [
-    "madrid"
-   ],
-   "Milano": [
-    "milano"
-   ],
-   "Zürich": [
-    "zurich",
-    "zürich"
-   ],
-   "Mayari": [
-    "mayari"
-   ]
-  },
-  "lines": {}
- },
- "Veja": {
-  "models": {
-   "V-10": [
-    "v-10",
-    "v10"
-   ],
-   "Campo": [
-    "campo"
-   ],
-   "Esplar": [
-    "esplar"
-   ],
-   "V-12": [
-    "v-12",
-    "v12"
-   ],
-   "Rio Branco": [
-    "rio branco"
-   ],
-   "Volley": [
-    "volley"
-   ]
-  },
-  "lines": {}
- },
- "The North Face": {
-  "models": {
-   "Nuptse 1996": [
-    "1996 retro nuptse",
-    "retro nuptse",
-    "nuptse 1996",
-    "1996 nuptse"
-   ],
-   "Nuptse": [
-    "nuptse"
-   ],
-   "Himalayan": [
-    "himalayan"
-   ],
-   "McMurdo": [
-    "mcmurdo"
-   ],
-   "Denali": [
-    "denali"
-   ],
-   "Thermoball": [
-    "thermoball"
-   ],
-   "Mountain Jacket": [
-    "mountain jacket",
-    "1990 mountain",
-    "1986 mountain"
-   ],
-   "Diablo": [
-    "diablo"
-   ],
-   "Aconcagua": [
-    "aconcagua"
-   ],
-   "Arctic Parka": [
-    "arctic parka"
-   ],
-   "Resolve": [
-    "resolve"
-   ],
-   "Gotham": [
-    "gotham"
-   ],
-   "Saikuru": [
-    "saikuru"
-   ],
-   "Summit": [
-    "summit series",
-    "summit"
-   ]
-  },
-  "lines": {
-   "DryVent": [
-    "dryvent",
-    "dry vent"
-   ],
-   "HyVent": [
-    "hyvent",
-    "hy vent"
-   ],
-   "GORE-TEX": [
-    "gore-tex",
-    "goretex"
-   ],
-   "Steep Tech": [
-    "steep tech"
-   ]
-  }
- },
- "Patagonia": {
-  "models": {
-   "Retro-X": [
-    "retro-x",
-    "retro x",
-    "classic retro"
-   ],
-   "Better Sweater": [
-    "better sweater"
-   ],
-   "Synchilla": [
-    "synchilla",
-    "snap-t",
-    "snap t"
-   ],
-   "Nano Puff": [
-    "nano puff"
-   ],
-   "Down Sweater": [
-    "down sweater"
-   ],
-   "Torrentshell": [
-    "torrentshell"
-   ],
-   "Isthmus": [
-    "isthmus"
-   ],
-   "Los Gatos": [
-    "los gatos"
-   ],
-   "Micro Puff": [
-    "micro puff"
-   ],
-   "Das Parka": [
-    "das parka"
-   ],
-   "R1": [
-    "r1"
-   ]
-  },
-  "lines": {}
- },
- "Columbia": {
-  "models": {
-   "Bugaboo": [
-    "bugaboo"
-   ],
-   "Interchange": [
-    "interchange"
-   ],
-   "Powder Lite": [
-    "powder lite"
-   ],
-   "Steens Mountain": [
-    "steens mountain",
-    "steens"
-   ],
-   "Pike Lake": [
-    "pike lake"
-   ],
-   "Puffect": [
-    "puffect"
-   ],
-   "Ballistic": [
-    "ballistic"
-   ],
-   "Watertight": [
-    "watertight"
-   ],
-   "Newton Ridge": [
-    "newton ridge"
-   ],
-   "Whirlibird": [
-    "whirlibird"
-   ],
-   "Fast Trek": [
-    "fast trek"
-   ],
-   "Delta Ridge": [
-    "delta ridge"
-   ]
-  },
-  "lines": {
-   "Omni-Heat": [
-    "omni-heat",
-    "omni heat",
-    "omniheat"
-   ],
-   "Omni-Tech": [
-    "omni-tech",
-    "omni tech"
-   ],
-   "Titanium": [
-    "titanium"
-   ]
-  }
- },
- "Arc'teryx": {
-  "models": {
-   "Beta AR": [
-    "beta ar"
-   ],
-   "Beta LT": [
-    "beta lt"
-   ],
-   "Beta SL": [
-    "beta sl"
-   ],
-   "Beta": [
-    "beta"
-   ],
-   "Alpha SV": [
-    "alpha sv"
-   ],
-   "Alpha": [
-    "alpha"
-   ],
-   "Atom": [
-    "atom"
-   ],
-   "Cerium": [
-    "cerium"
-   ],
-   "Gamma": [
-    "gamma"
-   ],
-   "Squamish": [
-    "squamish"
-   ],
-   "Zeta": [
-    "zeta"
-   ],
-   "Thorium": [
-    "thorium"
-   ],
-   "Macai": [
-    "macai"
-   ],
-   "Kyanite": [
-    "kyanite"
-   ]
-  },
-  "lines": {
-   "GORE-TEX": [
-    "gore-tex",
-    "goretex"
-   ]
-  }
- },
- "Jack Wolfskin": {
-  "models": {
-   "Nanuk": [
-    "nanuk"
-   ],
-   "Glacier Canyon": [
-    "glacier canyon"
-   ],
-   "Troposphere": [
-    "troposphere"
-   ],
-   "Helium": [
-    "helium"
-   ],
-   "Kanata": [
-    "kanata"
-   ]
-  },
-  "lines": {
-   "Texapore": [
-    "texapore"
-   ],
-   "Stormlock": [
-    "stormlock"
-   ]
-  }
- },
- "Fjällräven": {
-  "models": {
-   "Kånken": [
-    "kanken",
-    "kånken"
-   ],
-   "Greenland": [
-    "greenland"
-   ],
-   "Keb": [
-    "keb"
-   ],
-   "Expedition Down": [
-    "expedition down",
-    "expedition pack"
-   ],
-   "Vidda": [
-    "vidda"
-   ],
-   "Abisko": [
-    "abisko"
-   ],
-   "Singi": [
-    "singi"
-   ],
-   "Övik": [
-    "ovik",
-    "övik"
-   ],
-   "Skogsö": [
-    "skogso",
-    "skogsö"
-   ],
-   "Barents": [
-    "barents"
-   ]
-  },
-  "lines": {
-   "G-1000": [
-    "g-1000",
-    "g1000"
-   ]
-  }
- },
- "Helly Hansen": {
-  "models": {
-   "Arctic Patrol": [
-    "arctic patrol"
-   ],
-   "Lifaloft": [
-    "lifaloft"
-   ],
-   "Odin": [
-    "odin"
-   ],
-   "Seven J": [
-    "seven j"
-   ],
-   "Banff": [
-    "banff"
-   ],
-   "Dubliner": [
-    "dubliner"
-   ],
-   "Crew": [
-    "crew jacket",
-    "crew midlayer"
-   ],
-   "Urban": [
-    "urban"
-   ]
-  },
-  "lines": {}
- },
- "Mammut": {
-  "models": {
-   "Ultimate": [
-    "ultimate"
-   ],
-   "Nordwand": [
-    "nordwand"
-   ],
-   "Albula": [
-    "albula"
-   ],
-   "Crater": [
-    "crater"
-   ],
-   "Convey": [
-    "convey"
-   ],
-   "Ayako": [
-    "ayako"
-   ]
-  },
-  "lines": {
-   "GORE-TEX": [
-    "gore-tex",
-    "goretex"
-   ]
-  }
- },
- "Napapijri": {
-  "models": {
-   "Skidoo": [
-    "skidoo"
-   ],
-   "Rainforest": [
-    "rainforest"
-   ],
-   "Aerons": [
-    "aerons"
-   ],
-   "Rainforest Pocket": [
-    "rainforest pocket"
-   ]
-  },
-  "lines": {}
- },
- "Peak Performance": {
-  "models": {
-   "Frost": [
-    "frost"
-   ],
-   "Rider": [
-    "rider"
-   ],
-   "Helium": [
-    "helium"
-   ],
-   "Maroon": [
-    "maroon"
-   ],
-   "Insulated": [
-    "insulated"
-   ]
-  },
-  "lines": {}
- },
- "Haglöfs": {
-  "models": {
-   "Spitz": [
-    "spitz"
-   ],
-   "L.I.M": [
-    "l.i.m",
-    "lim"
-   ],
-   "Roc": [
-    "roc"
-   ],
-   "Mimic": [
-    "mimic"
-   ]
-  },
-  "lines": {}
- },
- "Carhartt": {
-  "models": {
-   "Detroit Jacket": [
-    "detroit"
-   ],
-   "Active Jacket": [
-    "active jacket",
-    "veste active",
-    "active"
-   ],
-   "Michigan": [
-    "michigan"
-   ],
-   "Chore Coat": [
-    "chore coat"
-   ],
-   "Double Knee": [
-    "double knee"
-   ],
-   "Single Knee": [
-    "single knee"
-   ],
-   "Nimbus": [
-    "nimbus"
-   ],
-   "Santa Fe": [
-    "santa fe"
-   ],
-   "Chase": [
-    "chase"
-   ],
-   "Arctic": [
-    "arctic"
-   ],
-   "Skyler": [
-    "skyler"
-   ]
-  },
-  "lines": {
-   "WIP": [
-    "wip",
-    "work in progress"
-   ]
-  }
- },
- "Levi's": {
-  "models": {
-   "501": [
-    "501"
-   ],
-   "505": [
-    "505"
-   ],
-   "511": [
-    "511"
-   ],
-   "512": [
-    "512"
-   ],
-   "550": [
-    "550"
-   ],
-   "517": [
-    "517"
-   ],
-   "Sherpa Trucker": [
-    "sherpa trucker"
-   ],
-   "Trucker": [
-    "trucker",
-    "type iii"
-   ],
-   "Ribcage": [
-    "ribcage"
-   ]
-  },
-  "lines": {
-   "Premium": [
-    "premium"
-   ],
-   "Big E": [
-    "big e"
-   ],
-   "Vintage Clothing": [
-    "lvc",
-    "vintage clothing"
-   ]
-  }
- },
- "Diesel": {
-  "models": {
-   "1DR": [
-    "1dr"
-   ],
-   "D-Strukt": [
-    "d-strukt",
-    "strukt"
-   ],
-   "Krooley": [
-    "krooley"
-   ],
-   "Larkee": [
-    "larkee"
-   ],
-   "Sleenker": [
-    "sleenker"
-   ],
-   "Tepphar": [
-    "tepphar"
-   ],
-   "D-Fining": [
-    "d-fining"
-   ],
-   "Joggjeans": [
-    "joggjeans",
-    "jogg jeans"
-   ]
-  },
-  "lines": {}
- },
- "Ralph Lauren": {
-  "models": {
-   "Polo Bear": [
-    "polo bear"
-   ],
-   "Harrington": [
-    "harrington"
-   ],
-   "Big Pony": [
-    "big pony"
-   ],
-   "Cable Knit": [
-    "cable knit",
-    "cable-knit",
-    "zopfstrick"
-   ],
-   "Hi Tech": [
-    "hi tech",
-    "hi-tech"
-   ],
-   "Oxford": [
-    "oxford"
-   ],
-   "Custom Fit": [
-    "custom fit"
-   ]
-  },
-  "lines": {
-   "RLX": [
-    "rlx"
-   ],
-   "Polo Sport": [
-    "polo sport"
-   ],
-   "Purple Label": [
-    "purple label"
-   ]
-  }
- },
- "Tommy Hilfiger": {
-  "models": {
-   "Varsity": [
-    "varsity"
-   ],
-   "Flag": [
-    "flag logo",
-    "big flag"
-   ],
-   "Puffer": [
-    "puffer",
-    "down jacket"
-   ]
-  },
-  "lines": {
-   "Tommy Jeans": [
-    "tommy jeans"
-   ]
-  }
- },
- "Lacoste": {
-  "models": {
-   "L.12.12": [
-    "l.12.12",
-    "l1212",
-    "l 12 12"
-   ],
-   "Carnaby": [
-    "carnaby"
-   ],
-   "Graduate": [
-    "graduate"
-   ],
-   "Powercourt": [
-    "powercourt"
-   ],
-   "Elite Active": [
-    "elite active"
-   ]
-  },
-  "lines": {
-   "Live": [
-    "lacoste live"
-   ],
-   "Sport": [
-    "lacoste sport"
-   ]
-  }
- },
- "Hugo Boss": {
-  "models": {
-   "Saturn": [
-    "saturn"
-   ],
-   "Paddy": [
-    "paddy"
-   ]
-  },
-  "lines": {
-   "BOSS Orange": [
-    "boss orange"
-   ],
-   "BOSS Green": [
-    "boss green"
-   ],
-   "BOSS Black": [
-    "boss black"
-   ]
-  }
- },
- "Calvin Klein": {
-  "models": {
-   "Monogram": [
-    "monogram"
-   ],
-   "Puffer": [
-    "puffer"
-   ]
-  },
-  "lines": {
-   "CK Jeans": [
-    "calvin klein jeans",
-    "ck jeans"
-   ]
-  }
- },
- "Barbour": {
-  "models": {
-   "Bedale": [
-    "bedale"
-   ],
-   "Beaufort": [
-    "beaufort"
-   ],
-   "Ashby": [
-    "ashby"
-   ],
-   "International": [
-    "international"
-   ],
-   "Liddesdale": [
-    "liddesdale"
-   ],
-   "Border": [
-    "border"
-   ],
-   "Duke": [
-    "duke"
-   ],
-   "Transport": [
-    "transport"
-   ],
-   "Powell": [
-    "powell"
-   ],
-   "Spey": [
-    "spey"
-   ]
-  },
-  "lines": {
-   "Wax": [
-    "wachsjacke",
-    "wax jacket",
-    "waxed"
-   ]
-  }
- },
- "Gant": {
-  "models": {
-   "Rugger": [
-    "rugger"
-   ],
-   "Shield": [
-    "shield"
-   ]
-  },
-  "lines": {}
- },
- "Stone Island": {
-  "models": {
-   "Ghost": [
-    "ghost"
-   ],
-   "Shadow Project": [
-    "shadow project"
-   ],
-   "Crinkle Reps": [
-    "crinkle reps"
-   ],
-   "Soft Shell-R": [
-    "soft shell-r",
-    "soft shell r",
-    "softshell-r"
-   ],
-   "Membrana": [
-    "membrana"
-   ],
-   "Nylon Metal": [
-    "nylon metal"
-   ],
-   "David-TC": [
-    "david tc",
-    "david-tc"
-   ],
-   "Garment Dyed": [
-    "garment dyed"
-   ]
-  },
-  "lines": {}
- },
- "Paul & Shark": {
-  "models": {
-   "Typhoon": [
-    "typhoon"
-   ]
-  },
-  "lines": {
-   "Save The Sea": [
-    "save the sea"
-   ]
-  }
- },
- "Woolrich": {
-  "models": {
-   "Arctic Parka": [
-    "arctic parka"
-   ],
-   "Luxury Arctic": [
-    "luxury arctic"
-   ],
-   "Polar": [
-    "polar parka"
-   ],
-   "Military": [
-    "military parka"
-   ]
-  },
-  "lines": {}
- },
- "Moncler": {
-  "models": {
-   "Maya": [
-    "maya"
-   ],
-   "Montcla": [
-    "montcla"
-   ],
-   "Hermine": [
-    "hermine"
-   ],
-   "Grenoble": [
-    "grenoble"
-   ],
-   "Karakorum": [
-    "karakorum"
-   ],
-   "Acorus": [
-    "acorus"
-   ],
-   "Ever": [
-    "ever"
-   ],
-   "Lans": [
-    "lans"
-   ],
-   "Montgenevre": [
-    "montgenevre"
-   ],
-   "Cyclone": [
-    "cyclone"
-   ],
-   "Bady": [
-    "bady"
-   ],
-   "Chamonix": [
-    "chamonix"
-   ]
-  },
-  "lines": {
-   "Genius": [
-    "genius"
-   ]
-  }
- },
- "Canada Goose": {
-  "models": {
-   "Chilliwack": [
-    "chilliwack"
-   ],
-   "Expedition": [
-    "expedition"
-   ],
-   "Langford": [
-    "langford"
-   ],
-   "Wyndham": [
-    "wyndham"
-   ],
-   "Crofton": [
-    "crofton"
-   ],
-   "Freestyle": [
-    "freestyle"
-   ],
-   "Shelburne": [
-    "shelburne"
-   ],
-   "Rossclair": [
-    "rossclair"
-   ],
-   "Victoria": [
-    "victoria"
-   ],
-   "HyBridge": [
-    "hybridge"
-   ],
-   "Chateau": [
-    "chateau"
-   ],
-   "Mystique": [
-    "mystique"
-   ]
-  },
-  "lines": {}
- },
- "Burberry": {
-  "models": {
-   "Kensington": [
-    "kensington"
-   ],
-   "Chelsea": [
-    "chelsea"
-   ],
-   "Sandringham": [
-    "sandringham"
-   ],
-   "Waterloo": [
-    "waterloo"
-   ],
-   "Camden": [
-    "camden"
-   ]
-  },
-  "lines": {
-   "Nova Check": [
-    "nova check",
-    "novacheck"
-   ],
-   "Vintage Check": [
-    "vintage check"
-   ]
-  }
- },
- "Hoka": {
-  "models": {
-   "Clifton": [
-    "clifton"
-   ],
-   "Bondi": [
-    "bondi"
-   ],
-   "Speedgoat": [
-    "speedgoat"
-   ],
-   "Mach": [
-    "mach"
-   ],
-   "Arahi": [
-    "arahi"
-   ],
-   "Tor Ultra": [
-    "tor ultra"
-   ]
-  },
-  "lines": {}
- },
- "On Running": {
-  "models": {
-   "Cloud 5": [
-    "cloud 5"
-   ],
-   "Cloudmonster": [
-    "cloudmonster"
-   ],
-   "Cloudswift": [
-    "cloudswift"
-   ],
-   "Cloudnova": [
-    "cloudnova"
-   ],
-   "Cloudrunner": [
-    "cloudrunner"
-   ],
-   "Cloudtilt": [
-    "cloudtilt"
-   ],
-   "Cloud X": [
-    "cloud x"
-   ],
-   "Cloudsurfer": [
-    "cloudsurfer"
-   ]
-  },
-  "lines": {}
- },
- "Off-White": {
-  "models": {
-   "Out of Office": [
-    "out of office",
-    "ooo"
-   ],
-   "Vulcanized": [
-    "vulcanized"
-   ]
-  },
-  "lines": {
-   "Arrows": [
-    "arrows"
-   ]
-  }
- },
- "Michael Kors": {
-  "models": {
-   "Jet Set": [
-    "jet set"
-   ],
-   "Mercer": [
-    "mercer"
-   ]
-  },
-  "lines": {}
- },
- "Coach": {
-  "models": {
-   "Tabby": [
-    "tabby"
-   ],
-   "Willow": [
-    "willow"
-   ],
-   "Rogue": [
-    "rogue"
-   ]
-  },
-  "lines": {}
- },
- "Wellensteyn": {
-  "models": {
-   "Zermatt": [
-    "zermatt"
-   ],
-   "Schneezauber": [
-    "schneezauber"
-   ],
-   "Leuchtfeuer": [
-    "leuchtfeuer"
-   ],
-   "Chester": [
-    "chester"
-   ],
-   "Polarstar": [
-    "polarstar"
-   ]
-  },
-  "lines": {}
- },
- "Peuterey": {
-  "models": {
-   "Hurricane": [
-    "hurricane"
-   ]
-  },
-  "lines": {}
- },
- "Bogner": {
-  "models": {},
-  "lines": {
-   "Fire+Ice": [
-    "fire+ice",
-    "fire ice",
-    "fire and ice"
-   ]
-  }
- },
- "Icepeak": {
-  "models": {},
-  "lines": {}
- },
- "Ferre": {
-  "models": {},
-  "lines": {}
- },
- "Gucci": {
-  "models": {
-   "Ace": [
-    "ace sneaker",
-    "gucci ace"
-   ],
-   "Rhyton": [
-    "rhyton"
-   ],
-   "Screener": [
-    "screener"
-   ],
-   "Horsebit": [
-    "horsebit"
-   ],
-   "GG Marmont": [
-    "marmont"
-   ],
-   "Jackie": [
-    "jackie"
-   ],
-   "Dionysus": [
-    "dionysus"
-   ]
-  },
-  "lines": {
-   "GG Supreme": [
-    "gg supreme"
-   ]
-  }
- },
- "Louis Vuitton": {
-  "models": {
-   "Speedy": [
-    "speedy"
-   ],
-   "Neverfull": [
-    "neverfull"
-   ],
-   "Alma": [
-    "alma"
-   ],
-   "Keepall": [
-    "keepall"
-   ],
-   "Pochette Métis": [
-    "pochette metis"
-   ],
-   "LV Trainer": [
-    "lv trainer",
-    "trainer"
-   ]
-  },
-  "lines": {
-   "Monogram": [
-    "monogram"
-   ],
-   "Damier": [
-    "damier"
-   ]
-  }
- },
- "Prada": {
-  "models": {
-   "Re-Nylon": [
-    "re-nylon",
-    "re nylon"
-   ],
-   "Cloudbust": [
-    "cloudbust"
-   ],
-   "America's Cup": [
-    "americas cup",
-    "america's cup"
-   ],
-   "Monolith": [
-    "monolith"
-   ]
-  },
-  "lines": {}
- },
- "Balenciaga": {
-  "models": {
-   "Triple S": [
-    "triple s"
-   ],
-   "Track": [
-    "track"
-   ],
-   "Speed": [
-    "speed trainer",
-    "speed"
-   ],
-   "Defender": [
-    "defender"
-   ],
-   "Le Cagole": [
-    "cagole"
-   ],
-   "City": [
-    "city bag"
-   ],
-   "3XL": [
-    "3xl"
-   ]
-  },
-  "lines": {}
- },
- "Saint Laurent": {
-  "models": {
-   "Court Classic": [
-    "court classic"
-   ],
-   "Wyatt": [
-    "wyatt"
-   ],
-   "Loulou": [
-    "loulou"
-   ],
-   "Niki": [
-    "niki"
-   ]
-  },
-  "lines": {}
- },
- "Dior": {
-  "models": {
-   "B23": [
-    "b23"
-   ],
-   "B22": [
-    "b22"
-   ],
-   "B30": [
-    "b30"
-   ],
-   "Saddle": [
-    "saddle"
-   ],
-   "Book Tote": [
-    "book tote"
-   ],
-   "Lady Dior": [
-    "lady dior"
-   ]
-  },
-  "lines": {
-   "Oblique": [
-    "oblique"
-   ]
-  }
- },
- "Chanel": {
-  "models": {
-   "Classic Flap": [
-    "classic flap",
-    "timeless"
-   ],
-   "Boy": [
-    "boy bag"
-   ],
-   "2.55": [
-    "2.55"
-   ]
-  },
-  "lines": {}
- },
- "Hermes": {
-  "models": {
-   "Birkin": [
-    "birkin"
-   ],
-   "Kelly": [
-    "kelly"
-   ],
-   "Oran": [
-    "oran"
-   ],
-   "Evelyne": [
-    "evelyne"
-   ]
-  },
-  "lines": {}
- },
- "Valentino": {
-  "models": {
-   "Rockstud": [
-    "rockstud"
-   ]
-  },
-  "lines": {
-   "VLTN": [
-    "vltn"
-   ]
-  }
- },
- "Versace": {
-  "models": {
-   "Chain Reaction": [
-    "chain reaction"
-   ]
-  },
-  "lines": {
-   "Medusa": [
-    "medusa"
-   ],
-   "Barocco": [
-    "barocco"
-   ]
-  }
- },
- "Dolce & Gabbana": {
-  "models": {
-   "Portofino": [
-    "portofino"
-   ]
-  },
-  "lines": {}
- },
- "Fendi": {
-  "models": {
-   "Baguette": [
-    "baguette"
-   ],
-   "Peekaboo": [
-    "peekaboo"
-   ]
-  },
-  "lines": {
-   "FF Logo": [
-    "ff logo",
-    "zucca"
-   ]
-  }
- },
- "Givenchy": {
-  "models": {
-   "Antigona": [
-    "antigona"
-   ]
-  },
-  "lines": {}
- },
- "Bottega Veneta": {
-  "models": {
-   "Cassette": [
-    "cassette"
-   ],
-   "Jodie": [
-    "jodie"
-   ]
-  },
-  "lines": {
-   "Intrecciato": [
-    "intrecciato"
-   ]
-  }
- },
- "Alexander McQueen": {
-  "models": {
-   "Oversized Sneaker": [
-    "oversized sneaker",
-    "oversized"
-   ]
-  },
-  "lines": {}
- },
- "Balmain": {
-  "models": {
-   "Unicorn": [
-    "unicorn"
-   ]
-  },
-  "lines": {}
- },
- "Armani": {
-  "models": {},
-  "lines": {
-   "EA7": [
-    "ea7"
-   ],
-   "Emporio Armani": [
-    "emporio"
-   ],
-   "Armani Exchange": [
-    "armani exchange"
-   ]
-  }
- }
 }

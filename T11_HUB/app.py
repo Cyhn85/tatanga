@@ -2216,6 +2216,89 @@ async def studio_durum(product_id: str):
             "sonuc": json.loads(row[1] or "[]")}
 
 
+# ============================================
+# ETIKET / STIL KODU OKUMA (logic/etiket.py) — kimlik tespiti icin; fotograflar yayinda KULLANILMAZ
+# ============================================
+_ETIKET_ISLENIYOR: set = set()
+
+
+def _etiket_gorselleri(p: dict) -> list:
+    """Urunun fotograflari (PIL): once kendi fotograflari, sonra kaynak ilanin TUM fotograflari (yalniz tanima icin)."""
+    import io as _io
+    from PIL import Image as _Img
+    from curl_cffi import requests as _cr
+    out, urls = [], []
+    for rel in json.loads(p.get("own_images_json") or "[]"):
+        f = DATA_DIR / rel.replace("/data/", "", 1)
+        if f.is_file():
+            out.append(_Img.open(f).convert("RGB"))
+    sess = _cr.Session(impersonate="chrome")
+    m = _VINTED_ITEM_RE.search(p.get("source_url") or "")
+    if m:
+        # Vinted: kayitta yalniz ana fotograf var; ilan sayfasi tum fotograflari verir (tek istek, ev hatti)
+        try:
+            h = sess.get(f"https://www.vinted.de/items/{m.group(1)}", timeout=30)
+            t = h.text.replace("\\", "")
+            urls = list(dict.fromkeys(re.findall(r'https://images1\.vinted\.net/t/[^"\s]+?/f800/[^"\s]+', t)))[:8]
+        except Exception:
+            urls = []
+    if not urls:
+        urls = [u for u in json.loads(p.get("images_json") or "[]") if isinstance(u, str) and u.startswith("http")][:8]
+    for u in urls:
+        try:
+            r = sess.get(u, timeout=30)
+            if r.status_code == 200:
+                out.append(_Img.open(_io.BytesIO(r.content)).convert("RGB"))
+        except Exception:
+            continue
+    return out
+
+
+async def _etiket_isle(product_id: str) -> None:
+    if product_id in _ETIKET_ISLENIYOR:
+        return
+    _ETIKET_ISLENIYOR.add(product_id)
+    try:
+        from logic import etiket as _E
+        async with aiosqlite.connect(DB_FILE) as db:
+            cols = {r[1] for r in await (await db.execute("PRAGMA table_info(products)")).fetchall()}
+            if "etiket_json" not in cols:
+                await db.execute("ALTER TABLE products ADD COLUMN etiket_json TEXT")
+                await db.commit()
+            p = await _teklif_urun(db, product_id)
+        if not p:
+            return
+        imgs = await asyncio.to_thread(_etiket_gorselleri, p)
+        res = await asyncio.to_thread(_E.urun_etiketi, imgs, p.get("brand"))
+        res["foto_sayisi"] = len(imgs)
+        res["tarih"] = datetime.now().isoformat(timespec="seconds")
+        async with aiosqlite.connect(DB_FILE) as db:
+            await db.execute("UPDATE products SET etiket_json=?, updated_at=? WHERE id=?",
+                             (json.dumps(res, ensure_ascii=False, default=str), datetime.now().isoformat(), product_id))
+            await db.commit()
+        await log_activity("etiket", f"{product_id}: {res.get('durum')} | model {res.get('model')} | kod {res.get('kod')}")
+    except Exception as exc:
+        await log_activity("etiket_hata", f"{product_id}: {type(exc).__name__}: {str(exc)[:120]}", "warning")
+    finally:
+        _ETIKET_ISLENIYOR.discard(product_id)
+
+
+@app.post("/api/product/{product_id}/etiket-oku")
+async def etiket_oku(product_id: str, background_tasks: BackgroundTasks):
+    background_tasks.add_task(_etiket_isle, product_id)
+    return {"status": "processing", "product_id": product_id}
+
+
+@app.get("/api/product/{product_id}/etiket")
+async def etiket_durum(product_id: str):
+    async with aiosqlite.connect(DB_FILE) as db:
+        cols = {r[1] for r in await (await db.execute("PRAGMA table_info(products)")).fetchall()}
+        row = await (await db.execute("SELECT etiket_json FROM products WHERE id=?", (product_id,))).fetchone() \
+            if "etiket_json" in cols else (None,)
+    return {"status": "ok", "isleniyor": product_id in _ETIKET_ISLENIYOR,
+            "sonuc": json.loads(row[0]) if row and row[0] else None}
+
+
 @app.post("/api/product/{product_id}/remove-bg")
 async def remove_bg_endpoint(product_id: str, background_tasks: BackgroundTasks):
     """Urun gorsellerinin arka planini kaldir. Urunun KENDI fotograflari varsa studyo hatti (BiRefNet) kullanilir."""

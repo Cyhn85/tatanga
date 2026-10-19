@@ -81,6 +81,19 @@
             </div>
         </div>
 
+        <!-- ETIKET / STIL KODU (logic/etiket.py) -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-tag me-1" style="color:#17a2b8"></i> Etiket / stil kodu</h6>
+                <button class="btn btn-sm btn-outline-info" onclick="etiketOku()"><i class="fas fa-search me-1"></i> Etiketi oku</button>
+            </div>
+            <div class="card-body" style="font-size:.8rem;">
+                <div style="color:#9aa4ae" class="mb-1">Ilanin fotograflari icinden etiket / kutu etiketi olanlar yerelde secilir,
+                    yalniz 1-2'si okunur. Stil kodu gercek ilanlarda dogrulanirsa model fiyatlamaya "etiket kaniti" olarak girer.</div>
+                <div id="et-sonuc" style="color:#c8d0d8"></div>
+            </div>
+        </div>
+
         <!-- Source Status -->
         <div class="card">
             <div class="card-header d-flex justify-content-between">
@@ -436,6 +449,28 @@ async function checkSrc() {
     showToast('Kaynak kontrol basladi...', 'info');
     setTimeout(() => location.reload(), 4000);
 }
+
+// ---- ETIKET ----
+let etTimer = null;
+function etRender(d) {
+    const el = document.getElementById('et-sonuc');
+    if (d.isleniyor) { el.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Fotograflar aliniyor ve etiket okunuyor (dakikalik okuma siniri var, 1-2 dk surebilir)...';
+        clearTimeout(etTimer); etTimer = setTimeout(etYenile, 5000); return; }
+    const r = d.sonuc;
+    if (!r) { el.innerHTML = 'Henuz okunmadi.'; return; }
+    const satir = (k, v) => v ? `<div><span style="color:#9aa4ae">${k}:</span> <b>${v}</b></div>` : '';
+    el.innerHTML = satir('Durum', r.durum) + satir('Marka', r.marka) +
+        satir('Model', r.model ? r.model + ' ✓' : (r.oneri_model ? r.oneri_model + ' (dogrulanamadi, fiyatlamaya girmez)' : '')) +
+        satir('Stil kodu', r.kod ? r.kod + (r.kod_destek ? ' · ' + r.kod_destek : '') : '') + satir('Beden', r.beden) +
+        satir('Kaynak', r.kaynak) + satir('Okunan metin', r.metin) +
+        `<div style="color:#9aa4ae">${r.foto_sayisi || 0} fotograf incelendi · ${(r.tarih || '').replace('T', ' ')}</div>`;
+}
+async function etYenile() { etRender(await (await fetch('/api/product/' + PRODUCT_ID + '/etiket')).json()); }
+async function etiketOku() {
+    await fetch('/api/product/' + PRODUCT_ID + '/etiket-oku', {method: 'POST'});
+    setTimeout(etYenile, 800);
+}
+etYenile();
 
 // ---- KENDI FOTOGRAFLAR / STUDYO ----
 let stTimer = null;
