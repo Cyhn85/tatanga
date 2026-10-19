@@ -638,6 +638,7 @@ async def products_page(
     sort: str = "",
     page: int = 1,
     per_page: int = 100,
+    ara: str = "",
 ):
     from urllib.parse import urlencode
     from logic.category_plan import CLOTHING_TREE, GENDERS
@@ -662,6 +663,16 @@ async def products_page(
         if gender:
             where += " AND LOWER(title) LIKE ?"
             params.append(f"%{gender}%")
+        if ara.strip():
+            # urun numarasi (TT-00042 / tt42 / 42) ya da baslik/marka
+            _q = ara.strip()
+            _num = re.sub(r"(?i)^tt-?", "", _q)
+            if _num.isdigit():
+                where += " AND tt_no=?"
+                params.append(f"TT-{int(_num):05d}")
+            else:
+                where += " AND (LOWER(title) LIKE ? OR LOWER(COALESCE(brand,'')) LIKE ?)"
+                params += [f"%{_q.lower()}%"] * 2
         if price_min:
             try:
                 where += " AND price >= ?"
@@ -711,6 +722,8 @@ async def products_page(
             "baslik": "title COLLATE NOCASE ASC",
         }
         order_by = SIRALAMA.get(sort, SIRALAMA[""])
+        from logic import teklif as _T
+        await _T.sema(db)          # teklif tablolari + urun numarasi (TT-xxxxx) + tetikleyici
         _have = {r[1] for r in await (await db.execute("PRAGMA table_info(products)")).fetchall()}
         for _c, _d in (("zeka_net_kar", "REAL"), ("zeka_net_medyan", "REAL"), ("zeka_satis_p25", "REAL"),
                        ("zeka_satis_medyan", "REAL"), ("zeka_p30", "REAL"), ("zeka_beklenen", "REAL"),
@@ -793,7 +806,7 @@ async def products_page(
         "status": status, "platform": platform,
         "recommendation": recommendation, "category": category,
         "gender": gender, "price_min": price_min,
-        "price_max": price_max, "sort": sort,
+        "price_max": price_max, "sort": sort, "ara": ara,
     }.items() if v})
 
     # Siralama menusu: is anlamina gore gruplanmis. Kullanici "hangi urunu
@@ -849,6 +862,7 @@ async def products_page(
             "price_min": price_min,
             "price_max": price_max,
             "sort": sort,
+            "ara": ara,
         },
         "category_list": list(category_labels.items()),
         "gender_list": list(gender_labels.items()),
@@ -5284,6 +5298,187 @@ async def gorsel_ara(request: Request):
 # NOKTA ATIS: capraz platform degerlemeleri (istatistik/capraz.db, salt okunur)
 # Favori / yayin sureclerinin DISINDA. Karar vermez; kullanici "TATANGA'ya Al" derse urun olusur.
 # ============================================
+# ============================================
+# TEKLIF AKISI (logic/teklif.py) — taslak hazirlar, ASLA gondermez
+# ============================================
+async def _teklif_urun(db, product_id: str) -> dict | None:
+    cur = await db.execute("SELECT * FROM products WHERE id=?", (product_id,))
+    row = await cur.fetchone()
+    if not row:
+        return None
+    return dict(zip([d[0] for d in cur.description], row))
+
+
+def _teklif_kur(p: dict) -> float | None:
+    """1 yerel birim kac EUR (ilan para biriminden)."""
+    birim = (p.get("currency") or "EUR").upper()
+    if birim == "EUR":
+        return 1.0
+    r = _rates() if _currency else None
+    if not r:
+        return None
+    v = _currency.to_eur(1000.0, birim, r)
+    return (v / 1000.0) if v else None
+
+
+def _teklif_ozet(p: dict, kur: float | None, tutar: float | None = None) -> dict:
+    from logic import teklif as T
+    o = T.oneri(p, kur or 0)
+    t = tutar if tutar is not None else o["teklif"]
+    return {
+        "product_id": p["id"], "tt_no": p.get("tt_no"), "baslik": p.get("title"), "platform": p.get("source_platform"),
+        "kaynak_url": p.get("source_url"), "ilan_fiyat": p.get("price"), "para": (p.get("currency") or "EUR").upper(),
+        "kur_eur": kur, "zeka_net_kar": p.get("zeka_net_kar"), "zeka_satis_p25": p.get("zeka_satis_p25"),
+        "zeka_n": p.get("zeka_n"), "zeka_p30": p.get("zeka_p30"), "zeka_seviye": p.get("zeka_seviye"),
+        "oneri": o, "teklif": t, "net_teklif": T.net_at(p, t, kur or 0),
+        "teklif_eur": round(t * kur, 2) if kur else None, "dil": T.DIL.get((p.get("source_platform") or "").lower(), "de"),
+        "groq": T.groq_acik(),
+    }
+
+
+@app.get("/api/teklif/oneri/{product_id}")
+async def teklif_oneri(product_id: str, tutar: float | None = None):
+    """Onerilen teklif + verilen tutarda tutucu net kar (kutuya yazildikca cagrilir)."""
+    from logic import teklif as T
+    async with aiosqlite.connect(DB_FILE) as db:
+        await T.sema(db)
+        p = await _teklif_urun(db, product_id)
+        if not p:
+            return JSONResponse({"status": "error", "error": "Urun bulunamadi"}, 404)
+        cur = await db.execute("SELECT id, durum, teklif, olusturma FROM teklifler WHERE product_id=? "
+                               "ORDER BY id DESC LIMIT 1", (product_id,))
+        son = await cur.fetchone()
+    out = _teklif_ozet(p, _teklif_kur(p), tutar)
+    out["son_teklif"] = {"id": son[0], "durum": son[1], "teklif": son[2], "olusturma": son[3]} if son else None
+    return {"status": "ok", **out}
+
+
+@app.post("/api/teklif/olustur")
+async def teklif_olustur(request: Request):
+    """Teklif kaydi + platform dilinde mesaj taslagi. GONDERMEZ: kullanici kopyalayip platformda elle gonderir."""
+    from logic import teklif as T
+    body = await request.json()
+    pid = body.get("product_id", "")
+    try:
+        tutar = float(body.get("teklif"))
+    except (TypeError, ValueError):
+        return JSONResponse({"status": "error", "error": "Gecerli bir teklif tutari girin"}, 400)
+    async with aiosqlite.connect(DB_FILE) as db:
+        await T.sema(db)
+        p = await _teklif_urun(db, pid)
+        if not p:
+            return JSONResponse({"status": "error", "error": "Urun bulunamadi"}, 404)
+        if tutar <= 0 or tutar > (p.get("price") or 0):
+            return JSONResponse({"status": "error", "error": "Teklif 0'dan buyuk ve ilan fiyatindan kucuk/esit olmali"}, 400)
+        kur = _teklif_kur(p)
+        oz = _teklif_ozet(p, kur, tutar)
+        tas = await asyncio.to_thread(T.taslak, p.get("title"), p.get("source_platform"), p.get("price") or 0,
+                                      tutar, oz["para"])
+        now = T.simdi()
+        cur = await db.execute(
+            "INSERT INTO teklifler (product_id, tt_no, platform, kaynak_url, baslik, ilan_fiyat, para, kur_eur, teklif, "
+            "net_kar_teklif, durum, dil, mesaj, mesaj_tr, mesaj_kaynak, olusturma, guncelleme) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,'hazir',?,?,?,?,?,?)",
+            (pid, p.get("tt_no"), p.get("source_platform"), p.get("source_url"), p.get("title"), p.get("price"),
+             oz["para"], kur, tutar, oz["net_teklif"], tas["dil"], tas["mesaj"], tas["mesaj_tr"], tas["kaynak"],
+             now, now))
+        tid = cur.lastrowid
+        await db.execute("INSERT INTO teklif_olay VALUES (?,?,?,?,?)", (tid, now, "hazir", tutar, tas["kaynak"]))
+        await db.commit()
+    await log_activity("teklif", f"{p.get('tt_no')}: {tutar:.2f} {oz['para']} teklif taslagi ({tas['kaynak']})")
+    return {"status": "ok", "teklif_id": tid, **oz, **tas}
+
+
+@app.post("/api/teklif/{teklif_id}/durum")
+async def teklif_durum(teklif_id: int, request: Request):
+    """Durum degisikligi (kullanici platformda ne olduysa onu isaretler). karsi_teklif/kabul icin tutar."""
+    from logic import teklif as T
+    body = await request.json()
+    durum = body.get("durum")
+    if durum not in T.DURUMLAR:
+        return JSONResponse({"status": "error", "error": f"Gecersiz durum: {durum}"}, 400)
+    tutar = body.get("tutar")
+    tutar = float(tutar) if tutar not in (None, "") else None
+    async with aiosqlite.connect(DB_FILE) as db:
+        await T.sema(db)
+        cur = await db.execute("SELECT product_id, teklif, kur_eur FROM teklifler WHERE id=?", (teklif_id,))
+        t = await cur.fetchone()
+        if not t:
+            return JSONResponse({"status": "error", "error": "Teklif bulunamadi"}, 404)
+        p = await _teklif_urun(db, t[0]) or {}
+        now = T.simdi()
+        sets, vals = ["durum=?", "guncelleme=?"], [durum, now]
+        if durum == "gonderildi":
+            sets.append("gonderim=COALESCE(gonderim, ?)"); vals.append(now)
+        if durum == "karsi_teklif" and tutar is not None:
+            sets += ["karsi_teklif=?", "net_kar_teklif=?"]; vals += [tutar, T.net_at(p, tutar, t[2] or 0)]
+        if durum in ("kabul", "alindi"):
+            anl = tutar if tutar is not None else t[1]
+            sets += ["anlasilan=COALESCE(?, anlasilan)", "net_kar_teklif=?"]; vals += [anl, T.net_at(p, anl, t[2] or 0)]
+        if durum in ("ret", "alindi", "vazgecildi"):
+            sets.append("kapanis=?"); vals.append(now)
+        if body.get("not"):
+            sets.append("not_=?"); vals.append(str(body["not"])[:500])
+        await db.execute(f"UPDATE teklifler SET {', '.join(sets)} WHERE id=?", vals + [teklif_id])
+        await db.execute("INSERT INTO teklif_olay VALUES (?,?,?,?,?)", (teklif_id, now, durum, tutar, body.get("not")))
+        await db.commit()
+    return {"status": "ok", "teklif_id": teklif_id, "durum": durum}
+
+
+@app.post("/api/teklif/{teklif_id}/taslak")
+async def teklif_taslak_yenile(teklif_id: int, request: Request):
+    """Mesaj taslagini (yeni tutarla) yeniden uretir; durum 'hazir' ise teklif tutari da guncellenir."""
+    from logic import teklif as T
+    body = await request.json()
+    async with aiosqlite.connect(DB_FILE) as db:
+        await T.sema(db)
+        cur = await db.execute("SELECT product_id, teklif, durum, para, kur_eur FROM teklifler WHERE id=?", (teklif_id,))
+        t = await cur.fetchone()
+        if not t:
+            return JSONResponse({"status": "error", "error": "Teklif bulunamadi"}, 404)
+        p = await _teklif_urun(db, t[0]) or {}
+        tutar = float(body.get("teklif") or t[1])
+        tas = await asyncio.to_thread(T.taslak, p.get("title"), p.get("source_platform"), p.get("price") or 0,
+                                      tutar, t[3])
+        net = T.net_at(p, tutar, t[4] or 0)
+        await db.execute("UPDATE teklifler SET mesaj=?, mesaj_tr=?, mesaj_kaynak=?, dil=?, guncelleme=?"
+                         + (", teklif=?, net_kar_teklif=?" if t[2] == "hazir" else "") + " WHERE id=?",
+                         [tas["mesaj"], tas["mesaj_tr"], tas["kaynak"], tas["dil"], T.simdi()]
+                         + ([tutar, net] if t[2] == "hazir" else []) + [teklif_id])
+        await db.commit()
+    return {"status": "ok", "teklif_id": teklif_id, "teklif": tutar, "net_teklif": net, **tas}
+
+
+@app.get("/api/teklifler")
+async def teklifler_liste(sekme: str = "bekleyen"):
+    from logic import teklif as T
+    async with aiosqlite.connect(DB_FILE) as db:
+        await T.sema(db)
+        where = ("WHERE t.durum IN (%s)" % ",".join("?" * len(T.BEKLEYEN))) if sekme == "bekleyen" else \
+                ("WHERE t.durum NOT IN (%s)" % ",".join("?" * len(T.BEKLEYEN))) if sekme == "kapanan" else ""
+        args = list(T.BEKLEYEN) if sekme in ("bekleyen", "kapanan") else []
+        cur = await db.execute(
+            "SELECT t.*, p.images_json, p.zeka_net_kar, p.zeka_satis_p25, p.zeka_n, p.zeka_p30, p.source_status "
+            f"FROM teklifler t LEFT JOIN products p ON p.id = t.product_id {where} ORDER BY t.guncelleme DESC", args)
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, r)) for r in await cur.fetchall()]
+        sayim = dict(await (await db.execute("SELECT durum, COUNT(*) FROM teklifler GROUP BY durum")).fetchall())
+    for r in rows:
+        try:
+            imgs = json.loads(r.pop("images_json") or "[]")
+            r["gorsel"] = next((i for i in imgs if isinstance(i, str)), None)
+        except ValueError:
+            r["gorsel"] = None
+    return {"status": "ok", "sekme": sekme, "teklifler": rows, "sayim": sayim}
+
+
+@app.get("/teklifler", response_class=HTMLResponse)
+async def teklifler_sayfa(request: Request, sekme: str = "bekleyen", urun: str = ""):
+    from logic import teklif as T
+    return templates.TemplateResponse("teklifler.html", {
+        "request": request, "sekme": sekme, "urun": urun, "bekleyen": T.BEKLEYEN, "groq": T.groq_acik()})
+
+
 @app.get("/nokta-atis", response_class=HTMLResponse)
 async def nokta_atis_page(request: Request, sekme: str = "cok_karli", run: str = "", platform: str = "",
                           kategori: str = "", marka: str = "", min_net: str = "", sira: str = "beklenen"):

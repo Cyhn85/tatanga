@@ -1,0 +1,129 @@
+<!-- TEKLIF PENCERESI (logic/teklif.py). Mesaj ASLA otomatik gonderilmez: kopyala -> platformda elle gonder. -->
+<div class="modal fade" id="tkModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content" style="background:#15181d;color:#e4e6eb;border:1px solid rgba(255,255,255,.1);">
+      <div class="modal-header" style="border-color:rgba(255,255,255,.08);">
+        <h6 class="modal-title"><i class="fas fa-handshake me-2" style="color:#ffa500"></i>Teklif · <span id="tk-tt"></span></h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="font-size:.85rem;">
+        <div id="tk-yuk" class="text-muted"><i class="fas fa-spinner fa-spin me-1"></i> Hesaplaniyor...</div>
+        <div id="tk-icerik" style="display:none;">
+          <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+            <a id="tk-baslik" href="#" target="_blank" rel="noopener" class="text-light fw-semibold"></a>
+            <span id="tk-platform" class="badge bg-secondary"></span>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6 col-md-3"><div class="small" style="color:#9aa4ae">Ilan fiyati</div><div id="tk-fiyat" class="fw-bold"></div></div>
+            <div class="col-6 col-md-3"><div class="small" style="color:#9aa4ae">Ilan fiyatinda net</div><div id="tk-net0" class="fw-bold"></div></div>
+            <div class="col-6 col-md-3"><div class="small" style="color:#9aa4ae">Gercek satis P25</div><div id="tk-p25"></div></div>
+            <div class="col-6 col-md-3"><div class="small" style="color:#9aa4ae">30 gunde satilma</div><div id="tk-p30"></div></div>
+          </div>
+          <div class="p-2 mb-2" style="background:rgba(255,165,0,.08);border:1px solid rgba(255,165,0,.3);border-radius:8px;">
+            <label class="small" style="color:#9aa4ae" for="tk-tutar">Teklif tutari (<span id="tk-para"></span>)</label>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+              <input type="number" id="tk-tutar" class="form-control form-control-sm" style="width:120px" min="1" step="1">
+              <div>Bu tutarda tutucu net: <b id="tk-net" style="font-size:1.05rem"></b></div>
+            </div>
+            <div id="tk-neden" class="small mt-1" style="color:#c8d0d8"></div>
+          </div>
+          <div id="tk-onceki" class="small text-warning mb-2" style="display:none"></div>
+          <button id="tk-olustur" class="btn btn-warning btn-sm" onclick="tkOlustur()"><i class="fas fa-pen me-1"></i>Mesaj taslagi uret</button>
+          <span id="tk-groq" class="small ms-2" style="color:#9aa4ae"></span>
+          <div id="tk-taslak" class="mt-3" style="display:none;">
+            <div class="small mb-1" style="color:#9aa4ae">Saticiya mesaj (<span id="tk-dil"></span>) — kopyala, platformda ELLE gonder:</div>
+            <textarea id="tk-mesaj" class="form-control form-control-sm" rows="3" style="background:#0f1216;color:#e4e6eb"></textarea>
+            <div class="small mt-1" style="color:#9aa4ae"><b>Turkcesi:</b> <span id="tk-mesaj-tr"></span></div>
+            <div class="small mt-1" style="color:#9aa4ae">Kaynak: <span id="tk-kaynak"></span></div>
+            <div class="d-flex gap-2 mt-2 flex-wrap">
+              <button class="btn btn-outline-light btn-sm" onclick="tkKopyala()"><i class="fas fa-copy me-1"></i>Kopyala</button>
+              <a id="tk-ilan" class="btn btn-outline-info btn-sm" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-1"></i>Ilani ac</a>
+              <button class="btn btn-success btn-sm" onclick="tkDurum('gonderildi')"><i class="fas fa-check me-1"></i>Gonderdim</button>
+              <a href="/teklifler" class="btn btn-outline-secondary btn-sm">Teklifler sayfasi</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let TK = {pid: null, tid: null, d: null, timer: null};
+function tkEur(v) { return (v === null || v === undefined) ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(2) + ' €'; }
+function tkRenk(v) { return v === null || v === undefined ? '#9aa4ae' : (v >= 20 ? '#28a745' : (v > 0 ? '#ffa500' : '#dc3545')); }
+async function teklifAc(pid) {
+    TK = {pid: pid, tid: null, d: null, timer: null};
+    document.getElementById('tk-yuk').style.display = '';
+    document.getElementById('tk-icerik').style.display = 'none';
+    document.getElementById('tk-taslak').style.display = 'none';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('tkModal')).show();
+    try {
+        const d = await (await fetch('/api/teklif/oneri/' + encodeURIComponent(pid))).json();
+        if (d.status !== 'ok') throw new Error(d.error || 'hesaplanamadi');
+        TK.d = d;
+        document.getElementById('tk-tt').innerText = d.tt_no || pid;
+        const b = document.getElementById('tk-baslik'); b.innerText = d.baslik || ''; b.href = d.kaynak_url || '#';
+        document.getElementById('tk-platform').innerText = (d.platform || '') + ' · dil ' + d.dil;
+        document.getElementById('tk-fiyat').innerText = Number(d.ilan_fiyat).toFixed(2) + ' ' + d.para;
+        const n0 = document.getElementById('tk-net0'); n0.innerText = tkEur(d.zeka_net_kar); n0.style.color = tkRenk(d.zeka_net_kar);
+        document.getElementById('tk-p25').innerText = d.zeka_satis_p25 != null ? Number(d.zeka_satis_p25).toFixed(2) + ' € (n=' + d.zeka_n + ')' : 'zeka puani yok';
+        document.getElementById('tk-p30').innerText = d.zeka_p30 != null ? '%' + Math.round(d.zeka_p30 * 100) : '—';
+        document.getElementById('tk-para').innerText = d.para;
+        const inp = document.getElementById('tk-tutar'); inp.value = d.oneri.teklif; inp.max = d.ilan_fiyat;
+        inp.oninput = () => { clearTimeout(TK.timer); TK.timer = setTimeout(tkHesapla, 300); };
+        tkGoster(d.net_teklif, d.oneri.neden);
+        document.getElementById('tk-groq').innerText = d.groq ? 'Groq acik: mesaj satici dilinde yazilir' : 'Groq kapali: sablon kullanilir';
+        const o = document.getElementById('tk-onceki');
+        if (d.son_teklif) { o.style.display = ''; o.innerHTML = '<i class="fas fa-info-circle me-1"></i>Bu urune onceki teklif: ' +
+            d.son_teklif.teklif + ' ' + d.para + ' (' + d.son_teklif.durum + ', ' + d.son_teklif.olusturma.slice(0, 16).replace('T', ' ') + ')'; }
+        else o.style.display = 'none';
+        document.getElementById('tk-yuk').style.display = 'none';
+        document.getElementById('tk-icerik').style.display = '';
+    } catch (e) { document.getElementById('tk-yuk').innerHTML = '<span class="text-danger">Hata: ' + e.message + '</span>'; }
+}
+function tkGoster(net, neden) {
+    const n = document.getElementById('tk-net'); n.innerText = tkEur(net); n.style.color = tkRenk(net);
+    document.getElementById('tk-neden').innerText = neden || (net === null ? 'zeka puani yok: kar bilinmiyor' :
+        (net >= 20 ? 'cok karli esigi (>= 20 €) karsilaniyor' : 'cok karli esiginin (20 €) altinda'));
+}
+async function tkHesapla() {
+    const v = document.getElementById('tk-tutar').value;
+    if (!v) return;
+    const d = await (await fetch('/api/teklif/oneri/' + encodeURIComponent(TK.pid) + '?tutar=' + encodeURIComponent(v))).json();
+    if (d.status === 'ok') tkGoster(d.net_teklif, '');
+}
+async function tkOlustur() {
+    const btn = document.getElementById('tk-olustur');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Hazirlaniyor...';
+    try {
+        const r = await (await fetch('/api/teklif/olustur', {method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({product_id: TK.pid, teklif: document.getElementById('tk-tutar').value})})).json();
+        if (r.status !== 'ok') throw new Error(r.error || 'olusturulamadi');
+        TK.tid = r.teklif_id;
+        document.getElementById('tk-dil').innerText = r.dil;
+        document.getElementById('tk-mesaj').value = r.mesaj;
+        document.getElementById('tk-mesaj-tr').innerText = r.mesaj_tr || '';
+        document.getElementById('tk-kaynak').innerText = r.kaynak;
+        document.getElementById('tk-ilan').href = r.kaynak_url || '#';
+        document.getElementById('tk-taslak').style.display = '';
+        tkGoster(r.net_teklif, '');
+    } catch (e) { (window.showToast || alert)('Hata: ' + e.message, 'danger'); }
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-pen me-1"></i>Mesaj taslagi uret';
+}
+async function tkKopyala() {
+    const t = document.getElementById('tk-mesaj');
+    try { await navigator.clipboard.writeText(t.value); } catch (e) { t.select(); document.execCommand('copy'); }
+    (window.showToast || console.log)('Mesaj kopyalandi', 'success');
+}
+async function tkDurum(durum, tutar, tid) {
+    const id = tid || TK.tid;
+    if (!id) return;
+    const r = await (await fetch('/api/teklif/' + id + '/durum', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({durum: durum, tutar: tutar})})).json();
+    if (r.status !== 'ok') { (window.showToast || alert)('Hata: ' + r.error, 'danger'); return false; }
+    (window.showToast || console.log)('Teklif: ' + durum, 'success');
+    if (!tid) bootstrap.Modal.getOrCreateInstance(document.getElementById('tkModal')).hide();
+    if (typeof tkListeYenile === 'function') tkListeYenile();
+    return true;
+}
+</script>

@@ -23,7 +23,7 @@ import os
 from typing import Optional
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_MODEL = "qwen/qwen3.8-27b"   # 2026-10-19: llama-3.3-70b Groq'tan kaldirildi (HTTP 404)
 TIMEOUT_S = 20
 
 # Groq'un secebilecegi direktifler — kural motorununkiyle AYNI kapali kume.

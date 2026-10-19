@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Teklifler - TATANGA Hub{% endblock %}
+{% block page_title %}<i class="fas fa-handshake me-2" style="color:#ffa500"></i>Teklifler{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <div class="btn-group btn-group-sm" role="group">
+        <a href="/teklifler?sekme=bekleyen" class="btn {% if sekme == 'bekleyen' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+            Teklif bekliyor <span class="badge bg-dark ms-1" id="say-bekleyen">·</span></a>
+        <a href="/teklifler?sekme=kapanan" class="btn {% if sekme == 'kapanan' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+            Kapanan <span class="badge bg-dark ms-1" id="say-kapanan">·</span></a>
+        <a href="/teklifler?sekme=hepsi" class="btn {% if sekme == 'hepsi' %}btn-light{% else %}btn-outline-light{% endif %}">Tumu</a>
+    </div>
+    <span class="small ms-2" style="color:#9aa4ae"><i class="fas fa-shield-alt me-1"></i>Mesajlar otomatik GONDERILMEZ: taslagi kopyalayip platformda
+        elle gonderirsin, sonra durumu burada isaretlersin. {% if not groq %}Groq kapali (GROQ_MESSAGE_DRAFT_ENABLED) -> sablon mesaj.{% endif %}</span>
+</div>
+<div class="small mb-2" style="color:#9aa4ae">Durum akisi: hazir → gonderildi → (karsi teklif) → kabul / ret → alindi / vazgecildi.
+    Karsi teklif ve kabul tutarlarinda tutucu net kar yeniden hesaplanir.</div>
+<div id="tk-liste" class="row g-2"><div class="text-muted"><i class="fas fa-spinner fa-spin me-1"></i>Yukleniyor...</div></div>
+
+{% include "_teklif_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEKME = {{ sekme|tojson }};
+const DURUM_RENK = {hazir: '#6c757d', gonderildi: '#17a2b8', karsi_teklif: '#ffa500', kabul: '#28a745', ret: '#dc3545',
+                    alindi: '#20c997', vazgecildi: '#495057'};
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c])); }
+function eur(v) { return v === null || v === undefined ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(2) + ' €'; }
+function para(v, p) { return v === null || v === undefined ? '—' : Number(v).toFixed(2) + ' ' + p; }
+function dugmeler(t) {
+    const b = (d, txt, cls, sor) => `<button class="btn btn-sm ${cls} py-0 px-2" style="font-size:.7rem"
+        onclick="tkIsle(${t.id}, '${d}', ${sor ? 'true' : 'false'})">${txt}</button>`;
+    switch (t.durum) {
+        case 'hazir': return b('gonderildi', 'Gonderdim', 'btn-outline-info') + b('vazgecildi', 'Vazgec', 'btn-outline-secondary');
+        case 'gonderildi': return b('karsi_teklif', 'Karsi teklif geldi', 'btn-outline-warning', true) + b('kabul', 'Kabul edildi', 'btn-outline-success')
+                                + b('ret', 'Reddedildi', 'btn-outline-danger');
+        case 'karsi_teklif': return b('kabul', 'Kabul ettim', 'btn-outline-success', true) + b('ret', 'Reddettim', 'btn-outline-danger')
+                                  + `<button class="btn btn-sm btn-outline-light py-0 px-2" style="font-size:.7rem" onclick="teklifAc('${t.product_id}')">Yeni teklif</button>`;
+        case 'kabul': return b('alindi', 'Satin aldim', 'btn-success', true) + b('vazgecildi', 'Vazgec', 'btn-outline-secondary');
+        default: return '';
+    }
+}
+async function tkIsle(id, durum, sor) {
+    let tutar = null;
+    if (sor) {
+        const m = {karsi_teklif: 'Saticinin karsi teklifi (ilan para biriminde):', kabul: 'Anlasilan tutar:', alindi: 'Odenen tutar:'}[durum];
+        tutar = prompt(m || 'Tutar:');
+        if (tutar === null) return;
+        tutar = tutar.replace(',', '.');
+        if (tutar && isNaN(Number(tutar))) { alert('Gecerli bir sayi girin'); return; }
+    }
+    await tkDurum(durum, tutar || null, id);
+}
+async function tkKopyalaId(id) {
+    const t = document.getElementById('msg-' + id);
+    try { await navigator.clipboard.writeText(t.value); } catch (e) { t.select(); document.execCommand('copy'); }
+    (window.showToast || console.log)('Mesaj kopyalandi', 'success');
+}
+async function tkListeYenile() {
+    const d = await (await fetch('/api/teklifler?sekme=' + SEKME)).json();
+    const bek = ['hazir', 'gonderildi', 'karsi_teklif', 'kabul'];
+    const s = d.sayim || {};
+    document.getElementById('say-bekleyen').innerText = bek.reduce((a, k) => a + (s[k] || 0), 0);
+    document.getElementById('say-kapanan').innerText = Object.keys(s).filter(k => !bek.includes(k)).reduce((a, k) => a + s[k], 0);
+    const el = document.getElementById('tk-liste');
+    if (!d.teklifler.length) { el.innerHTML = '<div class="text-muted py-4 text-center">Bu sekmede teklif yok. Urun kartindaki <i class="fas fa-handshake"></i> dugmesiyle teklif hazirla.</div>'; return; }
+    el.innerHTML = d.teklifler.map(t => {
+        const c = DURUM_RENK[t.durum] || '#6c757d';
+        const net = t.net_kar_teklif;
+        const netRenk = net === null ? '#9aa4ae' : (net >= 20 ? '#28a745' : (net > 0 ? '#ffa500' : '#dc3545'));
+        return `<div class="col-12 col-xl-6"><div class="card h-100" style="background:#1b1f24;border:1px solid ${c}66;color:#e4e6eb;">
+          <div class="card-body p-2 d-flex gap-2">
+            <img src="${esc(t.gorsel || '/static/img/no-image.svg')}" referrerpolicy="no-referrer" style="width:84px;height:104px;object-fit:cover;border-radius:6px;flex:none"
+                 onerror="this.src='/static/img/no-image.svg'">
+            <div style="min-width:0;flex:1;font-size:.75rem">
+              <div class="d-flex justify-content-between gap-2">
+                <a href="${esc(t.kaynak_url)}" target="_blank" rel="noopener" class="text-light fw-semibold text-truncate">${esc(t.baslik)}</a>
+                <span class="badge" style="background:${c}">${esc(t.durum)}</span></div>
+              <div style="color:#9aa4ae">${esc(t.tt_no || '')} · ${esc(t.platform)} · ${esc((t.guncelleme || '').slice(0, 16).replace('T', ' '))}
+                ${t.source_status && t.source_status !== 'active' ? '<span class="text-danger"> · kaynak: ' + esc(t.source_status) + '</span>' : ''}</div>
+              <div class="mt-1">ilan <b>${para(t.ilan_fiyat, t.para)}</b> · teklif <b>${para(t.teklif, t.para)}</b>
+                ${t.karsi_teklif ? ' · karsi <b>' + para(t.karsi_teklif, t.para) + '</b>' : ''}
+                ${t.anlasilan ? ' · anlasilan <b>' + para(t.anlasilan, t.para) + '</b>' : ''}
+                · net <b style="color:${netRenk}">${eur(net)}</b></div>
+              <details class="mt-1"><summary class="text-info">Mesaj (${esc(t.dil)}) · ${esc(t.mesaj_kaynak || '')}</summary>
+                <textarea id="msg-${t.id}" class="form-control form-control-sm mt-1" rows="2" readonly style="background:#0f1216;color:#e4e6eb;font-size:.72rem">${esc(t.mesaj)}</textarea>
+                <div style="color:#9aa4ae">${esc(t.mesaj_tr || '')}</div>
+                <button class="btn btn-sm btn-outline-light py-0 px-2 mt-1" style="font-size:.7rem" onclick="tkKopyalaId(${t.id})">Kopyala</button></details>
+              <div class="d-flex gap-1 flex-wrap mt-1">${dugmeler(t)}</div>
+            </div></div></div></div>`;
+    }).join('');
+}
+tkListeYenile();
+{% if urun %}document.addEventListener('DOMContentLoaded', () => teklifAc({{ urun|tojson }}));{% endif %}
+</script>
+{% endblock %}

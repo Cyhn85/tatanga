@@ -42,6 +42,10 @@
         <option value="{{ key }}" {% if filters.gender == key %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
+    <!-- ARAMA: urun numarasi (TT-00042) ya da baslik / marka -->
+    <input type="search" id="f-ara" class="form-control form-control-sm" style="width:170px"
+           placeholder="TT-no / baslik / marka" value="{{ filters.ara }}"
+           onkeydown="if(event.key==='Enter'){applyFilters()}">
     <!-- FİYAT ARALIĞI -->
     <div class="d-flex align-items-center gap-1" style="min-width:180px;">
         <input type="number" id="f-price-min" class="form-control form-control-sm"
@@ -172,9 +176,11 @@
                     {{ p.title[:55] }}{% if p.title and p.title|length > 55 %}...{% endif %}
                 </a>
 
-                {% if p.brand %}
-                <div style="font-size:0.65rem;" class="text-muted mt-1">{{ p.brand }}{% if p.size %} | {{ p.size }}{% endif %}</div>
-                {% endif %}
+                <div style="font-size:0.65rem;" class="text-muted mt-1">
+                    {% if p.tt_no %}<span class="badge" style="background:#2b3038;color:#ffa500;font-size:0.6rem;cursor:pointer"
+                        title="Urun numarasi (kopyalamak icin tikla)" onclick="navigator.clipboard.writeText('{{ p.tt_no }}');showToast('{{ p.tt_no }} kopyalandi','success')">{{ p.tt_no }}</span>{% endif %}
+                    {% if p.brand %}{{ p.brand }}{% if p.size %} | {{ p.size }}{% endif %}{% endif %}
+                </div>
 
                 <!-- FIYAT BLOGU: ilan YEREL para biriminde, EUR karsiligi ayrica.
                      Eskiden ham fiyata sabit "€" konuyordu; GBP/PLN ilanlarda bu
@@ -282,6 +288,8 @@
                 </button>
                 <button class="btn btn-sm btn-outline-success flex-fill" onclick="removeBg('{{ p.id }}')" title="BG Kaldir + Watermark"><i class="fas fa-magic"></i></button>
                 <button class="btn btn-sm btn-outline-warning flex-fill" onclick="checkSource('{{ p.id }}')" title="Kaynak Kontrol"><i class="fas fa-link"></i></button>
+                <button class="btn btn-sm flex-fill" style="border:1px solid #ffa500;color:#ffa500;" onclick="teklifAc('{{ p.id }}')"
+                        title="Teklif hazirla (tutar + kar + satici dilinde mesaj taslagi)"><i class="fas fa-handshake"></i></button>
                 <button class="btn btn-sm flex-fill" style="border:1px solid #17a2b8;color:#17a2b8;" onclick="gorselBenzer('{{ p.id }}')"
                         title="Gorselle benzerini bul (hala yayinda olan ilanlar)"><i class="fas fa-images"></i></button>
                 {% if p.source_url %}
@@ -348,6 +356,7 @@
     </div>
   </div>
 </div>
+{% include "_teklif_modal.html" %}
 {% endblock %}
 
 {% block scripts %}
@@ -418,6 +427,8 @@ function applyFilters() {
     if (gender) params.set('gender', gender);
     if (priceMin) params.set('price_min', priceMin);
     if (priceMax) params.set('price_max', priceMax);
+    const ara = document.getElementById('f-ara').value.trim();
+    if (ara) params.set('ara', ara);
     const sort = new URLSearchParams(location.search).get('sort');
     if (sort) params.set('sort', sort);
     window.location.href = '/products?' + params.toString();
