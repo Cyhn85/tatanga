@@ -1213,6 +1213,10 @@ def run_cycle(conn: sqlite3.Connection, cfg: dict, fetcher: Fetcher) -> dict:
         for cell in build_cells(cfg):
             if fetcher.budget_left() <= reserve:
                 break
+            # Takibe alim kapaliyken (kontrol kuyrugu birikmis) yalniz ODAK hucreleri taranir: kalan butce
+            # kontrollere kalir ve birikmis is daha hizli erir (2026-10-20: kesinti sonrasi 1.875 bekleyen kontrol).
+            if not discovery_open and cell.get("tier") != "odak":
+                continue
             if cell["market"] in fetcher.cooling_markets():
                 continue   # beklemedeki pazarin aramasi atlanir; tarama zamani yazilmadigi icin sonra yapilir
             last = meta_get(conn, f"disc:{cell['id']}")

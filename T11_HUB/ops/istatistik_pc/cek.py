@@ -231,6 +231,14 @@ def pull() -> int:
         log(f"ALIS HATA: {type(exc).__name__}: {exc}")
     write_tables()
     run_trends()
+    # dis yedek (yedek.py): gunde bir kez; arsivler guncellendikten SONRA. Hata cekimi bozmaz, gunluge yazilir.
+    try:
+        r = subprocess.run([sys.executable, str(Path(__file__).with_name("yedek.py"))], capture_output=True, text=True,
+                           encoding="utf-8", timeout=3600, **NO_WINDOW)
+        log("yedek: " + ((r.stdout or "") + (r.stderr or "")).strip().splitlines()[-1][:300]
+            if (r.stdout or r.stderr) else "yedek: cikti yok")
+    except Exception as exc:
+        log(f"YEDEK HATA: {type(exc).__name__}: {exc}")
     log(f"bitti: {total} | arsiv {ARCHIVE.stat().st_size // 1024 // 1024} MB | tablolar: {TABLES_DIR}")
     return 0
 

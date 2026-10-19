@@ -10,7 +10,7 @@
     "min_interval_seconds": 15,
     "jitter": 10,
     "cycle_minutes": 30,
-    "checks_per_cycle": 150,
+    "checks_per_cycle": 300,
     "reserve_for_checks": 0.6,
     "max_tracked": 5000
   },
