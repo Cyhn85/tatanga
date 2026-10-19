@@ -172,6 +172,8 @@ def run_trends() -> None:
         ("motor", [sys.executable, str(obs / "motor.py"), "--db", str(ARCHIVE), "--csv", str(TABLES_DIR)]),
         ("firsat", [sys.executable, str(obs / "firsat.py"), "--db", str(ARCHIVE), "--csv", str(TABLES_DIR)]),
         ("sifir-talep", [sys.executable, str(obs / "sifir_talep.py"), "--alis", str(ALIS_ARCHIVE), "--csv", str(TABLES_DIR)]),
+        # fiyat / satis hizi trendi + Wikipedia onculuk testi (sifir-talep tablosundan sonra)
+        ("trend", [sys.executable, str(obs / "trend.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE), "--csv", str(TABLES_DIR)]),
         ("capraz", [sys.executable, str(obs / "capraz.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
                     "--csv", str(TABLES_DIR)]),
         ("zeka-urunler", [sys.executable, str(obs / "zeka_urunler.py"), "--arsiv", str(ARCHIVE)]),
