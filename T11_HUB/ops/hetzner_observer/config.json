@@ -25,13 +25,15 @@
     "core": 24,
     "watch": 48,
     "luxury": 72,
-    "model": 72
+    "model": 72,
+    "odak": 8
   },
   "daily_new": {
     "core": 1,
     "watch": 1,
     "luxury": 1,
-    "model": 1
+    "model": 1,
+    "odak": 2
   },
   "markets": {
     "DE": "vinted.de",
@@ -440,7 +442,8 @@
   },
   "extra_pages": {
     "core": 2,
-    "model": 1
+    "model": 1,
+    "odak": 1
   },
   "ev_hatti": {
     "_aciklama": "Gozlemci PC'de (ev WiFi IP'si) dogrudan calisir: mod 'dogrudan' (2026-10-19 kullanici karari). Sunucuda calisacaksa: kapali | tercih | zorunlu (ters SSH tuneli).",

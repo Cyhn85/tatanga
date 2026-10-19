@@ -202,8 +202,34 @@ def build_cells(cfg: dict) -> list[dict]:
                     "daily_new": cfg["daily_new"].get("model", 1),
                     "discovery_hours": cfg["discovery_hours"].get("model", 72),
                 })
-    # Ayni pazarin hucreleri pes pese: her pazar degisiminde bir oturum istegi gerekiyor
-    cells.sort(key=lambda c: (c["market"], c["brand"], c["category"]))
+    # ODAK (odak.py -> odak_cells.json): veri eksigi en buyuk + alinabilir marka+model gruplari. Her turda ONCE
+    # taranir, daha sik (discovery_hours.odak) ve hucre basina daha fazla takip (daily_new.odak). Ayni model
+    # model_cells.json'da da varsa o hucre odak'a yukseltilir (cift hucre olusmaz).
+    odak_path = os.path.join(BASE_DIR, "odak_cells.json")
+    odak = []
+    if os.path.exists(odak_path):
+        try:
+            odak = json.load(open(odak_path, encoding="utf-8")).get("hucreler", [])
+        except (ValueError, OSError):
+            odak = []
+    if odak:
+        by_id = {c["id"]: c for c in cells}
+        for o in odak:
+            for country in cfg["enabled_markets"]:
+                cid = f"{o['brand']}|model:{o['model']}|{country}"
+                cell = by_id.get(cid)
+                if cell is None:
+                    cell = {"id": cid, "brand": o["brand"],
+                            "match": [_norm_brand(a) for a in cfg.get("brand_match", {}).get(o["brand"], [o["brand"]])],
+                            "category": f"model:{o['model']}", "country": country,
+                            "market": cfg["markets"][country], "query": o["query"]}
+                    cells.append(cell)
+                    by_id[cid] = cell
+                cell.update(tier="odak", daily_new=cfg["daily_new"].get("odak", 2),
+                            discovery_hours=cfg["discovery_hours"].get("odak", 8))
+    # Ayni pazarin hucreleri pes pese: her pazar degisiminde bir oturum istegi gerekiyor. Odak hucreleri EN ONDE
+    # (gunluk kesif butcesi bitince listenin sonu taranmaz; odak hic ac kalmasin).
+    cells.sort(key=lambda c: (c.get("tier") != "odak", c["market"], c["brand"], c["category"]))
     return cells
 
 

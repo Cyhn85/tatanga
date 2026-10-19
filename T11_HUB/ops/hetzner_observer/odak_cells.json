@@ -1,0 +1,281 @@
+{
+ "olusturma": "2026-10-19 21:40",
+ "aciklama": "odak.py: gozlemci bu modelleri her turda once tarar (8 saat, hucre basina gunde 2 takip)",
+ "hucreler": [
+  {
+   "brand": "Dr. Martens",
+   "model": "1460",
+   "query": "Dr. Martens 1460",
+   "puan": 54.189,
+   "satis_n": 0,
+   "fiyat": 120.0,
+   "arz_ka": 2,
+   "arz_eb": 84,
+   "arz_vinted7": 156
+  },
+  {
+   "brand": "Birkenstock",
+   "model": "Boston",
+   "query": "Birkenstock Boston",
+   "puan": 50.381,
+   "satis_n": 0,
+   "fiyat": 100.0,
+   "arz_ka": 8,
+   "arz_eb": 123,
+   "arz_vinted7": 173
+  },
+  {
+   "brand": "Timberland",
+   "model": "6-Inch Premium",
+   "query": "Timberland 6-Inch Premium",
+   "puan": 47.115,
+   "satis_n": 2,
+   "fiyat": 129.9,
+   "arz_ka": 2,
+   "arz_eb": 35,
+   "arz_vinted7": 145
+  },
+  {
+   "brand": "Dr. Martens",
+   "model": "2976 Chelsea",
+   "query": "Dr. Martens 2976 Chelsea",
+   "puan": 43.085,
+   "satis_n": 0,
+   "fiyat": 124.5,
+   "arz_ka": 1,
+   "arz_eb": 31,
+   "arz_vinted7": 140
+  },
+  {
+   "brand": "Nike",
+   "model": "Air Force 1",
+   "query": "Nike Air Force 1",
+   "puan": 42.904,
+   "satis_n": 2,
+   "fiyat": 95.0,
+   "arz_ka": 4,
+   "arz_eb": 100,
+   "arz_vinted7": 127
+  },
+  {
+   "brand": "UGG",
+   "model": "Classic Ultra Mini",
+   "query": "UGG Classic Ultra Mini",
+   "puan": 42.537,
+   "satis_n": 0,
+   "fiyat": 130.0,
+   "arz_ka": 0,
+   "arz_eb": 21,
+   "arz_vinted7": 198
+  },
+  {
+   "brand": "Birkenstock",
+   "model": "Arizona",
+   "query": "Birkenstock Arizona",
+   "puan": 42.116,
+   "satis_n": 0,
+   "fiyat": 89.1,
+   "arz_ka": 3,
+   "arz_eb": 99,
+   "arz_vinted7": 163
+  },
+  {
+   "brand": "UGG",
+   "model": "Lowmel",
+   "query": "UGG Lowmel",
+   "puan": 41.682,
+   "satis_n": 0,
+   "fiyat": 139.2,
+   "arz_ka": 0,
+   "arz_eb": 26,
+   "arz_vinted7": 93
+  },
+  {
+   "brand": "Barbour",
+   "model": "International",
+   "query": "Barbour International",
+   "puan": 39.476,
+   "satis_n": 0,
+   "fiyat": 114.5,
+   "arz_ka": 4,
+   "arz_eb": 42,
+   "arz_vinted7": 87
+  },
+  {
+   "brand": "Dr. Martens",
+   "model": "1461",
+   "query": "Dr. Martens 1461",
+   "puan": 39.283,
+   "satis_n": 0,
+   "fiyat": 130.0,
+   "arz_ka": 0,
+   "arz_eb": 19,
+   "arz_vinted7": 154
+  },
+  {
+   "brand": "New Balance",
+   "model": "530",
+   "query": "New Balance 530",
+   "puan": 37.579,
+   "satis_n": 2,
+   "fiyat": 100.0,
+   "arz_ka": 0,
+   "arz_eb": 36,
+   "arz_vinted7": 181
+  },
+  {
+   "brand": "Barbour",
+   "model": "Beaufort",
+   "query": "Barbour Beaufort",
+   "puan": 36.336,
+   "satis_n": 4,
+   "fiyat": 175.0,
+   "arz_ka": 1,
+   "arz_eb": 18,
+   "arz_vinted7": 56
+  },
+  {
+   "brand": "Hoka",
+   "model": "Clifton",
+   "query": "Hoka Clifton",
+   "puan": 34.905,
+   "satis_n": 2,
+   "fiyat": 79.0,
+   "arz_ka": 0,
+   "arz_eb": 80,
+   "arz_vinted7": 152
+  },
+  {
+   "brand": "Fjällräven",
+   "model": "Övik",
+   "query": "Fjällräven Övik",
+   "puan": 33.427,
+   "satis_n": 2,
+   "fiyat": 158.0,
+   "arz_ka": 2,
+   "arz_eb": 41,
+   "arz_vinted7": 18
+  },
+  {
+   "brand": "Napapijri",
+   "model": "Skidoo",
+   "query": "Napapijri Skidoo",
+   "puan": 31.523,
+   "satis_n": 1,
+   "fiyat": 152.5,
+   "arz_ka": 0,
+   "arz_eb": 10,
+   "arz_vinted7": 79
+  },
+  {
+   "brand": "Barbour",
+   "model": "Bedale",
+   "query": "Barbour Bedale",
+   "puan": 31.423,
+   "satis_n": 3,
+   "fiyat": 220.0,
+   "arz_ka": 1,
+   "arz_eb": 25,
+   "arz_vinted7": 23
+  },
+  {
+   "brand": "New Balance",
+   "model": "9060",
+   "query": "New Balance 9060",
+   "puan": 31.248,
+   "satis_n": 0,
+   "fiyat": 140.0,
+   "arz_ka": 0,
+   "arz_eb": 55,
+   "arz_vinted7": 15
+  },
+  {
+   "brand": "Fjällräven",
+   "model": "Greenland",
+   "query": "Fjällräven Greenland",
+   "puan": 31.047,
+   "satis_n": 0,
+   "fiyat": 130.0,
+   "arz_ka": 6,
+   "arz_eb": 21,
+   "arz_vinted7": 35
+  },
+  {
+   "brand": "The North Face",
+   "model": "Nuptse 1996",
+   "query": "The North Face Nuptse 1996",
+   "puan": 28.733,
+   "satis_n": 0,
+   "fiyat": 122.5,
+   "arz_ka": 0,
+   "arz_eb": 14,
+   "arz_vinted7": 75
+  },
+  {
+   "brand": "Paul & Shark",
+   "model": "Typhoon",
+   "query": "Paul & Shark Typhoon",
+   "puan": 28.562,
+   "satis_n": 1,
+   "fiyat": 299.0,
+   "arz_ka": 0,
+   "arz_eb": 23,
+   "arz_vinted7": 19
+  },
+  {
+   "brand": "Off-White",
+   "model": "Out of Office",
+   "query": "Off-White Out of Office",
+   "puan": 28.371,
+   "satis_n": 0,
+   "fiyat": 303.5,
+   "arz_ka": 0,
+   "arz_eb": 8,
+   "arz_vinted7": 73
+  },
+  {
+   "brand": "Arc'teryx",
+   "model": "Alpha SV",
+   "query": "Arc'teryx Alpha SV",
+   "puan": 28.179,
+   "satis_n": 4,
+   "fiyat": 187.5,
+   "arz_ka": 0,
+   "arz_eb": 19,
+   "arz_vinted7": 22
+  },
+  {
+   "brand": "Salomon",
+   "model": "ACS Pro",
+   "query": "Salomon ACS Pro",
+   "puan": 27.203,
+   "satis_n": 1,
+   "fiyat": 145.8,
+   "arz_ka": 0,
+   "arz_eb": 10,
+   "arz_vinted7": 48
+  },
+  {
+   "brand": "Moncler",
+   "model": "Maya",
+   "query": "Moncler Maya",
+   "puan": 27.056,
+   "satis_n": 1,
+   "fiyat": 824.5,
+   "arz_ka": 0,
+   "arz_eb": 6,
+   "arz_vinted7": 102
+  },
+  {
+   "brand": "Salomon",
+   "model": "XT-6",
+   "query": "Salomon XT-6",
+   "puan": 26.989,
+   "satis_n": 5,
+   "fiyat": 109.0,
+   "arz_ka": 0,
+   "arz_eb": 28,
+   "arz_vinted7": 190
+  }
+ ]
+}

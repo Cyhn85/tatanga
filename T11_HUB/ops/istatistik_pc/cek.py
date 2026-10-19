@@ -181,6 +181,8 @@ def run_trends() -> None:
         ("gorsel-indeks", [sys.executable, str(obs / "gorsel_zeka.py"), "indeks"]),
         # zaman sirali fiyat/hiz geritesti -> karne C5
         ("geritest", [sys.executable, str(obs / "geritest.py"), "--arsiv", str(ARCHIVE), "--csv", str(TABLES_DIR)]),
+        # odak tarama plani: gozlemci veri eksigi en buyuk + alinabilir modelleri once tarar (odak_cells.json)
+        ("odak", [sys.executable, str(obs / "odak.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE)]),
         ("karne", [sys.executable, str(obs / "karne.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
                    "--csv", str(TABLES_DIR)]),
     ):
