@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -33,6 +34,9 @@ TABLES_DIR = ROOT / "tablolar"
 INBOX = ROOT / "gelen"
 LOG = ROOT / "cek.log"
 ALIS_ARCHIVE = ROOT / "alis_arsiv.db"
+# 2026-10-19: Vinted gozlemcisi PC'de (pc_gozlemci.py). Paketler yerel; sunucuya gidilmez.
+OBS_LOCAL_DB = ROOT / "vinted" / "observe.db"
+OBS_DIR = Path(__file__).resolve().parents[1] / "hetzner_observer"
 ALIS_REMOTE = "/opt/tatanga-alis"
 
 # Gorev pythonw ile (konsolsuz) calisir; ssh/scp gibi konsol programlari her cagrida bos bir pencere acip
@@ -167,6 +171,7 @@ def run_trends() -> None:
                            "--etiketli", "--csv", str(TABLES_DIR)]),
         ("motor", [sys.executable, str(obs / "motor.py"), "--db", str(ARCHIVE), "--csv", str(TABLES_DIR)]),
         ("firsat", [sys.executable, str(obs / "firsat.py"), "--db", str(ARCHIVE), "--csv", str(TABLES_DIR)]),
+        ("sifir-talep", [sys.executable, str(obs / "sifir_talep.py"), "--alis", str(ALIS_ARCHIVE), "--csv", str(TABLES_DIR)]),
         ("capraz", [sys.executable, str(obs / "capraz.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
                     "--csv", str(TABLES_DIR)]),
         ("zeka-urunler", [sys.executable, str(obs / "zeka_urunler.py"), "--arsiv", str(ARCHIVE)]),
@@ -178,32 +183,42 @@ def run_trends() -> None:
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                                  timeout=5400 if name == "gorsel-indeks" else 1200, **NO_WINDOW,
-                                 env={**__import__("os").environ, "PYTHONIOENCODING": "utf-8"})
+                                 env={**os.environ, "PYTHONIOENCODING": "utf-8"})
             last = (res.stdout or res.stderr).strip().splitlines()[-1:] or ["-"]
             log(f"trend {name}: {'tamam' if res.returncode == 0 else 'HATA'} | {last[0][:120]}")
         except Exception as exc:
             log(f"trend {name}: HATA {type(exc).__name__}: {exc}")
 
 
+def _arsiv_local(*args: str) -> str:
+    """PC'deki gozlemci veritabani uzerinde arsiv.py (paketle / onayla / temizle)."""
+    env = {**os.environ, "TATANGA_OBS_DB": str(OBS_LOCAL_DB), "PYTHONIOENCODING": "utf-8"}
+    res = subprocess.run([sys.executable, str(OBS_DIR / "arsiv.py"), *args], capture_output=True, text=True,
+                         encoding="utf-8", timeout=1800, env=env, **NO_WINDOW)
+    if res.returncode != 0:
+        raise RuntimeError(f"arsiv.py {args[0]} hatasi: {(res.stderr or res.stdout).strip()[-300:]}")
+    return res.stdout
+
+
 def pull() -> int:
     ROOT.mkdir(parents=True, exist_ok=True)
     INBOX.mkdir(parents=True, exist_ok=True)
-    pending = ssh(f"ls {REMOTE_DIR}/arsiv_paketleri 2>/dev/null || true").split()
-    info = json.loads(ssh(f"cd {REMOTE_DIR} && ./venv/bin/python arsiv.py paketle").strip().splitlines()[-1])
-    names = sorted(set(p for p in pending if p.endswith(".db")) | {info["paket"]})
-    log(f"cekilecek paket: {len(names)}")
     total = {}
-    for name in names:
-        local = INBOX / name
-        scp(f"{REMOTE_DIR}/arsiv_paketleri/{name}", local)
-        counts = import_package(local)
-        ssh(f"cd {REMOTE_DIR} && ./venv/bin/python arsiv.py onayla {name}")
-        local.unlink(missing_ok=True)
-        for k, v in counts.items():
-            total[k] = total.get(k, 0) + v
-        log(f"  {name}: {counts} -> onaylandi")
-    cleaned = ssh(f"cd {REMOTE_DIR} && ./venv/bin/python arsiv.py temizle").strip()
-    log(f"sunucu temizligi: {cleaned}")
+    if OBS_LOCAL_DB.exists():
+        pkg_dir = OBS_LOCAL_DB.parent / "arsiv_paketleri"
+        pending = sorted(p.name for p in pkg_dir.glob("*.db")) if pkg_dir.exists() else []
+        info = json.loads(_arsiv_local("paketle").strip().splitlines()[-1])
+        names = sorted(set(pending) | {info["paket"]})
+        log(f"cekilecek paket (PC gozlemcisi): {len(names)}")
+        for name in names:
+            counts = import_package(pkg_dir / name)
+            _arsiv_local("onayla", name)
+            for k, v in counts.items():
+                total[k] = total.get(k, 0) + v
+            log(f"  {name}: {counts} -> onaylandi")
+        log(f"gozlemci temizligi: {_arsiv_local('temizle').strip()[-200:]}")
+    else:
+        log("UYARI: PC gozlemci veritabani yok (istatistik/vinted/observe.db)")
     try:
         pull_alis()
     except Exception as exc:          # alis cekimi gozlemci arsivini bozmasin; hata gunluge, onay verilmez

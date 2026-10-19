@@ -443,8 +443,8 @@
     "model": 1
   },
   "ev_hatti": {
-    "_aciklama": "Vinted isteklerini PC'deki ev internetinden cikarmak icin (ters SSH tuneli). mod: kapali | tercih | zorunlu. Kurulum: ops/ev_hatti/KURULUM.md",
-    "mod": "zorunlu",
+    "_aciklama": "Gozlemci PC'de (ev WiFi IP'si) dogrudan calisir: mod 'dogrudan' (2026-10-19 kullanici karari). Sunucuda calisacaksa: kapali | tercih | zorunlu (ters SSH tuneli).",
+    "mod": "dogrudan",
     "proxy": "socks5h://127.0.0.1:1080"
   }
 }

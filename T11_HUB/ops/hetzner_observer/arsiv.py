@@ -20,8 +20,9 @@ import sys
 from datetime import datetime, timezone
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE = os.path.join(BASE_DIR, "observe.db")
-EXPORT_DIR = os.path.join(BASE_DIR, "arsiv_paketleri")
+# Veritabani yolu: sunucuda betik klasoru; PC'de TATANGA_OBS_DB (istatistik/vinted/observe.db, depo disi).
+DB_FILE = os.environ.get("TATANGA_OBS_DB") or os.path.join(BASE_DIR, "observe.db")
+EXPORT_DIR = os.path.join(os.path.dirname(DB_FILE), "arsiv_paketleri")
 
 # Artimli aktarilan tablolar: imlec sutunu. catalog_samples'in rowid'si Vinted ilan kimligidir
 # (ekleme sirasi DEGIL): sonradan bulunan eski kimlikli ilan atlanirdi. Bu yuzden zaman imleci.

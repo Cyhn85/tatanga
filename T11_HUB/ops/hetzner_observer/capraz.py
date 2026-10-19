@@ -345,6 +345,28 @@ class Engine:
         late = any(code == "T14" and lvl == FAIL for lvl, code, _ in run_checks(conn))
         prob = {(r["seviye"], r["grup"].lower()): r for r in M.build(M.load(conn, matcher, rates))}
         self.matcher, self.rates, self.c, self.ref, self.late, self.prob = matcher, rates, c, ref, late, prob
+        # SIFIR URUN TALEBI (sifir_talep.py): yalniz BILGI; ikinci el satis fiyatina girmez.
+        self.sifir = {}
+        try:
+            sdb = sqlite3.connect(os.path.join(ROOT, "capraz.db"))
+            for r in sdb.execute("SELECT marka, seviye, grup, kondisyon, ilan, haftalik_talep, guven FROM sifir_talep"):
+                key = (r[0], r[1], str(r[2]).lower())
+                cur = self.sifir.get(key)
+                if cur is None or r[5] > cur[0]:
+                    self.sifir[key] = (r[5], r[4], r[3], r[6])
+            sdb.close()
+        except sqlite3.OperationalError:
+            pass
+
+    def sifir_talep(self, b) -> tuple | None:
+        """Ayni marka + ayni model/seri/tur icin magaza (sifir urun) talebi: (haftalik, ilan, kondisyon, guven)."""
+        brand = (b["brand"] or "").lower()
+        for level, key in (("model", b["model"]), ("seri", b["line"]), ("tur", b["type"])):
+            if key:
+                hit = self.sifir.get((brand, level, str(key).lower()))
+                if hit:
+                    return hit
+        return None
 
     def p30(self, b) -> tuple[float | None, str | None]:
         brand = b["brand"].lower()
@@ -401,6 +423,9 @@ class Engine:
             disi.append(f"ACIKLAMA: '{CONTACT_RE.search(b['descr']).group(0)}' -> farkli amacli ilan")
         if best["level"] not in STRONG_LEVELS:
             disi.append("ZAYIF KARSILASTIRMA: yalniz marka+kategori (farkli urun turleri karisik)")
+        st = self.sifir_talep(b)
+        if st:
+            flags.append(f"sifir urun talebi: haftada {st[0]:.1f} adet ({st[1]} magaza ilani, {st[2]}, {st[3]})")
         flags = disi + flags
         if best["n"] < 10:
             flags.append(f"az satis (n={best['n']})")

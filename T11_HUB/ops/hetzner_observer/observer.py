@@ -32,7 +32,8 @@ from datetime import datetime, timedelta, timezone
 from curl_cffi import requests
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE = os.path.join(BASE_DIR, "observe.db")
+# Veritabani yolu: sunucuda betik klasoru; PC'de TATANGA_OBS_DB (istatistik/vinted/observe.db, depo disi).
+DB_FILE = os.environ.get("TATANGA_OBS_DB") or os.path.join(BASE_DIR, "observe.db")
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 
 # JSON-LD blogunun yeri sabit degil: bazen ~120 KB'de, bazen sayfanin sonunda.
@@ -449,6 +450,8 @@ class Fetcher:
 
     def _wanted_exit(self) -> str | None:
         mod = self.hat.get("mod", "kapali")
+        if mod == "dogrudan":
+            return "ev"          # PC'de calisiyor: istek dogrudan ev IP'sinden cikar (tunel gerekmez)
         if mod == "kapali":
             return "sunucu"
         if self._tunnel_up():
@@ -464,14 +467,14 @@ class Fetcher:
             self.market_strikes = {}
             meta_set(self.conn, "paused_until", "")
             self.exit = wanted
-        if wanted == "ev":
+        if wanted == "ev" and self.hat.get("mod") != "dogrudan":
             url = self.hat.get("proxy", "socks5h://127.0.0.1:1080")
             return requests.Session(impersonate="chrome", proxies={"http": url, "https": url})
         return requests.Session(impersonate="chrome")
 
     def _check_hat(self) -> None:
         """Dakikada bir: tunel acildi/kapandi mi. Degistiyse yeni oturum. Zorunlu modda tunel yoksa beklenir."""
-        if self.hat.get("mod", "kapali") == "kapali" or time.time() - self._hat_checked < 60:
+        if self.hat.get("mod", "kapali") in ("kapali", "dogrudan") or time.time() - self._hat_checked < 60:
             return
         self._hat_checked = time.time()
         wanted = self._wanted_exit() or "yok"
@@ -1303,14 +1306,16 @@ def main() -> None:
     interval = int(cfg["budget"].get("cycle_minutes", 30)) * 60
     log(f"gozlemci basladi: {len(build_cells(cfg))} hucre, gunluk butce {cfg['budget']['max_requests_per_day']}")
     while True:
+        meta_set(conn, "heartbeat", iso(now()))
         stats = run_cycle(conn, cfg, fetcher)
+        meta_set(conn, "heartbeat", iso(now()))
         log(f"tur: {stats} | butce kalan: {fetcher.budget_left()}")
         # Is varsa (kontrol kotasi doldu ya da kesif yapildi) hemen devam; yoksa uzun bekle.
         # Eskiden her turdan sonra 30 dk bekleniyordu: kuyruk doluyken bile gunun yarisi bosta gecti.
         busy = stats["checked"] >= int(cfg["budget"].get("checks_per_cycle", 150)) or stats["cells"] > 0
         if fetcher.paused_until():
             wait = max(60, (fetcher.paused_until() - now()).total_seconds())
-            if fetcher.hat.get("mod", "kapali") != "kapali":
+            if fetcher.hat.get("mod", "kapali") not in ("kapali", "dogrudan"):
                 wait = min(wait, 300)          # ev hatti acilirsa 5 dk icinde devreye girsin
                 fetcher._hat_checked = 0.0
         elif busy and fetcher.budget_left() > 0:

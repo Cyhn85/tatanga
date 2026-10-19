@@ -143,6 +143,16 @@ def connect():
         last_price REAL, avail_raw TEXT, last_http INTEGER, err_raw TEXT, days_to_close REAL);
     CREATE TABLE IF NOT EXISTS eb_track_raw (status TEXT PRIMARY KEY, n INTEGER, example TEXT);
     """)
+    tcols = {r[1] for r in conn.execute("PRAGMA table_info(eb_track)")}
+    for name, decl in (("avail_qty", "INTEGER"), ("sinif", "TEXT"), ("qty_first", "INTEGER"), ("qty_first_at", "TEXT")):
+        if name not in tcols:
+            conn.execute(f"ALTER TABLE eb_track ADD COLUMN {name} {decl}")
+    # 2026-10-19 kullanici karari: magaza (coklu adet) satisi = SIFIR URUN TALEBI, ikinci el satisi DEGIL.
+    # Eski kayitlar: satildi ama ilan hala stokta ya da birden fazla adet satilmis -> sifir_talep (takip surer).
+    conn.execute("UPDATE eb_track SET sinif='sifir_talep', state='active', closed_at=NULL, close_reason=NULL, "
+                 "days_to_close=NULL, qty_first=COALESCE(qty_first, sold_qty), qty_first_at=COALESCE(qty_first_at, last_check) "
+                 "WHERE sinif IS NULL AND state='sold' AND (avail_raw='IN_STOCK' OR COALESCE(sold_qty,0) > 1)")
+    conn.execute("UPDATE eb_track SET sinif='ikinci_el' WHERE sinif IS NULL AND state<>'active'")
     cols = {r[1] for r in conn.execute("PRAGMA table_info(eb_items)")}
     for name, decl in (("market", "TEXT"), ("bid_count", "INTEGER"), ("image_url", "TEXT")):
         if name not in cols:
@@ -278,6 +288,11 @@ def check_track(api: Api, conn, row) -> str:
         av = (data.get("estimatedAvailabilities") or [{}])[0]
         sold = av.get("estimatedSoldQuantity") or 0
         st = av.get("estimatedAvailabilityStatus")
+        avail_qty = av.get("estimatedAvailableQuantity")
+        # Coklu adetli ilan (magaza stogu): satistan sonra stok kaldi ya da toplam adet > 1 -> SIFIR URUN TALEBI.
+        # Bu ilanlar ilk satista KAPANMAZ: satilan adet zamanla sayilir (talep hizi). Tek adet = ikinci el piyasasi
+        # (etiketli yeni bile olsa: ozel saticinin etiketli urunu ikinci el kondisyonudur).
+        multi = (sold > 0 and st == "IN_STOCK") or ((avail_qty or 0) + sold > 1)
         bids = data.get("bidCount")
         price = (data.get("currentBidPrice") or data.get("price") or {}).get("value")
         reserve_met = data.get("reservePriceMet")
@@ -289,7 +304,12 @@ def check_track(api: Api, conn, row) -> str:
         note_raw(conn, f"200:{st}:sold>0={sold > 0}:bids>0={bool(bids)}:reserve={reserve_met}", row["item_id"])
         state, reason = "active", None
         ended = end is not None and now >= end + END_GRACE
-        if sold > 0:
+        if multi:
+            conn.execute("UPDATE eb_track SET sinif='sifir_talep', avail_qty=?, qty_first=COALESCE(qty_first, ?), "
+                         "qty_first_at=COALESCE(qty_first_at, ?) WHERE item_id=?", (avail_qty, sold, now_s, row["item_id"]))
+            if ended or st == "OUT_OF_STOCK":
+                state, reason = "ended", "magaza ilani bitti / stok tukendi"
+        elif sold > 0:
             state, reason = "sold", "satis adedi"
         elif ended and bids and reserve_met is not False:
             state, reason = "sold", "artirma teklifle bitti"
@@ -301,9 +321,10 @@ def check_track(api: Api, conn, row) -> str:
             state, reason = "gone", "stok bitti, satis adedi yok"
         conn.execute("UPDATE eb_track SET last_check=?, checks=checks+1, sold_qty=?, bid_count=?, last_price=?, "
                      "avail_raw=?, last_http=200, state=?, close_reason=?, closed_at=CASE WHEN ?<>'active' THEN ? END,"
-                     " days_to_close=CASE WHEN ?<>'active' THEN ? END WHERE item_id=?",
+                     " days_to_close=CASE WHEN ?<>'active' THEN ? END, avail_qty=?, "
+                     "sinif=CASE WHEN sinif='sifir_talep' THEN sinif ELSE 'ikinci_el' END WHERE item_id=?",
                      (now_s, sold, bids, float(price) if price else None, st, state, reason, state, now_s,
-                      state, (now - enrolled).total_seconds() / 86400, row["item_id"]))
+                      state, (now - enrolled).total_seconds() / 86400, avail_qty, row["item_id"]))
     else:
         errs = (data or {}).get("errors") or [{}]
         err = f"{errs[0].get('errorId')}:{errs[0].get('message', '')[:60]}"

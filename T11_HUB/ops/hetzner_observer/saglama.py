@@ -25,7 +25,8 @@ import sys
 from datetime import datetime, timezone
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE = os.path.join(BASE_DIR, "observe.db")
+# Veritabani yolu: sunucuda betik klasoru; PC'de TATANGA_OBS_DB (istatistik/vinted/observe.db, depo disi).
+DB_FILE = os.environ.get("TATANGA_OBS_DB") or os.path.join(BASE_DIR, "observe.db")
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 
 STAGES = ["oturum", "katalog", "katalog_okuma", "ilan", "ilan_okuma"]
@@ -228,13 +229,22 @@ def run_checks(conn: sqlite3.Connection, day: str | None = None) -> list[tuple[s
         p = (snap[1] or 0) / snap[0]
         out.append((WARN if p < 0.7 else OK, "T11", f"dar arama gercek arz %{p*100:.0f} ({snap[1]}/{snap[0]})"))
 
-    # T10 servis
+    # T10 canlilik: gozlemci her turda 'heartbeat' yazar (PC'de systemctl yok). Tur en fazla ~30 dk uyur.
     try:
-        state = subprocess.run(["systemctl", "is-active", "tatanga-observer"],
-                               capture_output=True, text=True, timeout=5).stdout.strip()
-        out.append((OK if state == "active" else FAIL, "T10", f"servis {state}"))
-    except Exception:
-        pass
+        hb = conn.execute("SELECT value FROM meta WHERE key='heartbeat'").fetchone()
+    except sqlite3.OperationalError:
+        hb = None
+    if hb and hb[0]:
+        age = (datetime.now(timezone.utc) - datetime.strptime(hb[0], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)).total_seconds() / 60
+        out.append((OK if age <= 45 else FAIL, "T10", f"gozlemci son tur {age:.0f} dk once"
+                    + ("" if age <= 45 else " (PC kapali ya da gozlemci durmus)")))
+    else:
+        try:
+            state = subprocess.run(["systemctl", "is-active", "tatanga-observer"],
+                                   capture_output=True, text=True, timeout=5).stdout.strip()
+            out.append((OK if state == "active" else FAIL, "T10", f"servis {state}"))
+        except Exception:
+            pass
     return out
 
 
