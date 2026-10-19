@@ -6,9 +6,9 @@
     "2"
   ],
   "budget": {
-    "max_requests_per_day": 2500,
-    "min_interval_seconds": 30,
-    "jitter": 20,
+    "max_requests_per_day": 4000,
+    "min_interval_seconds": 15,
+    "jitter": 10,
     "cycle_minutes": 30,
     "checks_per_cycle": 150,
     "reserve_for_checks": 0.6,

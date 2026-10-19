@@ -10,10 +10,12 @@ KRITERLER (esikler asagida sabit; degistirmek bilincli bir karar olmali):
   C2 GUVENILIR    : 30 gun satilma olasiligi %95 araligi +-10 puan icinde olan grup sayisi >= 50 (motor.py).
   C3 KAPSAM       : mont / ayakkabi / kot / ust giyim kategorilerinin HER BIRINDE >= 5 guvenilir grup.
   C4 SATIS HACMI  : son 7 gunde zamani kesin Vinted satisi >= 700 (gunde ~100).
-  C5 KALIBRASYON  : 30+ gun once kaydedilen tahminler (marka x kategori, p30) ile o haftadan sonra giren ilanlarin
+  C5 FIYAT GERITESTI: geritest.py (zaman sirali: yalniz kesim oncesi satislarla tahmin, sonraki 4 gunun gercek
+                    satislariyla karsilastirma). Gecme: >= 30 test satisi, P25-P75 bandina dusme >= %50, ort. mutlak hata <= %25.
+  C6 HIZ KALIBRASYONU: 30+ gun once kaydedilen tahminler (marka x kategori, p30) ile o haftadan sonra giren ilanlarin
                     GERCEKLESEN 30 gun satis orani arasindaki ortalama mutlak fark <= 10 puan (en az 10 grup, grupta >= 20 ilan).
                     Tahmin kaydi her hafta otomatik yapilir (karne.db); ilk olcum ilk kayittan 37 gun sonra mumkun olur.
-  C6 ONERI ISABETI: kullanicinin gercek alim/satis kaydi basladiginda olculur (simdilik olculemez).
+  (Eski C6 "kullanici alim/satis kaydi" 2026-10-19 kullanici karariyla kaldirildi.)
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "..", "istatistik"))
 CLEAN_SAMPLES, CLEAN_CHECKS, CLEAN_DAYS_NEED = 10_000, 400, 24
 RELIABLE_NEED, CAT_NEED, SALES_7D_NEED = 50, 5, 700
 CALIB_MAX_ERR, CALIB_MIN_GROUPS, CALIB_MIN_N = 0.10, 10, 20
+GT_MIN_N, GT_MIN_BAND, GT_MAX_ERR = 30, 0.50, 0.25
 CATS = {"jacken": "mont", "schuhe": "ayakkabi", "jeans": "kot", "oberteile": "ust giyim"}
 
 
@@ -139,23 +142,37 @@ def main() -> int:
     out.append(("C4 satis hacmi (7 gun)", f"Vinted {s7}" + (f" | eBay {eb_sold}" if eb_sold is not None else ""),
                 f"Vinted >= {SALES_7D_NEED}", s7 >= SALES_7D_NEED))
 
-    # C5 kalibrasyon (tahmin kaydi + olgun hafta)
+    # C5 fiyat geritesti (geritest.py -> capraz.db.geritest; cek.py karneden once kosturur)
+    gt = None
+    try:
+        gt = sqlite3.connect(os.path.join(ROOT, "capraz.db")).execute(
+            "SELECT n, bantta_oran, hata, sapma, ts FROM geritest WHERE olcum='fiyat' AND seviye='HEPSI'").fetchone()
+    except sqlite3.OperationalError:
+        pass
+    if not gt or not gt[0]:
+        out.append(("C5 fiyat geritesti", "olculemez: geritest sonucu yok", f">= {GT_MIN_N} satis", False))
+    else:
+        n, band, err, bias, ts = gt
+        ok = n >= GT_MIN_N and band >= GT_MIN_BAND and err <= GT_MAX_ERR
+        out.append(("C5 fiyat geritesti", f"{n} satis | bantta %{band*100:.0f} | hata %{err*100:.0f} | sapma %{bias*100:+.0f}",
+                    f"bant >= %{GT_MIN_BAND*100:.0f}, hata <= %{GT_MAX_ERR*100:.0f}", ok))
+
+    # C6 hiz kalibrasyonu (tahmin kaydi + olgun hafta)
     new_snap = snapshot(kdb, rows, today)
     cal, first = calibration(conn, kdb, today)
     if cal is None:
         ready = (datetime.strptime(first, "%Y-%m-%d") + timedelta(days=37)).strftime("%Y-%m-%d") if first else "-"
-        out.append(("C5 kalibrasyon", f"henuz olculemez (ilk tahmin kaydi {first}; ilk olcum {ready})",
+        out.append(("C6 hiz kalibrasyonu", f"henuz olculemez (ilk tahmin kaydi {first}; ilk olcum {ready})",
                     f"ort. fark <= {CALIB_MAX_ERR*100:.0f} puan", False))
     else:
         wk, pairs = cal
         if len(pairs) < CALIB_MIN_GROUPS:
-            out.append(("C5 kalibrasyon", f"{wk}: yalnizca {len(pairs)} grup olculebildi",
+            out.append(("C6 hiz kalibrasyonu", f"{wk}: yalnizca {len(pairs)} grup olculebildi",
                         f">= {CALIB_MIN_GROUPS} grup", False))
         else:
             err = sum(abs(p - q) for p, q, _ in pairs) / len(pairs)
-            out.append(("C5 kalibrasyon", f"{wk}: ort. fark {err*100:.1f} puan ({len(pairs)} grup)",
+            out.append(("C6 hiz kalibrasyonu", f"{wk}: ort. fark {err*100:.1f} puan ({len(pairs)} grup)",
                         f"<= {CALIB_MAX_ERR*100:.0f} puan", err <= CALIB_MAX_ERR))
-    out.append(("C6 oneri isabeti", "olculemez: kullanici alim/satis kaydi yok", ">= %60 iki hafta ust uste", False))
 
     wk = week_id(today)
     print(f"ZEKA KARNESI {wk}  ({today:%Y-%m-%d})" + ("  | bu haftanin tahminleri kaydedildi" if new_snap else ""))

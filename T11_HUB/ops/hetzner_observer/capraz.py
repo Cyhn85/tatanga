@@ -136,14 +136,16 @@ def keys_for(brand: str, cat: str | None, model: str | None, typ: str | None, li
 class SellRef:
     """Gercek Vinted satislari -> grup x (ulke, kondisyon) fiyat referansi."""
 
-    def __init__(self, conn, matcher, rates, cond_f, market_f):
+    def __init__(self, conn, matcher, rates, cond_f, market_f, until: str | None = None):
+        """until: yalniz bu zamandan ONCE kapanan satislar (geritest.py: gelecegi gormeden sinav)."""
         self.cond_f, self.market_f = cond_f, market_f
         # ref[grup][(ulke|'*', kondisyon|'*')] -> fiyatlar. '*' ulke: DE tabanina cevrilmis havuz;
         # '*' kondisyon: cok_iyi tabanina cevrilmis (yalnizca ASAGI cevirme: etiketli satis / 2.0 gibi).
         self.ref: dict[tuple, dict[tuple, list[float]]] = defaultdict(lambda: defaultdict(list))
         n = 0
-        for r in conn.execute("SELECT cell, title, size, condition, country, COALESCE(final_price, price) p, "
-                              "COALESCE(currency,'EUR') cur FROM listings WHERE state='sold'"):
+        sql = ("SELECT cell, title, size, condition, country, COALESCE(final_price, price) p, "
+               "COALESCE(currency,'EUR') cur FROM listings WHERE state='sold'")
+        for r in conn.execute(sql + (" AND closed_at < ?" if until else ""), (until,) if until else ()):
             brand, cat, _ = (r["cell"].split("|") + ["", ""])[:3]
             cat = None if cat.startswith("model:") else CAT_MAP.get(cat, cat)
             if A.is_child_size(r["size"], cat or ""):

@@ -177,6 +177,8 @@ def run_trends() -> None:
         ("zeka-urunler", [sys.executable, str(obs / "zeka_urunler.py"), "--arsiv", str(ARCHIVE)]),
         # gorsel arama dizini: yalniz YENI aktif ilanlar + aktiflik guncellemesi (gorsel saklanmaz)
         ("gorsel-indeks", [sys.executable, str(obs / "gorsel_zeka.py"), "indeks"]),
+        # zaman sirali fiyat/hiz geritesti -> karne C5
+        ("geritest", [sys.executable, str(obs / "geritest.py"), "--arsiv", str(ARCHIVE), "--csv", str(TABLES_DIR)]),
         ("karne", [sys.executable, str(obs / "karne.py"), "--arsiv", str(ARCHIVE), "--alis", str(ALIS_ARCHIVE),
                    "--csv", str(TABLES_DIR)]),
     ):
