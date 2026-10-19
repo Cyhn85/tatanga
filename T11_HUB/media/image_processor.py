@@ -87,26 +87,57 @@ def _get_session(model_name: str):
     raise RuntimeError("hicbir matting modeli yuklenemedi")
 
 
-def _face_cascade():
+def _face_cascade(name: str = "haarcascade_frontalface_default.xml"):
     global _FACE_CASCADE
     if _FACE_CASCADE is None:
+        _FACE_CASCADE = {}
+    if name not in _FACE_CASCADE:
         import cv2
-        path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-        _FACE_CASCADE = cv2.CascadeClassifier(path)
-    return _FACE_CASCADE
+        _FACE_CASCADE[name] = cv2.CascadeClassifier(cv2.data.haarcascades + name)
+    return _FACE_CASCADE[name]
+
+
+def _iou(a, b) -> float:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    ix = max(0, min(ax + aw, bx + bw) - max(ax, bx))
+    iy = max(0, min(ay + ah, by + bh) - max(ay, by))
+    inter = ix * iy
+    return inter / float(aw * ah + bw * bh - inter or 1)
 
 
 def detect_face(rgb_image: Image.Image) -> bool:
-    """Frontal ve yandan gorunumdeki insan yuzunu Haar cascade ile tespit et.
-    True -> gorselde insan yuzu var (yayina alinmamali)."""
+    """
+    Insan yuzu var mi (True -> katalog gorseli olmaz).
+    2026-10-19 OLCULDU: tek Haar kaskadi (minNeighbors=5) 88 urun fotografinin 29'unda "yuz" buldu ve 29'u da
+    YANLISTI (kumas, fermuar, dikis) -> gorsellerin ~1/3'u haksiz reddediliyordu. Simdi uc kosul birden:
+      (1) varsayilan kaskad, minNeighbors=8, yuz en az kisa kenarin %6'si;
+      (2) bagimsiz alt2 kaskadi ayni bolgeyi dogrular (IoU > 0.3);
+      (3) kutunun >= %30'u ten rengi.
+    600 fotografta: 6 pozitif (5 gercek yuz, 1 yuzu kapatan emoji), kumas kaynakli yanlis alarm 0.
+    """
     import cv2, numpy as np
     if rgb_image.mode != "RGB":
         rgb_image = rgb_image.convert("RGB")
-    arr = np.asarray(rgb_image)
-    gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-    faces = _face_cascade().detectMultiScale(
-        gray, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40))
-    return len(faces) > 0
+    img = rgb_image
+    if max(img.size) > 1600:
+        img = img.copy()
+        img.thumbnail((1600, 1600))
+    gray = cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2GRAY)
+    m = max(40, int(min(gray.shape) * 0.06))
+    c1 = _face_cascade().detectMultiScale(gray, scaleFactor=1.1, minNeighbors=8, minSize=(m, m))
+    if not len(c1):
+        return False
+    c2 = _face_cascade("haarcascade_frontalface_alt2.xml").detectMultiScale(
+        gray, scaleFactor=1.1, minNeighbors=4, minSize=(m, m))
+    skin = _skin_mask(img)
+    for f in c1:
+        if not any(_iou(f, o) > 0.3 for o in c2):
+            continue
+        x, y, w, h = (int(v) for v in f)
+        if skin[y:y + h, x:x + w].mean() >= 0.30:
+            return True
+    return False
 
 
 def _skin_mask(rgb: Image.Image) -> "np.ndarray":

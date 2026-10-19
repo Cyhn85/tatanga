@@ -2064,11 +2064,128 @@ async def check_source(product_id: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(check_product_source, product_id)
     return {"status": "checking", "product_id": product_id}
 
+# ============================================
+# STUDYO HATTI: kullanicinin KENDI urun fotograflari (media/studio.py, BiRefNet + kalite kapisi)
+# Kaynak ilanin (baska saticinin) fotografi bu hatta GIRMEZ; yalniz buradan yuklenen fotograflar islenir.
+# ============================================
+IMAGES_OWN = DATA_DIR / "images" / "own"
+IMAGES_STUDIO = DATA_DIR / "images" / "studio"
+_STUDIO_ISLENIYOR: set = set()
+
+
+async def _studio_sema(db) -> None:
+    have = {r[1] for r in await (await db.execute("PRAGMA table_info(products)")).fetchall()}
+    for c in ("own_images_json", "studio_images_json"):
+        if c not in have:
+            await db.execute(f"ALTER TABLE products ADD COLUMN {c} TEXT")
+    await db.commit()
+
+
+async def _studio_isle(product_id: str) -> None:
+    """Urunun tum kendi fotograflarini studyo hattindan gecirir; kapiyi gecenler yayin gorseli olur."""
+    if product_id in _STUDIO_ISLENIYOR:
+        return
+    _STUDIO_ISLENIYOR.add(product_id)
+    try:
+        from media.studio import studio as _studio
+        async with aiosqlite.connect(DB_FILE) as db:
+            await _studio_sema(db)
+            row = await (await db.execute("SELECT own_images_json FROM products WHERE id=?", (product_id,))).fetchone()
+        own = json.loads((row[0] if row else None) or "[]")
+        IMAGES_STUDIO.mkdir(parents=True, exist_ok=True)
+        sonuc = []
+        for i, rel in enumerate(own, 1):
+            src = DATA_DIR / rel.replace("/data/", "", 1)
+            try:
+                img, rep = await asyncio.to_thread(_studio, str(src))
+            except Exception as exc:
+                img, rep = None, {"ok": False, "hatalar": [f"islem hatasi: {type(exc).__name__}: {str(exc)[:120]}"],
+                                  "uyarilar": []}
+            path = None
+            if img is not None:
+                fn = f"{product_id}_{i}.jpg"
+                img.save(str(IMAGES_STUDIO / fn), "JPEG", quality=92)
+                path = f"/data/images/studio/{fn}"
+            sonuc.append({"kaynak": rel, "gorsel": path, **rep})
+        gecen = [r["gorsel"] for r in sonuc if r["ok"] and r["gorsel"]]
+        async with aiosqlite.connect(DB_FILE) as db:
+            if gecen:
+                await db.execute("UPDATE products SET studio_images_json=?, processed_images_json=?, bg_removed=1, "
+                                 "updated_at=? WHERE id=?",
+                                 (json.dumps(sonuc, ensure_ascii=False), json.dumps(gecen), datetime.now().isoformat(),
+                                  product_id))
+            else:
+                await db.execute("UPDATE products SET studio_images_json=?, updated_at=? WHERE id=?",
+                                 (json.dumps(sonuc, ensure_ascii=False), datetime.now().isoformat(), product_id))
+            await db.commit()
+        await log_activity("studio", f"{product_id}: {len(gecen)}/{len(sonuc)} kendi fotograf kalite kapisini gecti")
+        await broadcast_ws("studio_done", {"product_id": product_id, "gecen": len(gecen), "toplam": len(sonuc)})
+    finally:
+        _STUDIO_ISLENIYOR.discard(product_id)
+
+
+@app.post("/api/product/{product_id}/kendi-foto")
+async def kendi_foto_yukle(product_id: str, request: Request, background_tasks: BackgroundTasks):
+    """Kullanicinin kendi cektigi urun fotograflari (data URL listesi). Kaydeder ve studyo hattina gonderir.
+    ekle=false ise onceki kendi fotograflar degistirilir."""
+    import base64 as _b64
+    body = await request.json()
+    imgs = body.get("images") or []
+    if not imgs or len(imgs) > 12:
+        return JSONResponse({"status": "error", "error": "1-12 fotograf gonderin"}, 400)
+    async with aiosqlite.connect(DB_FILE) as db:
+        await _studio_sema(db)
+        row = await (await db.execute("SELECT own_images_json FROM products WHERE id=?", (product_id,))).fetchone()
+        if not row:
+            return JSONResponse({"status": "error", "error": "Urun bulunamadi"}, 404)
+        mevcut = json.loads(row[0] or "[]") if body.get("ekle", True) else []
+        IMAGES_OWN.mkdir(parents=True, exist_ok=True)
+        from PIL import Image as _Img
+        import io as _io
+        yeni = []
+        for k, durl in enumerate(imgs):
+            try:
+                raw = _b64.b64decode(str(durl).split(",", 1)[-1])
+                if len(raw) > 25 * 1024 * 1024:
+                    return JSONResponse({"status": "error", "error": f"{k + 1}. fotograf 25 MB'tan buyuk"}, 400)
+                _Img.open(_io.BytesIO(raw)).verify()          # gercekten gorsel mi
+            except Exception:
+                return JSONResponse({"status": "error", "error": f"{k + 1}. dosya okunabilir bir gorsel degil"}, 400)
+            fn = f"{product_id}_{len(mevcut) + len(yeni) + 1}_{int(time.time())}.jpg"
+            (IMAGES_OWN / fn).write_bytes(raw)
+            yeni.append(f"/data/images/own/{fn}")
+        own = mevcut + yeni
+        await db.execute("UPDATE products SET own_images_json=?, updated_at=? WHERE id=?",
+                         (json.dumps(own), datetime.now().isoformat(), product_id))
+        await db.commit()
+    background_tasks.add_task(_studio_isle, product_id)
+    return {"status": "processing", "product_id": product_id, "fotograf": len(own),
+            "tahmini_sure_sn": 35 * len(own)}
+
+
+@app.get("/api/product/{product_id}/studio")
+async def studio_durum(product_id: str):
+    async with aiosqlite.connect(DB_FILE) as db:
+        await _studio_sema(db)
+        row = await (await db.execute("SELECT own_images_json, studio_images_json FROM products WHERE id=?",
+                                      (product_id,))).fetchone()
+    if not row:
+        return JSONResponse({"status": "error", "error": "Urun bulunamadi"}, 404)
+    return {"status": "ok", "isleniyor": product_id in _STUDIO_ISLENIYOR, "kendi": json.loads(row[0] or "[]"),
+            "sonuc": json.loads(row[1] or "[]")}
+
+
 @app.post("/api/product/{product_id}/remove-bg")
 async def remove_bg_endpoint(product_id: str, background_tasks: BackgroundTasks):
-    """Urun gorsellerinin arka planini kaldir"""
+    """Urun gorsellerinin arka planini kaldir. Urunun KENDI fotograflari varsa studyo hatti (BiRefNet) kullanilir."""
+    async with aiosqlite.connect(DB_FILE) as db:
+        await _studio_sema(db)
+        row = await (await db.execute("SELECT own_images_json FROM products WHERE id=?", (product_id,))).fetchone()
+    if row and json.loads(row[0] or "[]"):
+        background_tasks.add_task(_studio_isle, product_id)
+        return {"status": "processing", "product_id": product_id, "hat": "studyo (kendi fotograflar)"}
     background_tasks.add_task(process_background_removal, product_id)
-    return {"status": "processing", "product_id": product_id}
+    return {"status": "processing", "product_id": product_id, "hat": "eski (kaynak gorseller)"}
 
 @app.post("/api/product/{product_id}/publish")
 async def publish_product(product_id: str, request: Request):

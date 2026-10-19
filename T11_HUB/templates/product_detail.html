@@ -63,6 +63,24 @@
             </div>
         </div>
 
+        <!-- KENDI FOTOGRAFLAR -> STUDYO (media/studio.py) -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-camera me-1" style="color:#ffa500"></i> Kendi fotograflarin · studyo</h6>
+                <label class="btn btn-sm btn-outline-warning mb-0">
+                    <i class="fas fa-upload me-1"></i> Fotograf yukle
+                    <input type="file" accept="image/*" multiple hidden onchange="kendiFotoYukle(this)">
+                </label>
+            </div>
+            <div class="card-body" style="font-size:.8rem;">
+                <div style="color:#9aa4ae" class="mb-2">Aldigin urunu kendin cek: askida, yerde serili ya da mankende;
+                    urunun tamami kadrajda, yuz/el yok. Arka plan BiRefNet ile kaldirilir, acik gri studyo zemine
+                    oturtulur. Kalite kapisini gecenler yayin gorseli olur (fotograf basina ~30 sn).</div>
+                <div id="st-durum" style="color:#9aa4ae"></div>
+                <div id="st-grid" class="row g-2 mt-1"></div>
+            </div>
+        </div>
+
         <!-- Source Status -->
         <div class="card">
             <div class="card-header d-flex justify-content-between">
@@ -424,6 +442,44 @@ async function checkSrc() {
     showToast('Kaynak kontrol basladi...', 'info');
     setTimeout(() => location.reload(), 4000);
 }
+
+// ---- KENDI FOTOGRAFLAR / STUDYO ----
+let stTimer = null;
+function stRender(d) {
+    const durum = document.getElementById('st-durum'), grid = document.getElementById('st-grid');
+    if (d.status !== 'ok') { durum.innerHTML = '<span class="text-danger">' + (d.error || 'hata') + '</span>'; return; }
+    const gecen = d.sonuc.filter(r => r.ok).length;
+    durum.innerHTML = d.isleniyor
+        ? '<i class="fas fa-spinner fa-spin me-1"></i> ' + d.kendi.length + ' fotograf isleniyor...'
+        : (d.kendi.length ? `<b>${gecen}/${d.sonuc.length}</b> fotograf kalite kapisini gecti` + (gecen ? ' (yayin gorseli yapildi)' : '') : 'Henuz kendi fotograf yok.');
+    grid.innerHTML = d.sonuc.map(r => {
+        const c = r.ok ? '#28a745' : '#dc3545';
+        const sebep = (r.hatalar || []).concat((r.uyarilar || []).map(u => 'uyari: ' + u)).join('<br>');
+        return `<div class="col-6 col-md-4"><div style="border:1px solid ${c};border-radius:8px;overflow:hidden;background:#111">
+            <img src="${r.gorsel || r.kaynak}" style="width:100%;aspect-ratio:4/5;object-fit:contain;background:#f2f2f0">
+            <div class="p-1" style="font-size:.68rem"><span class="badge" style="background:${c}">${r.ok ? 'GECTI' : 'RED'}</span>
+            <span style="color:#9aa4ae"> ${r.model || ''}</span><div style="color:${r.ok ? '#9aa4ae' : '#f08a80'}">${sebep}</div></div></div></div>`;
+    }).join('');
+    clearTimeout(stTimer);
+    if (d.isleniyor) stTimer = setTimeout(stYenile, 5000);
+}
+async function stYenile() { stRender(await (await fetch('/api/product/' + PRODUCT_ID + '/studio')).json()); }
+async function kendiFotoYukle(input) {
+    const files = Array.from(input.files || []).slice(0, 12);
+    if (!files.length) return;
+    document.getElementById('st-durum').innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Yukleniyor...';
+    const oku = f => new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = err; r.readAsDataURL(f); });
+    try {
+        const images = await Promise.all(files.map(oku));
+        const r = await (await fetch('/api/product/' + PRODUCT_ID + '/kendi-foto', {method: 'POST',
+            headers: {'Content-Type': 'application/json'}, body: JSON.stringify({images: images, ekle: true})})).json();
+        if (r.status !== 'processing') throw new Error(r.error || 'yuklenemedi');
+        showToast(r.fotograf + ' fotograf isleniyor (~' + Math.round(r.tahmini_sure_sn / 60 + 0.5) + ' dk)', 'info');
+        setTimeout(stYenile, 1500);
+    } catch (e) { document.getElementById('st-durum').innerHTML = '<span class="text-danger">Hata: ' + e.message + '</span>'; }
+    input.value = '';
+}
+stYenile();
 
 // Background removal
 async function removeBg(id) {
