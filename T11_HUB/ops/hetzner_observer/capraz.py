@@ -155,6 +155,17 @@ def model_categories(conn, matcher) -> dict:
     return out
 
 
+# URUN OLMAYAN ilanlar (2026-10-20: "Facture Nike Air Force 1" = yalniz FATURA, 5 EUR "en ucuz" cikti). Cok dilli.
+NON_PRODUCT_RE = re.compile(
+    r"\b(facture|rechnung|invoice|receipt|kassenbon|quittung|fattura|ricevuta|factura|recibo|faktura|kvitto|"
+    r"leere?\s*(box|karton|schachtel)|nur\s*(box|karton|schachtel)|empty\s*box|box\s*only|bo[iî]te\s*vide|"
+    r"scatola\s*vuota|caja\s*vac[ií]a|lege\s*doos|tom\s*kartong|pusty\s*karton|"
+    r"schn[üu]rsenkel|lacets|shoelaces|laces\s*only|lacci|cordones|veters|"
+    r"einlegesohlen|semelles|insoles|solette|plantillas|"
+    r"nur\s*foto|only\s*(photo|picture)|seulement\s*photo|sticker|aufkleber|anh[äa]nger|keychain|porte[- ]?cl[eé]s|"
+    r"schuhspanner|shoe\s*trees?|crep\s*protect|reinigungs?set|cleaning\s*kit|pflegeset)\b", re.I)
+
+
 def keys_for(brand: str, cat: str | None, model: str | None, typ: str | None, line: str | None = None) -> list[tuple]:
     b = brand.lower()
     out = []
@@ -445,7 +456,7 @@ class Engine:
     def evaluate(self, b, stats) -> dict | None:
         ref, c, late = self.ref, self.c, self.late
         stats[b["platform"]]["ilan"] += 1
-        if OTHER_GARMENT_RE.search(b["title"] or ""):
+        if OTHER_GARMENT_RE.search(b["title"] or "") or NON_PRODUCT_RE.search(b["title"] or ""):
             stats[b["platform"]]["kategori_uyusmaz"] += 1     # sort/pantolon/tisort...: hedef kategorilerimiz disi
             return None
         chk = category_check(b["cat"], b["type"], b["title"], b["structured"])

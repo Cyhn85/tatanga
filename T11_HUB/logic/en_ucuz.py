@@ -15,6 +15,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import os
 import re
 import sqlite3
 import statistics
@@ -86,24 +87,93 @@ def _varyant_kelimeleri(baslik: str, brand: str | None, model: str | None, A) ->
 
 
 def _varyant_uyumu(sorgu_var: list[str], t: str) -> float | None:
+    """Varyant kelimelerinin ilanda gecme orani. Renk aranip ilanda HIC renk yazmiyorsa o kelime bilinmiyor sayilir
+    (paydaya girmez); hic olculebilir kelime kalmazsa None (bilinmiyor) - 'baska varyant' denmez."""
     if not sorgu_var:
         return None
     kel = set(_kelimeler(t))
     renkler = {_RENK_KOK[w] for w in kel if w in _RENK_KOK}
-    tut = 0
+    tut = payda = 0
     for w in sorgu_var:
-        if w in kel or (w in _RENK_KOK and _RENK_KOK[w] in renkler):
-            tut += 1
-    return tut / len(sorgu_var)
+        if w in _RENK_KOK:
+            if not renkler:
+                continue
+            payda += 1
+            tut += _RENK_KOK[w] in renkler
+        else:
+            payda += 1
+            tut += w in kel
+    return (tut / payda) if payda else None
 
 
 def _kelimeler(t: str) -> list[str]:
     return [w for w in re.findall(r"[a-z0-9äöüß]+", (t or "").lower()) if len(w) > 2 and w not in DUR]
 
 
+# ---------------------------------------------------------------- CANLI ARAMA (2026-10-20)
+# Vinted: bu PC'den (ev hatti; sunucu IP'si Vinted'de engelli) vinted.de katalog aramasi. vinted.de, Almanya'ya
+#   gonderen diger AB saticilarini da listeler -> tek istek tum alinabilir arzi kapsar. Fiyata gore, ilk 3 kondisyon.
+# eBay: sunucudaki resmi Browse API (ebay_ara.py, toplayicinin kimligi ve kotasi) -> 7 pazar, kategori filtreli.
+# KA / Sellpy: gercek tarayiciyla insan hizinda toplanir; her aramada anlik tarama engel riski -> toplayici arsivi
+#   (en fazla 1-2 gunluk), sonucta "arsiv" etiketiyle.
+SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "root@195.201.146.224"]
+_KAT_EB = {"jacken": "jacken", "oberteile": "oberteile", "jeans": "jeans", "schuhe": "schuhe"}
+
+
+def canli_vinted(sorgu: str, sayfa: int = 3, beden: str | None = None) -> tuple[list[dict], str]:
+    try:
+        sys.path.insert(0, str(OBS))
+        from observer import parse_catalog
+        from curl_cffi import requests as cr
+        import time as _t
+        s = cr.Session(impersonate="chrome")
+        s.get("https://www.vinted.de/", timeout=25)
+        out, gor = [], set()
+        # fiyat sirali ilk sayfalar cocuk numaralari / aksesuarla dolu olabilir -> 3 sayfa + ilgililik siralamasi 1 sayfa
+        plan = [("price_low_to_high", p, sorgu) for p in range(1, sayfa + 1)] + [("relevance", 1, sorgu)]
+        if beden:
+            # aranan beden ucuzdan-pahaliya ilk sayfalara dusmeyebilir (cocuk numaralari): beden metinli ek arama
+            plan += [("price_low_to_high", 1, f"{sorgu} {beden}"), ("relevance", 1, f"{sorgu} {beden}")]
+        for order, page, metin in plan:
+            _t.sleep(2.5)
+            r = s.get("https://www.vinted.de/catalog", timeout=30, params={
+                "search_text": metin, "order": order, "status_ids[]": ["6", "1", "2"], "page": page})
+            if r.status_code != 200:
+                return out, f"vinted HTTP {r.status_code}"
+            items = parse_catalog(r.text)
+            for it in items:
+                if it["item_id"] not in gor:
+                    gor.add(it["item_id"])
+                    out.append(it)
+            if order == "price_low_to_high" and metin == sorgu and len(items) < 90:
+                plan = [x for x in plan if not (x[0] == "price_low_to_high" and x[2] == sorgu and x[1] > page)]
+        return out, f"canli: vinted.de {len(out)} ilan ({len(plan)} sayfa)"
+    except Exception as exc:
+        return [], f"vinted canli hata: {type(exc).__name__}"
+
+
+def canli_ebay(sorgu: str, kategori: str | None) -> tuple[list[dict], str]:
+    import subprocess
+    import shlex
+    cmd = (f"cd /opt/tatanga-alis && venv/bin/python ebay_ara.py {shlex.quote(sorgu[:100])} --min-fiyat {C_MIN_EB}"
+           + (f" --kategori {kategori}" if kategori in _KAT_EB else ""))
+    try:
+        r = subprocess.run(SSH + [cmd], capture_output=True, timeout=120,
+                           **({"creationflags": 0x08000000} if os.name == "nt" else {}))
+        d = json.loads(r.stdout.decode("utf-8", "replace").strip().splitlines()[-1])
+        if not d.get("ok"):
+            return [], f"ebay: {d.get('hata')}"
+        return d.get("sonuclar", []), f"canli: eBay {d.get('cagri')} API cagrisi, {len(d.get('sonuclar', []))} ilan"
+    except Exception as exc:
+        return [], f"ebay canli hata: {type(exc).__name__}"
+
+
+C_MIN_EB = 10
+
+
 def ara(baslik: str, marka: str | None = None, fiyat: float | None = None, para: str = "EUR",
         gorsel_url: str | None = None, gorsel_b64: str | None = None, en_fazla: int = 30,
-        kaynak_url: str | None = None) -> dict:
+        kaynak_url: str | None = None, canli: bool = True) -> dict:
     A, C, Z = _ctx()
     mt = A.ModelMatcher()
     c = C.costs()
@@ -121,9 +191,10 @@ def ara(baslik: str, marka: str | None = None, fiyat: float | None = None, para:
     kaynak_anahtar = ("vinted:" + km.group(1)) if km else (kaynak_url or "").split("?")[0]
     ayakkabi = typ in C.TYPE_CAT and "schuhe" in C.TYPE_CAT[typ]
     sonuc: dict[str, dict] = {}
-    elenen = {"cocuk": 0, "kondisyon": 0, "yem_fiyat": 0}
+    elenen = {"cocuk": 0, "kondisyon": 0, "yem_fiyat": 0, "urun_degil": 0}
 
-    def ekle(platform, ulke, url, t, p, cur, kond, eslesme, kargo=None, gorsel=None, benzerlik=None, beden=None):
+    def ekle(platform, ulke, url, t, p, cur, kond, eslesme, kargo=None, gorsel=None, benzerlik=None, beden=None,
+             kaynak="arsiv"):
         rate = rates.get((cur or "EUR").upper()) or (1.0 if (cur or "EUR").upper() == "EUR" else 0)
         if not url or not p or not rate:
             return
@@ -131,6 +202,9 @@ def ara(baslik: str, marka: str | None = None, fiyat: float | None = None, para:
         if eur < C.BAIT_PRICE:
             elenen["yem_fiyat"] += 1
             return                                  # 1 EUR "pazarlik yemi" ilanlari (kullanici kurali)
+        if C.NON_PRODUCT_RE.search(t or ""):
+            elenen["urun_degil"] += 1               # fatura / bos kutu / bagcik / tabanlik ... (urunun kendisi degil)
+            return
         # cocuk urunu: baslik (yas / Kinder ...) ya da 35 alti ayakkabi numarasi ya da cocuk bedeni
         b_ilan = str(beden or _beden(t) or "").strip()
         try:
@@ -153,7 +227,7 @@ def ara(baslik: str, marka: str | None = None, fiyat: float | None = None, para:
         kayit = {"platform": platform, "ulke": ulke, "url": url, "baslik": (t or "")[:120], "fiyat": round(p, 2),
                  "para": (cur or "EUR").upper(), "fiyat_eur": round(eur, 2), "kondisyon": kond, "kademe": tier,
                  "toplam_eur": round(_maliyet(platform, eur, kargo, c), 2), "eslesme": eslesme, "gorsel": gorsel,
-                 "benzerlik": benzerlik, "beden": b_ilan or None,
+                 "benzerlik": benzerlik, "beden": b_ilan or None, "kaynak": kaynak,
                  "varyant": _varyant_uyumu(sorgu_var, t),
                  "beden_uyumu": (None if not sorgu_beden or not b_ilan else b_ilan.upper() == sorgu_beden)}
         eski = sonuc.get(url_anahtar)
@@ -174,18 +248,55 @@ def ara(baslik: str, marka: str | None = None, fiyat: float | None = None, para:
             return "kelime"
         return None
 
+    kaynak_notlari = []
+    canli_vt = canli_eb = False
+    if canli and brand:
+        sorgu_metin = f"{brand} {model or line or ''}".strip() if (model or line) else (baslik or "")[:80]
+        kat = None
+        if typ in C.TYPE_CAT and len(C.TYPE_CAT[typ]) == 1:
+            kat = next(iter(C.TYPE_CAT[typ]))
+        elif model:
+            try:
+                mk = json.load(open(ROOT / "model_kategori.json", encoding="utf-8"))
+                kat = mk.get(f"{brand.lower()}|{model.lower()}")
+            except (OSError, ValueError):
+                pass
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(2) as ex:
+            f_vt = ex.submit(canli_vinted, sorgu_metin, 3, sorgu_beden)
+            f_eb = ex.submit(canli_ebay, sorgu_metin, kat)
+            vt, vt_not = f_vt.result()
+            eb, eb_not = f_eb.result()
+        kaynak_notlari += [vt_not, eb_not]
+        for it in vt:
+            e = esles(it.get("brand") or brand, it.get("title") or "")
+            if e:
+                ekle("Vinted", "DE", f"https://www.vinted.de/items/{it['item_id']}", it.get("title"), it["price"],
+                     it.get("currency") or "EUR", it.get("condition"), e, gorsel=it.get("thumb"), beden=it.get("size"),
+                     kaynak="canli")
+        canli_vt = bool(vt)
+        for it in eb:
+            e = esles(brand, it.get("baslik") or "")
+            if e:
+                # eBay metni ("Gebraucht - Hervorragend") yerine kondisyon KODU: 1000/1500/2990 = ilk 3 kademe
+                kond = {"1000": "Neu mit Etikett", "1500": "Neu ohne Etikett", "2990": "Sehr gut"}.get(
+                    str(it.get("kondisyon_id")), it.get("kondisyon"))
+                ekle("eBay", it.get("ulke"), it.get("url"), it.get("baslik"), it.get("fiyat"), it.get("para"),
+                     kond, e, kargo=it.get("kargo"), gorsel=it.get("gorsel"), kaynak="canli")
+        canli_eb = bool(eb)
+
     if brand:
-        # Vinted: son 7 gun katalog ornekleri + takipteki aktif ilanlar (gozlemci)
-        for r in arsiv.execute("SELECT item_id, cell, title, price, COALESCE(currency,'EUR') cur, condition, country, size "
+        # Vinted: son 7 gun katalog ornekleri + takipteki aktif ilanlar (gozlemci) - canli arama basarisizsa
+        for r in ([] if canli_vt else arsiv.execute("SELECT item_id, cell, title, price, COALESCE(currency,'EUR') cur, condition, country, size "
                                "FROM catalog_samples WHERE lower(brand)=lower(?) AND ts >= datetime('now','-7 day') "
-                               "AND COALESCE(is_child,0)=0", (brand,)):
+                               "AND COALESCE(is_child,0)=0", (brand,))):
             e = esles(brand, r["title"])
             if e:
                 tld = VINTED_TLD.get(r["country"], "de")
                 ekle("Vinted", r["country"], f"https://www.vinted.{tld}/items/{r['item_id']}", r["title"], r["price"],
                      r["cur"], r["condition"], e, beden=r["size"])
         obs = ROOT / "vinted" / "observe.db"
-        if obs.exists():
+        if obs.exists() and not canli_vt:
             o = sqlite3.connect(f"file:{obs}?mode=ro", uri=True)
             o.row_factory = sqlite3.Row
             for r in o.execute("SELECT url, title, price, COALESCE(currency,'EUR') cur, condition, country, brand, size "
@@ -205,11 +316,11 @@ def ara(baslik: str, marka: str | None = None, fiyat: float | None = None, para:
                 e = esles(r["b"], r["title"])
                 if e:
                     ekle("Kleinanzeigen", "DE", r["url"], r["title"], r["p"], "EUR", r["zustand"], e, beden=r["groesse"])
-            for r in a.execute("SELECT e.url, e.title, e.price, COALESCE(e.currency,'EUR') cur, e.condition, e.country, "
+            for r in ([] if canli_eb else a.execute("SELECT e.url, e.title, e.price, COALESCE(e.currency,'EUR') cur, e.condition, e.country, "
                                "e.ship_cost, e.brand FROM eb_items e LEFT JOIN eb_track t USING(item_id) "
                                "WHERE lower(e.brand)=lower(?) AND e.last_seen >= datetime('now','-3 day') "
                                "AND (e.end_date IS NULL OR e.end_date > datetime('now')) "
-                               "AND COALESCE(t.state,'active')='active'", (brand,)):
+                               "AND COALESCE(t.state,'active')='active'", (brand,))):
                 e = esles(r["brand"], r["title"])
                 if e:
                     ekle("eBay", r["country"], r["url"], r["title"], r["price"], r["cur"], r["condition"], e,
@@ -293,6 +404,10 @@ def ara(baslik: str, marka: str | None = None, fiyat: float | None = None, para:
         "platform_en_ucuz": platform_en_ucuz,
         "gercek_satis": satis,
         "gorsel_not": gorsel_not,
+        "kaynaklar": {"Vinted": "canli (vinted.de, AB saticilari dahil)" if canli_vt else "arsiv (gozlemci, son 7 gun)",
+                      "eBay": "canli (resmi API, 7 pazar)" if canli_eb else "arsiv (son 3 gun)",
+                      "Kleinanzeigen": "arsiv (toplayici, son 3 gun)", "Sellpy": "arsiv (toplayici, son 3 gun)"},
+        "kaynak_notlari": kaynak_notlari,
         "toplam_sonuc": len(sirali),
         "sonuclar": sirali[:en_fazla],
         "not": ("Toplam = alis + alici ucreti + kargo (olculmus degerler). 'gorsel' eslesmeleri goz kontrolu ister; "

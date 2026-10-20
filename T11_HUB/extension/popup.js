@@ -30,17 +30,8 @@ async function oku() {
   return sagTik;
 }
 
-function satir(r) {
-  const vr = r.ayni_varyant === true ? " · <b style='color:#28a745'>ayni varyant</b>" : r.ayni_varyant === false ? " · <span style='color:#ffa500'>baska varyant</span>" : "";
-  const uy = r.beden_uyumu === true ? " · <b style='color:#28a745'>beden uyuyor</b>" : r.beden_uyumu === false ? " · <span style='color:#ffa500'>beden farkli</span>" : "";
-  return `<div class="satir">${r.gorsel ? `<img src="${esc(r.gorsel)}" referrerpolicy="no-referrer">` : ""}
-    <div style="flex:1;min-width:0"><a href="${esc(r.url)}" target="_blank">${esc(r.baslik)}</a>
-      <div class="mut"><span class="etiket ${r.eslesme}">${r.eslesme}</span>${esc(r.platform)} ${esc(r.ulke || "")} · ${esc(r.kondisyon || "")}${r.beden ? " · " + esc(r.beden) : ""}${vr}${uy}</div></div>
-    <div class="fiyat">${r.toplam_eur.toFixed(2)} €<div class="mut" style="font-weight:400">${esc(r.fiyat)} ${esc(r.para)}</div></div></div>`;
-}
-
 async function ara() {
-  $("sonuc").innerHTML = '<div class="mut">TATANGA araniyor...</div>';
+  $("sonuc").innerHTML = '<div class="mut">Canli araniyor: Vinted + eBay (insan hizinda, ~20 sn) + KA/Sellpy arsivi...</div>';
   const govde = { url: OKUNAN.url, baslik: $("baslik").value, marka: $("marka").value || null, fiyat: $("fiyat").value || null,
                   para: OKUNAN.para || "EUR", gorsel_url: OKUNAN.gorsel_url || null };
   if ($("ekran").checked) {
@@ -56,30 +47,10 @@ async function ara() {
     return;
   }
   if (d.status !== "ok") { $("sonuc").innerHTML = `<div class="kutu">${esc(d.error || "hata")}</div>`; return; }
-  const q = d.sorgu, e = d.en_ucuz, s = d.gercek_satis;
-  let h = d.arastirma_id ? `<div class="kutu" style="padding:5px 8px">TATANGA listesine kaydedildi (#${d.arastirma_id}) ·
-    <a href="${esc(SUNUCU)}/arastirmalar" target="_blank" style="color:#09b1ba">Arastirmalar'da ac</a></div>` : "";
-  h += `<div class="mut">Taninan: <b>${esc(q.marka || "?")}</b> ${esc(q.model || q.seri || "")} ${q.beden ? "· beden " + esc(q.beden) : ""} · eslesme: ${esc(d.eslesme_seviyesi)}</div>`;
-  if (e) {
-    h += `<div class="kutu vurgu"><div class="mut">En ucuz (alis + ucret + kargo)</div>
-      <div style="font-size:20px;font-weight:700;color:#09b1ba">${e.toplam_eur.toFixed(2)} €</div>
-      <a href="${esc(e.url)}" target="_blank" style="color:#e4e6eb">${esc(e.baslik)}</a>
-      <div class="mut">${esc(e.platform)} ${esc(e.ulke || "")} · ${esc(e.eslesme)}${d.tasarruf_eur != null ? ` · bu sayfaya gore <b style="color:${d.tasarruf_eur > 0 ? "#28a745" : "#dc3545"}">${d.tasarruf_eur > 0 ? d.tasarruf_eur.toFixed(2) + " € ucuz" : (-d.tasarruf_eur).toFixed(2) + " € pahali"}</b>` : ""}</div></div>`;
-  } else if (d.ayni_varyant_yok) {
-    h += `<div class="kutu" style="border-color:#ffa500">Ayni varyant (<b>${esc((q.varyant || []).join(" "))}</b>) arsivde yok.
-      Asagidakiler ayni MODELIN baska varyantlari (renk/desen farkli) — fiyat karsilastirmasi icin dikkatli kullan.
-      Guncel ilanlar icin "Canli tara".</div>`;
-  } else {
-    h += `<div class="kutu">Arsivde ayni/benzer ilan bulunamadi.</div>`;
-  }
-  if (s) h += `<div class="kutu"><b>Gercek Vinted satisi:</b> medyan ${s.medyan} € · alt ceyrek ${s.p25} € · ${s.n} satis (${esc(s.guven)})</div>`;
-  const pe = Object.entries(d.platform_en_ucuz || {});
-  if (pe.length) h += `<div class="mut">Platform bazinda en ucuz: ${pe.map(([k, v]) => `<a href="${esc(v.url)}" target="_blank" style="color:#9aa4ae">${esc(k)} ${v.toplam_eur.toFixed(0)} €</a>`).join(" · ")}</div>`;
-  h += (d.sonuclar || []).slice(0, 20).map(satir).join("");
-  h += `<div class="mut" style="margin-top:8px">${esc(d.not)} ${d.gorsel_not ? "· " + esc(d.gorsel_not) : ""}
-        · elenen: cocuk ${d.elenen ? d.elenen.cocuk : 0}, dusuk kondisyon ${d.elenen ? d.elenen.kondisyon : 0}</div>
-        <div style="margin-top:8px;display:flex;gap:6px"><button id="canli">Canli tara (guncel ilanlar)</button>
-        <a href="${esc(SUNUCU)}/products?ara=${encodeURIComponent((q.marka || "") + " " + (q.model || ""))}" target="_blank"><button>TATANGA'da ac</button></a></div>`;
+  const q = d.sorgu || {};
+  let h = ttSonucHtml(d, SUNUCU);
+  h += `<div style="margin-top:8px;display:flex;gap:6px"><button id="canli">TATANGA'da kazima baslat</button>
+        <a href="${esc(SUNUCU)}/arastirmalar" target="_blank"><button>Arastirmalar</button></a></div>`;
   $("sonuc").innerHTML = h;
   $("canli").onclick = async () => {
     const anahtar = ((q.marka || "") + " " + (q.model || q.seri || "")).trim() || $("baslik").value;
@@ -89,6 +60,9 @@ async function ara() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const st = document.createElement("style");     // MV3: satir ici <script> yasak; ortak stil buradan eklenir
+  st.textContent = ttStil;
+  document.head.appendChild(st);
   SUNUCU = await sunucu();
   $("ayar").onclick = () => chrome.runtime.openOptionsPage();
   $("ara").onclick = ara;

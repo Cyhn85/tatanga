@@ -4,77 +4,95 @@
 {% block page_title %}<i class="fas fa-search-dollar me-2" style="color:#09b1ba"></i>Arastirmalar{% endblock %}
 
 {% block content %}
-<div class="small mb-3" style="color:#9aa4ae">Chrome eklentisiyle gonderdigin her urun burada kalir. <b>Benzerleri bul</b>
-    guncel arsiv + gorsel dizininde yeniden arar (toplam = alis + alici ucreti + kargo). <b>Urun ekranina getir</b> ayni
-    modeli/gorseli eslesen ilanlari (baska varyant haric) urunlere ekler; orada gercek satis zekasi, teklif ve Vinted
-    asistaniyla incelersin.</div>
-<div id="ar-liste" class="row g-2"><div style="color:#9aa4ae"><i class="fas fa-spinner fa-spin me-1"></i>Yukleniyor...</div></div>
+<div class="small mb-2" style="color:#9aa4ae">Chrome eklentisiyle gonderdigin urunler. Satira tikla: eklentideki sonuc
+    gorunumu acilir. <b>Benzerleri bul</b> canli yeniden arar (Vinted + eBay canli, KA/Sellpy toplayici arsivi; toplam =
+    alis + alici ucreti + kargo). <b>Urun ekranina getir</b> ayni model/varyant/bedendeki ilanlari urunlere ekler.</div>
+<div class="table-responsive">
+<table class="table table-sm table-dark table-hover align-middle mb-0" style="font-size:.8rem">
+  <thead><tr style="color:#9aa4ae"><th></th><th>Urun</th><th class="d-none d-md-table-cell">Marka · model · beden</th>
+    <th class="text-end">Sayfa</th><th class="text-end">En ucuz</th><th class="text-end">Fark</th>
+    <th class="d-none d-lg-table-cell">Tarih</th><th></th></tr></thead>
+  <tbody id="ar-liste"><tr><td colspan="8" style="color:#9aa4ae"><i class="fas fa-spinner fa-spin me-1"></i>Yukleniyor...</td></tr></tbody>
+</table>
+</div>
+
+<div class="modal fade" id="arModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content" style="background:#15181d;color:#e4e6eb;border:1px solid rgba(255,255,255,.1)">
+      <div class="modal-header" style="border-color:rgba(255,255,255,.08)">
+        <h6 class="modal-title"><b style="color:#ffa500">TATANGA</b> · en ucuzu bul · <span id="ar-m-baslik"></span></h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="font-size:13px">
+        <div class="d-flex gap-1 flex-wrap mb-2" id="ar-m-dugmeler"></div>
+        <div id="ar-m-icerik"></div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="/eklenti/gorunum.js"></script>
 <script>
+document.head.insertAdjacentHTML('beforeend', '<style>' + ttStil + '</style>');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const eur = v => v == null ? '—' : Number(v).toFixed(2) + ' €';
-const ESL = {model: '#28a745', gorsel: '#09b1ba', kelime: '#ffa500'};
+let VERI = {};
 
-function satir(r) {
-    const vr = r.ayni_varyant === true ? '<span style="color:#28a745">ayni varyant</span>' : r.ayni_varyant === false ? '<span style="color:#ffa500">baska varyant</span>' : '';
-    const by = r.beden_uyumu === true ? '<span style="color:#28a745">beden uyuyor</span>' : r.beden_uyumu === false ? '<span style="color:#ffa500">beden farkli</span>' : '';
-    return `<tr><td><span class="badge" style="background:${ESL[r.eslesme] || '#6c757d'}">${esc(r.eslesme)}</span></td>
-        <td>${esc(r.platform)} ${esc(r.ulke || '')}</td>
-        <td><a href="${esc(r.url)}" target="_blank" rel="noopener" class="text-light">${esc((r.baslik || '').slice(0, 70))}</a>
-            <div style="color:#9aa4ae">${esc(r.kondisyon || '')}${r.beden ? ' · ' + esc(r.beden) : ''} ${vr} ${by}</div></td>
-        <td class="text-end"><b>${eur(r.toplam_eur)}</b><div style="color:#9aa4ae">${esc(r.fiyat)} ${esc(r.para)}</div></td></tr>`;
+function veri(a) {        // kayitli arastirma -> eklentinin cevap bicimi (ayni gorunum)
+    const m = a.meta || {};
+    return Object.assign({}, m, {arastirma_id: null, sonuclar: a.sonuclar || [],
+        sorgu: m.sorgu || {marka: a.marka, model: a.model, beden: a.beden},
+        eslesme_seviyesi: m.eslesme_seviyesi || a.eslesme_seviyesi, tasarruf_eur: a.tasarruf_eur});
 }
-
-function kart(a) {
-    const tas = a.tasarruf_eur;
-    const tasHtml = tas == null ? '' : `<span style="color:${tas > 0 ? '#28a745' : '#dc3545'}">${tas > 0 ? eur(tas) + ' ucuz' : eur(-tas) + ' pahali'}</span>`;
-    return `<div class="col-12 col-xl-6"><div class="card h-100" style="background:#1b1f24;border:1px solid #2b3038;color:#e4e6eb">
-      <div class="card-body p-2" style="font-size:.78rem">
-        <div class="d-flex gap-2">
-          <img src="${esc(a.gorsel_url || '/static/img/no-image.svg')}" referrerpolicy="no-referrer" style="width:90px;height:110px;object-fit:cover;border-radius:6px;flex:none"
-               onerror="this.src='/static/img/no-image.svg'">
-          <div style="min-width:0;flex:1">
-            <div class="d-flex justify-content-between gap-2"><a href="${esc(a.kaynak_url)}" target="_blank" rel="noopener" class="text-light fw-semibold">${esc(a.baslik)}</a>
-              <span style="color:#9aa4ae;white-space:nowrap">#${a.id}</span></div>
-            <div style="color:#9aa4ae">${esc(a.marka || '?')} ${esc(a.model || '')}${a.beden ? ' · beden ' + esc(a.beden) : ''}${a.varyant ? ' · varyant: ' + esc(a.varyant) : ''} · eslesme ${esc(a.eslesme_seviyesi)}</div>
-            <div class="mt-1">Sayfa fiyati <b>${eur(a.sayfa_fiyat_eur)}</b> · en ucuz <b style="color:#09b1ba">${eur(a.en_ucuz_toplam)}</b>
-              ${a.en_ucuz_platform ? '(' + esc(a.en_ucuz_platform) + ')' : ''} ${tasHtml}</div>
-            ${a.ayni_varyant_yok ? '<div style="color:#ffa500">Ayni varyant arsivde yok (sonuclar ayni modelin baska varyantlari).</div>' : ''}
-            ${a.satis_medyan ? `<div>Gercek Vinted satisi: medyan ${eur(a.satis_medyan)} · ${a.satis_n} satis</div>` : ''}
-            <div style="color:#9aa4ae">${a.sonuc_sayisi || 0} sonuc · ${esc((a.guncelleme || '').replace('T', ' ').slice(0, 16))}${a.getirilen ? ' · ' + a.getirilen + ' urun getirildi' : ''}</div>
-            <div class="d-flex gap-1 flex-wrap mt-1">
-              <button class="btn btn-sm btn-outline-info py-0 px-2" onclick="yenile(${a.id}, this)"><i class="fas fa-sync me-1"></i>Benzerleri bul</button>
-              <button class="btn btn-sm btn-outline-warning py-0 px-2" onclick="getir(${a.id}, this)"><i class="fas fa-download me-1"></i>Urun ekranina getir</button>
-              ${a.getirilen ? `<a class="btn btn-sm btn-outline-light py-0 px-2" href="/products?arastirma=${a.id}">Urunlerde ac</a>` : ''}
-              <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="document.getElementById('ar-s-${a.id}').classList.toggle('d-none')">Sonuclar</button>
-              <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="sil(${a.id})"><i class="fas fa-trash"></i></button>
-            </div>
-          </div>
-        </div>
-        <div id="ar-s-${a.id}" class="d-none mt-2" style="max-height:320px;overflow:auto">
-          <table class="table table-sm table-dark mb-0" style="font-size:.72rem"><tbody>${(a.sonuclar || []).slice(0, 40).map(satir).join('') || '<tr><td>Sonuc yok</td></tr>'}</tbody></table>
-        </div>
-      </div></div></div>`;
+function satir(a) {
+    const t = a.tasarruf_eur;
+    const fark = t == null ? '' : `<span style="color:${t > 0 ? '#28a745' : '#dc3545'}">${t > 0 ? '−' + eur(t) : '+' + eur(-t)}</span>`;
+    return `<tr style="cursor:pointer" onclick="ac(${a.id})">
+      <td style="width:46px"><img src="${esc(a.gorsel_url || '/static/img/no-image.svg')}" referrerpolicy="no-referrer"
+          style="width:38px;height:46px;object-fit:cover;border-radius:4px" onerror="this.src='/static/img/no-image.svg'"></td>
+      <td style="max-width:320px"><div class="text-truncate fw-semibold">${esc(a.baslik)}</div>
+          <div style="color:#9aa4ae">#${a.id} · ${a.sonuc_sayisi || 0} sonuc${a.getirilen ? ' · ' + a.getirilen + ' urun getirildi' : ''}${a.ayni_varyant_yok ? ' · <span style="color:#ffa500">ayni varyant yok</span>' : ''}</div></td>
+      <td class="d-none d-md-table-cell" style="color:#c8d0d8">${esc(a.marka || '?')} ${esc(a.model || '')}${a.beden ? ' · ' + esc(a.beden) : ''}</td>
+      <td class="text-end">${eur(a.sayfa_fiyat_eur)}</td>
+      <td class="text-end"><b style="color:#09b1ba">${eur(a.en_ucuz_toplam)}</b><div style="color:#9aa4ae">${esc(a.en_ucuz_platform || '')}</div></td>
+      <td class="text-end">${fark}</td>
+      <td class="d-none d-lg-table-cell" style="color:#9aa4ae">${esc((a.guncelleme || '').replace('T', ' ').slice(0, 16))}</td>
+      <td class="text-end" onclick="event.stopPropagation()">
+        <button class="btn btn-sm btn-outline-info py-0 px-2" title="Benzerleri bul (canli)" onclick="yenile(${a.id}, this)"><i class="fas fa-sync"></i></button>
+        <button class="btn btn-sm btn-outline-warning py-0 px-2" title="Urun ekranina getir" onclick="getir(${a.id}, this)"><i class="fas fa-download"></i></button>
+        <button class="btn btn-sm btn-outline-danger py-0 px-2" title="Sil" onclick="sil(${a.id})"><i class="fas fa-trash"></i></button></td></tr>`;
 }
-
+function ac(id) {
+    const a = VERI[id];
+    document.getElementById('ar-m-baslik').textContent = a.baslik;
+    document.getElementById('ar-m-icerik').innerHTML = ttSonucHtml(veri(a), '');
+    document.getElementById('ar-m-dugmeler').innerHTML =
+        `<a class="btn btn-sm btn-outline-light py-0" href="${esc(a.kaynak_url)}" target="_blank" rel="noopener">Kaynak sayfa</a>
+         <button class="btn btn-sm btn-outline-info py-0" onclick="yenile(${a.id}, this, true)"><i class="fas fa-sync me-1"></i>Benzerleri bul (canli)</button>
+         <button class="btn btn-sm btn-outline-warning py-0" onclick="getir(${a.id}, this)"><i class="fas fa-download me-1"></i>Urun ekranina getir</button>
+         ${a.getirilen ? `<a class="btn btn-sm btn-outline-light py-0" href="/products?arastirma=${a.id}">Urunlerde ac (${a.getirilen})</a>` : ''}`;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('arModal')).show();
+}
 async function yukle() {
     const d = await (await fetch('/api/arastirmalar')).json();
-    const el = document.getElementById('ar-liste');
-    el.innerHTML = (d.arastirmalar || []).map(kart).join('') ||
-        '<div style="color:#9aa4ae" class="py-4 text-center">Henuz arastirma yok. Chrome eklentisinde bir urun sayfasinda "En ucuzu bul" de.</div>';
+    VERI = {};
+    (d.arastirmalar || []).forEach(a => VERI[a.id] = a);
+    document.getElementById('ar-liste').innerHTML = (d.arastirmalar || []).map(satir).join('') ||
+        '<tr><td colspan="8" class="text-center py-4" style="color:#9aa4ae">Henuz arastirma yok. Chrome eklentisinde bir urun sayfasinda "En ucuzu bul" de.</td></tr>';
 }
-async function yenile(id, btn) {
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Araniyor';
+async function yenile(id, btn, modal) {
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>' + (modal ? ' Canli araniyor (~20 sn)' : '');
     await fetch('/api/arastirma/' + id + '/yenile', {method: 'POST'});
-    yukle();
+    await yukle();
+    if (modal) ac(id);
 }
 async function getir(id, btn) {
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Getiriliyor';
+    btn.disabled = true;
     const r = await (await fetch('/api/arastirma/' + id + '/getir', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"adet": 20}'})).json();
     showToast(r.status === 'ok' ? `${r.eklenen} urun eklendi (${r.zaten_vardi} zaten vardi). Zeka puanlamasi arka planda (1-2 dk).` : (r.error || 'hata'), r.status === 'ok' ? 'success' : 'danger');
-    yukle();
+    await yukle();
 }
 async function sil(id) {
     if (!confirm('Bu arastirma silinsin mi? (getirilen urunler kalir)')) return;

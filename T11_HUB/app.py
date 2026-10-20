@@ -2366,6 +2366,9 @@ async def _arastirma_sema(db) -> None:
     cols = {r[1] for r in await (await db.execute("PRAGMA table_info(products)")).fetchall()}
     if "arastirma_id" not in cols:
         await db.execute("ALTER TABLE products ADD COLUMN arastirma_id INTEGER")
+    acols = {r[1] for r in await (await db.execute("PRAGMA table_info(arastirmalar)")).fetchall()}
+    if "meta_json" not in acols:
+        await db.execute("ALTER TABLE arastirmalar ADD COLUMN meta_json TEXT")   # sorgu, kaynaklar, platform en ucuz...
     await db.commit()
 
 
@@ -2391,6 +2394,10 @@ async def _arastirma_kaydet(girdi: dict, res: dict, aid: int | None = None) -> i
                 en_ucuz_platform, tasarruf_eur, satis_medyan, satis_n, sonuc_sayisi, ayni_varyant_yok, girdi_json,
                 sonuc_json, olusturma) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", vals + (now,))
             aid = cur.lastrowid
+        meta = {k: res.get(k) for k in ("sorgu", "kaynaklar", "kaynak_notlari", "platform_en_ucuz", "gorsel_not",
+                                          "elenen", "ayni_varyant_yok", "eslesme_seviyesi", "en_ucuz", "tasarruf_eur",
+                                          "gercek_satis", "not")}
+        await db.execute("UPDATE arastirmalar SET meta_json=? WHERE id=?", (json.dumps(meta, ensure_ascii=False), aid))
         await db.commit()
     return aid
 
@@ -2405,6 +2412,7 @@ async def arastirmalar_liste():
     for r in rows:
         r.pop("girdi_json", None)
         r["sonuclar"] = json.loads(r.pop("sonuc_json") or "[]")
+        r["meta"] = json.loads(r.pop("meta_json") or "{}")
     return {"status": "ok", "arastirmalar": rows}
 
 
@@ -2490,6 +2498,12 @@ async def arastirma_sil(aid: int):
         await db.execute("UPDATE products SET arastirma_id=NULL WHERE arastirma_id=?", (aid,))
         await db.commit()
     return {"status": "ok"}
+
+
+@app.get("/eklenti/gorunum.js")
+async def eklenti_gorunum_js():
+    """Eklentiyle AYNI sonuc gorunumu (extension/gorunum.js) - TATANGA Arastirmalar sayfasi kullanir."""
+    return FileResponse(str(BASE_DIR / "extension" / "gorunum.js"), media_type="application/javascript")
 
 
 @app.get("/arastirmalar", response_class=HTMLResponse)
