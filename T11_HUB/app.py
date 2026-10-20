@@ -643,6 +643,7 @@ async def products_page(
     page: int = 1,
     per_page: int = 100,
     ara: str = "",
+    arastirma: str = "",
 ):
     from urllib.parse import urlencode
     from logic.category_plan import CLOTHING_TREE, GENDERS
@@ -667,6 +668,9 @@ async def products_page(
         if gender:
             where += " AND LOWER(title) LIKE ?"
             params.append(f"%{gender}%")
+        if arastirma.strip().isdigit():
+            where += " AND arastirma_id=?"
+            params.append(int(arastirma))
         if ara.strip():
             # urun numarasi (TT-00042 / tt42 / 42) ya da baslik/marka
             _q = ara.strip()
@@ -728,6 +732,7 @@ async def products_page(
         order_by = SIRALAMA.get(sort, SIRALAMA[""])
         from logic import teklif as _T
         await _T.sema(db)          # teklif tablolari + urun numarasi (TT-xxxxx) + tetikleyici
+        await _arastirma_sema(db)  # arastirma listesi + products.arastirma_id
         _have = {r[1] for r in await (await db.execute("PRAGMA table_info(products)")).fetchall()}
         for _c, _d in (("zeka_net_kar", "REAL"), ("zeka_net_medyan", "REAL"), ("zeka_satis_p25", "REAL"),
                        ("zeka_satis_medyan", "REAL"), ("zeka_p30", "REAL"), ("zeka_beklenen", "REAL"),
@@ -810,7 +815,7 @@ async def products_page(
         "status": status, "platform": platform,
         "recommendation": recommendation, "category": category,
         "gender": gender, "price_min": price_min,
-        "price_max": price_max, "sort": sort, "ara": ara,
+        "price_max": price_max, "sort": sort, "ara": ara, "arastirma": arastirma,
     }.items() if v})
 
     # Siralama menusu: is anlamina gore gruplanmis. Kullanici "hangi urunu
@@ -2316,6 +2321,199 @@ async def vinted_ilan(product_id: str, cila: int = 0):
                      "not": "Vinted'de en az 5 fotograf: on, arka, etiket, detay, kusur (varsa)." +
                             ("" if studio else " Henuz kendi fotografin yok: 'Kendi fotograflarin · studyo' bolumunden yukle.")}
     return {"status": "ok", "product_id": product_id, **t}
+
+
+# ============================================
+# CHROME EKLENTISI (extension/) -> en ucuzu bul (logic/en_ucuz.py)
+# ============================================
+@app.post("/api/eklenti/ara")
+async def eklenti_ara(request: Request):
+    """Web'de gorulen urun: baslik/fiyat/marka/gorsel -> tum platform arsivleri + gorsel dizini, toplam maliyete gore."""
+    from logic import en_ucuz as EU
+    body = await request.json()
+    baslik = (body.get("baslik") or "").strip()[:300]
+    if not baslik and not body.get("gorsel_url") and not body.get("gorsel"):
+        return JSONResponse({"status": "error", "error": "Baslik ya da gorsel gerekli"}, 400)
+    try:
+        fiyat = float(str(body.get("fiyat") or "").replace(",", ".")) if body.get("fiyat") else None
+    except ValueError:
+        fiyat = None
+    gorsel_b64 = None
+    if body.get("gorsel"):                       # sag tik ile secilen gorsel ya da ekran goruntusu (data URL)
+        gorsel_b64 = str(body["gorsel"]).split(",", 1)[-1]
+    res = await asyncio.to_thread(EU.ara, baslik, body.get("marka"), fiyat, body.get("para") or "EUR",
+                                  body.get("gorsel_url"), gorsel_b64, 30, body.get("url"))
+    await log_activity("eklenti", f"en ucuz arama: '{baslik[:60]}' -> {res['toplam_sonuc']} sonuc, "
+                                  f"seviye {res['eslesme_seviyesi']}")
+    girdi = {"url": body.get("url"), "baslik": baslik, "marka": body.get("marka"), "fiyat": fiyat,
+             "para": body.get("para") or "EUR", "gorsel_url": body.get("gorsel_url")}
+    aid = await _arastirma_kaydet(girdi, res)
+    return {"status": "ok", "kaynak_url": body.get("url"), "arastirma_id": aid, **res}
+
+
+# ============================================
+# ARASTIRMA LISTESI: eklentiden gelen her urun burada kalir; benzerleri yeniden bulunur ve
+# platformlardan gelen ayni urunler kazima/urun ekranina incelemek icin getirilir.
+# ============================================
+async def _arastirma_sema(db) -> None:
+    await db.execute("""CREATE TABLE IF NOT EXISTS arastirmalar (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, olusturma TEXT, guncelleme TEXT,
+        kaynak_url TEXT, baslik TEXT, marka TEXT, model TEXT, beden TEXT, varyant TEXT,
+        sayfa_fiyat REAL, sayfa_para TEXT, sayfa_fiyat_eur REAL, gorsel_url TEXT,
+        eslesme_seviyesi TEXT, en_ucuz_toplam REAL, en_ucuz_url TEXT, en_ucuz_platform TEXT, tasarruf_eur REAL,
+        satis_medyan REAL, satis_n INTEGER, sonuc_sayisi INTEGER, ayni_varyant_yok INTEGER,
+        girdi_json TEXT, sonuc_json TEXT, getirilen INTEGER DEFAULT 0)""")
+    cols = {r[1] for r in await (await db.execute("PRAGMA table_info(products)")).fetchall()}
+    if "arastirma_id" not in cols:
+        await db.execute("ALTER TABLE products ADD COLUMN arastirma_id INTEGER")
+    await db.commit()
+
+
+async def _arastirma_kaydet(girdi: dict, res: dict, aid: int | None = None) -> int:
+    q, e, sat = res.get("sorgu") or {}, res.get("en_ucuz") or {}, res.get("gercek_satis") or {}
+    now = datetime.now().isoformat(timespec="seconds")
+    vals = (now, girdi.get("url"), girdi.get("baslik"), q.get("marka"), q.get("model") or q.get("seri"), q.get("beden"),
+            " ".join(q.get("varyant") or []), girdi.get("fiyat"), girdi.get("para"), q.get("sayfa_fiyat_eur"),
+            girdi.get("gorsel_url"), res.get("eslesme_seviyesi"), e.get("toplam_eur"), e.get("url"), e.get("platform"),
+            res.get("tasarruf_eur"), sat.get("medyan"), sat.get("n"), res.get("toplam_sonuc"),
+            1 if res.get("ayni_varyant_yok") else 0, json.dumps(girdi, ensure_ascii=False),
+            json.dumps(res.get("sonuclar") or [], ensure_ascii=False))
+    async with aiosqlite.connect(DB_FILE) as db:
+        await _arastirma_sema(db)
+        if aid:
+            await db.execute("""UPDATE arastirmalar SET guncelleme=?, kaynak_url=?, baslik=?, marka=?, model=?, beden=?,
+                varyant=?, sayfa_fiyat=?, sayfa_para=?, sayfa_fiyat_eur=?, gorsel_url=?, eslesme_seviyesi=?,
+                en_ucuz_toplam=?, en_ucuz_url=?, en_ucuz_platform=?, tasarruf_eur=?, satis_medyan=?, satis_n=?,
+                sonuc_sayisi=?, ayni_varyant_yok=?, girdi_json=?, sonuc_json=? WHERE id=?""", vals + (aid,))
+        else:
+            cur = await db.execute("""INSERT INTO arastirmalar (guncelleme, kaynak_url, baslik, marka, model, beden, varyant,
+                sayfa_fiyat, sayfa_para, sayfa_fiyat_eur, gorsel_url, eslesme_seviyesi, en_ucuz_toplam, en_ucuz_url,
+                en_ucuz_platform, tasarruf_eur, satis_medyan, satis_n, sonuc_sayisi, ayni_varyant_yok, girdi_json,
+                sonuc_json, olusturma) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", vals + (now,))
+            aid = cur.lastrowid
+        await db.commit()
+    return aid
+
+
+@app.get("/api/arastirmalar")
+async def arastirmalar_liste():
+    async with aiosqlite.connect(DB_FILE) as db:
+        await _arastirma_sema(db)
+        cur = await db.execute("SELECT * FROM arastirmalar ORDER BY guncelleme DESC")
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, r)) for r in await cur.fetchall()]
+    for r in rows:
+        r.pop("girdi_json", None)
+        r["sonuclar"] = json.loads(r.pop("sonuc_json") or "[]")
+    return {"status": "ok", "arastirmalar": rows}
+
+
+@app.post("/api/arastirma/{aid}/yenile")
+async def arastirma_yenile(aid: int):
+    """Benzerleri yeniden bul: ayni girdiyle guncel arsiv + gorsel dizininde arama (kargo/komisyon kurallari dahil)."""
+    from logic import en_ucuz as EU
+    async with aiosqlite.connect(DB_FILE) as db:
+        await _arastirma_sema(db)
+        row = await (await db.execute("SELECT girdi_json FROM arastirmalar WHERE id=?", (aid,))).fetchone()
+    if not row:
+        return JSONResponse({"status": "error", "error": "Arastirma bulunamadi"}, 404)
+    g = json.loads(row[0] or "{}")
+    res = await asyncio.to_thread(EU.ara, g.get("baslik") or "", g.get("marka"), g.get("fiyat"), g.get("para") or "EUR",
+                                  g.get("gorsel_url"), None, 60, g.get("url"))
+    await _arastirma_kaydet(g, res, aid)
+    return {"status": "ok", "arastirma_id": aid, "toplam_sonuc": res["toplam_sonuc"], "en_ucuz": res["en_ucuz"]}
+
+
+_VINTED_PLATFORM = {"DE": "vinted", "AT": "vinted_at", "FR": "vinted_fr", "BE": "vinted_be", "NL": "vinted_nl",
+                    "IT": "vinted_it", "ES": "vinted_es", "SE": "vinted_se", "PL": "vinted_pl", "GB": "vinted_uk",
+                    "UK": "vinted_uk"}
+
+
+@app.post("/api/arastirma/{aid}/getir")
+async def arastirma_getir(aid: int, request: Request, background_tasks: BackgroundTasks):
+    """Arastirmanin eslesen ilanlarini (ayni model/gorsel; baska varyant ve 'kelime' haric) urun ekranina getirir.
+    Toplam maliyet = alis + alici ucreti + kargo (en_ucuz kurallari). Ayni ilan zaten varsa tekrar eklenmez."""
+    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    adet = max(1, min(int(body.get("adet") or 20), 60))
+    async with aiosqlite.connect(DB_FILE) as db:
+        await _arastirma_sema(db)
+        row = await (await db.execute("SELECT sonuc_json, baslik FROM arastirmalar WHERE id=?", (aid,))).fetchone()
+        if not row:
+            return JSONResponse({"status": "error", "error": "Arastirma bulunamadi"}, 404)
+        # baska varyant ve FARKLI beden getirilmez (aranan beden 42 iken 37'ler incelemeyi kirletir); bilinmeyen beden gelir
+        aday = [r for r in json.loads(row[0] or "[]")
+                if r.get("eslesme") in ("model", "gorsel") and r.get("ayni_varyant") is not False
+                and r.get("beden_uyumu") is not False][:adet]
+        eklenen, var = 0, 0
+        for r in aday:
+            hit = await _ayni_ilan(db, r["url"])
+            if hit:
+                await db.execute("UPDATE products SET arastirma_id=COALESCE(arastirma_id, ?) WHERE id=?", (aid, hit[0]))
+                var += 1
+                continue
+            plat = (_VINTED_PLATFORM.get((r.get("ulke") or "DE").upper(), "vinted") if r["platform"] == "Vinted"
+                    else {"Kleinanzeigen": "kleinanzeigen", "eBay": "ebay", "Sellpy": "sellpy"}.get(r["platform"],
+                                                                                                   r["platform"].lower()))
+            ek = round((r.get("toplam_eur") or 0) - (r.get("fiyat_eur") or 0), 2)   # ucret + kargo (EUR)
+            await db.execute(
+                "INSERT INTO products (id, source_platform, source_url, title, price, currency, condition, size, "
+                "images_json, shipping_cost, total_cost, status, source_status, scraped_at, created_at, arastirma_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,'scraped','active',?,?,?)",
+                (gen_id("PROD"), plat, r["url"], r.get("baslik"), r.get("fiyat"), r.get("para") or "EUR",
+                 r.get("kondisyon"), r.get("beden"), json.dumps([r["gorsel"]] if r.get("gorsel") else []), ek,
+                 r.get("toplam_eur"), datetime.now().isoformat(), datetime.now().isoformat(), aid))
+            eklenen += 1
+        await db.execute("UPDATE arastirmalar SET getirilen=getirilen+? WHERE id=?", (eklenen, aid))
+        await db.commit()
+    # gercek satis zekasini yeni urunlerde hemen calistir (fiyat/kar/30 gun) - arka planda
+    background_tasks.add_task(_zeka_hub_calistir)
+    await log_activity("arastirma", f"#{aid} '{(row[1] or '')[:50]}': {eklenen} urun getirildi, {var} zaten vardi")
+    return {"status": "ok", "arastirma_id": aid, "eklenen": eklenen, "zaten_vardi": var,
+            "urunler_url": f"/products?arastirma={aid}"}
+
+
+async def _zeka_hub_calistir() -> None:
+    script = BASE_DIR / "ops" / "hetzner_observer" / "zeka_urunler.py"
+    try:
+        proc = await asyncio.create_subprocess_exec(sys.executable, str(script), "--hub", str(DB_FILE),
+                                                    stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+        await asyncio.wait_for(proc.wait(), timeout=1800)
+    except Exception as exc:
+        await log_activity("zeka_hata", f"zeka_urunler: {type(exc).__name__}", "warning")
+
+
+@app.delete("/api/arastirma/{aid}")
+async def arastirma_sil(aid: int):
+    async with aiosqlite.connect(DB_FILE) as db:
+        await _arastirma_sema(db)
+        await db.execute("DELETE FROM arastirmalar WHERE id=?", (aid,))
+        await db.execute("UPDATE products SET arastirma_id=NULL WHERE arastirma_id=?", (aid,))
+        await db.commit()
+    return {"status": "ok"}
+
+
+@app.get("/arastirmalar", response_class=HTMLResponse)
+async def arastirmalar_sayfa(request: Request):
+    return templates.TemplateResponse("arastirmalar.html", {"request": request})
+
+
+@app.post("/api/eklenti/canli")
+async def eklenti_canli(request: Request, background_tasks: BackgroundTasks):
+    """Arsivde olmayan guncel ilanlar icin canli tarama (Vinted 10 ulke + KA/eBay/Sellpy arsivi)."""
+    body = await request.json()
+    anahtar = (body.get("anahtar") or "").strip()[:120]
+    if not anahtar:
+        return JSONResponse({"status": "error", "error": "Arama kelimesi gerekli"}, 400)
+    platforms = ["vinted", "vinted_fr", "vinted_be", "vinted_nl", "vinted_at", "vinted_it", "vinted_es", "vinted_se",
+                 "vinted_pl", "vinted_uk", "kleinanzeigen", "ebay", "sellpy"]
+    job_id = gen_id("JOB")
+    async with aiosqlite.connect(DB_FILE) as db:
+        await db.execute("INSERT INTO scrape_jobs (id, keyword, platforms, status, started_at) VALUES (?, ?, ?, 'running', ?)",
+                         (job_id, anahtar, json.dumps(platforms), datetime.now().isoformat()))
+        await db.commit()
+    background_tasks.add_task(run_scrape_job, job_id, anahtar, platforms, 1, "single")
+    return {"status": "started", "job_id": job_id, "anahtar": anahtar,
+            "urunler_url": f"/products?ara={anahtar}", "durum_url": f"/api/scrape/status/{job_id}"}
 
 
 @app.post("/api/product/{product_id}/remove-bg")

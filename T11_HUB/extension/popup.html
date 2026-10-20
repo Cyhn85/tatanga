@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --bg:#15181d; --fg:#e4e6eb; --mut:#9aa4ae; --line:#2b3038; --ok:#28a745; --warn:#ffa500; --acc:#09b1ba; }
+  body { margin:0; width:420px; max-height:580px; background:var(--bg); color:var(--fg); font:13px/1.4 system-ui, sans-serif; }
+  header { padding:10px 12px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  header b { color:var(--warn); }
+  main { padding:10px 12px; overflow-y:auto; max-height:520px; }
+  .mut { color:var(--mut); font-size:12px; }
+  .kutu { border:1px solid var(--line); border-radius:8px; padding:8px; margin:8px 0; }
+  .vurgu { border-color:var(--acc); background:rgba(9,177,186,.08); }
+  .satir { display:flex; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .satir img { width:46px; height:56px; object-fit:cover; border-radius:4px; background:#222; flex:none; }
+  .satir a { color:var(--fg); text-decoration:none; }
+  .fiyat { font-weight:700; white-space:nowrap; }
+  .etiket { font-size:10px; border-radius:99px; padding:0 6px; border:1px solid var(--line); margin-right:4px; }
+  .model { color:var(--ok); border-color:var(--ok); } .gorsel { color:var(--acc); border-color:var(--acc); } .kelime { color:var(--warn); border-color:var(--warn); }
+  button { background:#2b3038; color:var(--fg); border:1px solid #3a414b; border-radius:6px; padding:5px 9px; cursor:pointer; font-size:12px; }
+  button:hover { border-color:var(--acc); }
+  input { width:100%; box-sizing:border-box; background:#0f1216; color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:5px; }
+</style>
+</head>
+<body>
+<header><span><b>TATANGA</b> · en ucuzu bul</span><a id="ayar" href="#" class="mut">ayarlar</a></header>
+<main>
+  <div id="girdi">
+    <div class="mut">Sayfadan okunan (duzeltebilirsin):</div>
+    <input id="baslik" placeholder="urun basligi">
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <input id="marka" placeholder="marka" style="flex:1"><input id="fiyat" placeholder="fiyat" style="width:80px">
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
+      <button id="ara">En ucuzu bul</button>
+      <label class="mut"><input type="checkbox" id="ekran" style="width:auto"> gorsel yerine ekran goruntusu</label>
+    </div>
+  </div>
+  <div id="sonuc"></div>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>
